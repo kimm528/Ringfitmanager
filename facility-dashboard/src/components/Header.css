@@ -1,0 +1,19 @@
+.header {
+  display: flex;
+  justify-content: flex-start; /* 헤더 안의 내용 왼쪽 정렬 */
+  align-items: center;
+  max-width: 1200px; /* 헤더의 최대 너비 설정 */
+  margin: 0 auto; /* 중앙 정렬을 위한 마진 설정 */
+  width: 100%; /* 화면 너비에 맞게 확장 */
+}
+
+.search-input {
+  width: 200px; /* 검색창의 너비 조절 */
+}
+
+.add-user-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
