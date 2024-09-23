@@ -31,7 +31,6 @@ const UserDetail = ({ users }) => {
   };
 
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
-  const [uploadedImages, setUploadedImages] = useState([]);
   const [showBpm, setShowBpm] = useState(true);
   const [showOxygen, setShowOxygen] = useState(true);
   const [showStress, setShowStress] = useState(true);
