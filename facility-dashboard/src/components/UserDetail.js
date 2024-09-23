@@ -55,8 +55,6 @@ const UserDetail = ({ users }) => {
     taken: false,
   });
 
-  const [showAllImages, setShowAllImages] = useState(false); // 상태 추가
-
   const user = users.find(user => user.id === parseInt(userId));
   if (!user || !user.data) return <p>사용자를 찾을 수 없습니다.</p>;
 
@@ -132,11 +130,6 @@ const UserDetail = ({ users }) => {
     { day: '토', score: 100, date: '9/6' },
     { day: '일', score: 100, date: '9/7' },
   ];
-
-  const handleImageUpload = event => {
-    const files = Array.from(event.target.files);
-    setUploadedImages([...uploadedImages, ...files.map(file => URL.createObjectURL(file))]);
-  };
 
   const dateOptions = generateDateOptions();
 
