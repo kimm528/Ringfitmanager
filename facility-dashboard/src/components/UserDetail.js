@@ -43,7 +43,7 @@ const UserDetail = ({ users }) => {
   const [sortOption, setSortOption] = useState('all'); // 정렬 옵션
   const [logItems, setLogItems] = useState([
     { id: 1, medicine: '타이레놀 20mg', date: '2024/09/01', dose: '1정', time: '12:30', taken: false },
-    { id: 2, medicine: '타이레놀 20mg', date: '2024/09/02', dose: '1정', time: '14:00', taken: true },
+    { id: 2, medicine: '타이레놀 20mg', date: '2024/09/02', dose: '1정', time: '14:00', taken: false },
     { id: 3, medicine: '타이레놀 20mg', date: '2024/09/03', dose: '1정', time: '13:00', taken: false },
   ]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false); // 추가 모달
