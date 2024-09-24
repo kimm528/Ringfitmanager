@@ -2,7 +2,15 @@ import React, { useState } from 'react';
 import Card from './Card';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Dashboard = ({ showModal, setShowModal, users, setUsers, searchQuery, handleAddUser }) => {
+const Dashboard = ({
+  showModal,
+  setShowModal,
+  users,
+  setUsers,
+  searchQuery,
+  handleAddUser,
+  updateUser, // 추가된 부분
+}) => {
   const [newUser, setNewUser] = useState({
     name: '',
     gender: '',
@@ -78,7 +86,15 @@ const Dashboard = ({ showModal, setShowModal, users, setUsers, searchQuery, hand
       </div>
 
       {/* 카드 표시 */}
-      <div className="dashboard-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'flex-start' }}>
+      <div
+        className="dashboard-container"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px',
+          justifyContent: 'flex-start',
+        }}
+      >
         <AnimatePresence>
           {getSortedUsers().map((user) => (
             <motion.div
@@ -88,7 +104,12 @@ const Dashboard = ({ showModal, setShowModal, users, setUsers, searchQuery, hand
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
             >
-              <Card key={user.id} user={user} toggleFavorite={toggleFavorite} /> {/* 즐겨찾기 토글 추가 */}
+              <Card
+                key={user.id}
+                user={user}
+                toggleFavorite={toggleFavorite}
+                updateUser={updateUser} // 추가된 부분: updateUser 함수를 Card에 전달
+              />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -97,7 +118,10 @@ const Dashboard = ({ showModal, setShowModal, users, setUsers, searchQuery, hand
       {/* 사용자 추가 모달 */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]" style={{ zIndex: 1100 }}>
+          <div
+            className="bg-white p-8 rounded-lg shadow-lg w-[500px]"
+            style={{ zIndex: 1100 }}
+          >
             <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -150,10 +174,16 @@ const Dashboard = ({ showModal, setShowModal, users, setUsers, searchQuery, hand
               </div>
             </div>
             <div className="mt-4 flex justify-between">
-              <button onClick={handleSubmit} className="bg-blue-500 text-white py-2 px-4 rounded">
+              <button
+                onClick={handleSubmit}
+                className="bg-blue-500 text-white py-2 px-4 rounded"
+              >
                 사용자 추가
               </button>
-              <button onClick={() => setShowModal(false)} className="bg-gray-300 text-black py-2 px-4 rounded">
+              <button
+                onClick={() => setShowModal(false)}
+                className="bg-gray-300 text-black py-2 px-4 rounded"
+              >
                 닫기
               </button>
             </div>

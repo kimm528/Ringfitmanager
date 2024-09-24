@@ -42,6 +42,7 @@ function App() {
       isFavorite: false,
       data: generateUserData(),
     },
+    // ... 다른 사용자들
   ]);
 
   // 새 사용자 추가 처리
@@ -58,6 +59,32 @@ function App() {
     setShowModal(false); // 모달 닫기
   };
 
+  const updateUser = (updatedUser) => {
+    // 목표 달성율 재계산
+    const { data, goals } = updatedUser;
+  
+    const safeDivide = (numerator, denominator) =>
+      denominator === 0 ? 0 : (numerator / denominator) * 100;
+  
+    const stepsPercentage = Math.min(safeDivide(data.steps, goals.stepsGoal), 100);
+  const caloriesPercentage = Math.min(safeDivide(data.calories, goals.caloriesGoal), 100);
+  const distancePercentage = Math.min(safeDivide(data.distance, goals.distanceGoal), 100);
+
+    const achievementPercentage =
+      (stepsPercentage + caloriesPercentage + distancePercentage) / 3;
+  
+    const userWithAchievement = {
+      ...updatedUser,
+      achievementPercentage,
+    };
+  
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user.id === updatedUser.id ? userWithAchievement : user
+      )
+    );
+  };
+
   return (
     <Router>
       <div className="flex h-screen bg-gray-100">
@@ -68,13 +95,20 @@ function App() {
               setIsSidebarOpen={setIsSidebarOpen}
               users={users}
             />
-            <div className={`flex-1 transition-all duration-300 overflow-y-auto ${isSidebarOpen ? 'ml-1' : 'ml-1'}`}>
+            <div
+              className={`flex-1 transition-all duration-300 overflow-y-auto ${
+                isSidebarOpen ? 'ml-1' : 'ml-1'
+              }`}
+            >
               <Routes>
                 <Route
                   path="/"
                   element={
                     <>
-                      <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
+                      <Header
+                        setShowModal={setShowModal}
+                        setSearchQuery={setSearchQuery}
+                      />
                       <main className="p-4">
                         <Dashboard
                           showModal={showModal}
@@ -83,12 +117,16 @@ function App() {
                           setUsers={setUsers}
                           searchQuery={searchQuery}
                           handleAddUser={handleAddUser} // 사용자 추가 함수 전달
+                          updateUser={updateUser} // 사용자 정보 업데이트 함수 전달
                         />
                       </main>
                     </>
                   }
                 />
-                <Route path="/users/:userId" element={<UserDetail users={users} />} />
+                <Route
+                  path="/users/:userId"
+                  element={<UserDetail users={users} />}
+                />
               </Routes>
             </div>
           </>

@@ -18,11 +18,17 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, users }) => {
     .filter(user => user.name.includes(searchTerm)) // 검색어에 해당하는 사용자 필터링
     .sort((a, b) => {
       if (sortOption === "score") {
-        return b.score - a.score; // 운동 점수 높은 순으로 정렬
+        const diff = b.achievementPercentage - a.achievementPercentage;
+        if (diff !== 0) return diff;
+        return a.name.localeCompare(b.name, 'ko');
       } else if (sortOption === "bpm") {
-        return b.bpm - a.bpm; // 현재 심박수 높은 순으로 정렬
+        const diff = b.bpm - a.bpm;
+        if (diff !== 0) return diff;
+        return a.name.localeCompare(b.name, 'ko');
       } else if (sortOption === "age") {
-        return b.age - a.age; // 나이 높은 순으로 정렬
+        const diff = b.age - a.age;
+        if (diff !== 0) return diff;
+        return a.name.localeCompare(b.name, 'ko');
       } else if (sortOption === "name") {
         return a.name.localeCompare(b.name, 'ko'); // 이름 가나다 순으로 정렬
       }
@@ -73,10 +79,10 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, users }) => {
                 onChange={(e) => setSortOption(e.target.value)}
                 className="w-full p-2 text-black rounded-lg"
               >
-                <option value="score">운동 점수순</option>
+                <option value="score">운동 점수 순</option>
                 <option value="bpm">현재 심박수 순</option>
                 <option value="age">나이 순</option>
-                <option value="name">이름순</option> {/* 이름순 옵션 추가 */}
+                <option value="name">이름 순</option> {/* 이름순 옵션 추가 */}
               </select>
             </div>
           </>
