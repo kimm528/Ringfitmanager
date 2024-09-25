@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeIcon, Cog6ToothIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/24/outline";
 import './Sidebar.css';  // 스타일을 적용
@@ -7,13 +7,27 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, users }) => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState(""); // 검색 상태
   const [sortOption, setSortOption] = useState("score"); // 정렬 옵션 (기본값: 운동 점수순)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // 화면 크기에 따라 사이드바 숨기기
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768); // 768px 이하일 때 모바일로 간주
+    };
+
+    window.addEventListener("resize", handleResize);
+    
+    // 처음 로드될 때도 실행
+    handleResize();
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // 사용자 클릭 시 라우팅 처리
   const handleUserClick = (userId) => {
     navigate(`/users/${userId}`);
   };
 
-  // 이름으로 사용자 필터링
   const filteredUsers = users
     .filter(user => user.name.includes(searchTerm)) // 검색어에 해당하는 사용자 필터링
     .sort((a, b) => {
@@ -34,6 +48,11 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, users }) => {
       }
       return 0;
     });
+
+  // 모바일일 때는 사이드바를 숨기기
+  if (isMobile) {
+    return null; // 모바일 환경에서는 사이드바를 렌더링하지 않음
+  }
 
   return (
     <aside className={`transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20 sidebar-minimized'} bg-gray-800 text-white flex flex-col justify-between`}>
@@ -63,26 +82,32 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, users }) => {
         {/* 검색 및 정렬 (사이드바가 열려 있을 때만 표시) */}
         {isSidebarOpen && (
           <>
+            {/* 검색 박스 스타일링 */}
             <div className="p-2">
+              <label htmlFor="nameSearch" className="block text-sm font-medium text-gray-300 mb-2">이름 검색</label>
               <input
+                id="nameSearch"
                 type="text"
-                placeholder="이름 검색"
+                placeholder="이름을 입력하세요"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full p-2 text-black rounded-lg"
+                className="block w-full p-2 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
-            <div className="p-2">
+            {/* 정렬 옵션 스타일링 */}
+            <div className="p-4">
+              <label htmlFor="sortOptions" className="block text-sm font-medium text-gray-300 mb-2">정렬 옵션</label>
               <select
+                id="sortOptions"
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="w-full p-2 text-black rounded-lg"
+                className="block w-full p-2 rounded-lg bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="score">운동 점수 순</option>
                 <option value="bpm">현재 심박수 순</option>
                 <option value="age">나이 순</option>
-                <option value="name">이름 순</option> {/* 이름순 옵션 추가 */}
+                <option value="name">이름 순</option>
               </select>
             </div>
           </>

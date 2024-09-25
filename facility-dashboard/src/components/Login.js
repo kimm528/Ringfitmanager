@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { TEInput } from "tw-elements-react";
-import { MdLogin } from "react-icons/md"; // 로그인 아이콘 추가
 
 export default function Login({ setIsLoggedIn }) {
   const [username, setUsername] = useState(""); // 로그인 화면에서 입력한 아이디
@@ -21,6 +20,7 @@ export default function Login({ setIsLoggedIn }) {
       // 서버에 GET 요청 보내기
       const response = await fetch(
         `https://dotoriesringcloudserver.azurewebsites.net/api/site?siteId=${username}`,
+        //`https://dotoriesringcloudserver.azurewebsites.net/api/user?siteId=${username}`,
         {
           method: "GET",
           headers: {
@@ -155,26 +155,22 @@ export default function Login({ setIsLoggedIn }) {
 
             <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleKeyDown}>
               {/* 아이디 입력 */}
-              <TEInput
-                type="text"
-                size="lg"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none"
-                placeholder="아이디를 입력하세요"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                style={{ boxShadow: "none", border: "none" }}  // 추가된 스타일
-              />
+<input
+  type="text"
+  className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+  placeholder="아이디를 입력하세요"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+/>
 
-              {/* 비밀번호 입력 */}
-              <TEInput
-                type="password"
-                size="lg"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none"
-                placeholder="비밀번호를 입력하세요"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ boxShadow: "none", border: "none" }}  // 추가된 스타일
-              />
+{/* 비밀번호 입력 */}
+<input
+  type="password"
+  className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+  placeholder="비밀번호를 입력하세요"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+/>
 
               {/* 로그인 버튼 */}
               <button

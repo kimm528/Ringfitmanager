@@ -1,3 +1,16 @@
+/* 기본 사이드바 스타일 */
+.sidebar {
+  width: 250px;
+  transition: width 0.3s ease;
+}
+
+/* 모바일 환경에서 사이드바 숨기기 */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none !important; /* 모바일 화면에서 사이드바 숨김 */
+  }
+}
+
 /* 기본 스크롤 스타일 */
 .sidebar-scroll {
     scrollbar-width: thin;

@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FaStar } from 'react-icons/fa';
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
-
-// 모달 컴포넌트를 Card.js 상단에 정의
 import ReactDOM from 'react-dom';
 
 const Modal = ({ children, onClose, modalRef }) => {
@@ -78,7 +76,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser }) => {
   const [tempCaloriesGoal, setTempCaloriesGoal] = useState(caloriesGoal);
   const [tempDistanceGoal, setTempDistanceGoal] = useState(distanceGoal);
 
-  // 사용자 데이터에서 가져오기
+  // 사용자 데이터에서 가져오기, 기본값 설정
   const {
     bpm = 0,
     oxygen = 0,
@@ -94,8 +92,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser }) => {
     denominator === 0 ? 0 : (numerator / denominator) * 100;
 
   const stepsPercentage = Math.min(safeDivide(steps, stepsGoal), 100);
-const caloriesPercentage = Math.min(safeDivide(calories, caloriesGoal), 100);
-const distancePercentage = Math.min(safeDivide(distance, distanceGoal), 100);
+  const caloriesPercentage = Math.min(safeDivide(calories, caloriesGoal), 100);
+  const distancePercentage = Math.min(safeDivide(distance, distanceGoal), 100);
+
+  const achievementPercentage = (stepsPercentage + caloriesPercentage + distancePercentage) / 3;
 
   const renderProgressBar = (value, color, trailColor, size) => (
     <CircularProgressbar
@@ -118,10 +118,6 @@ const distancePercentage = Math.min(safeDivide(distance, distanceGoal), 100);
   const toggleMenu = (e) => {
     e.stopPropagation();
     setMenuOpen(!menuOpen);
-  };
-
-  const closePopup = () => {
-    setShowGoalModal(false);
   };
 
   // 목표 설정 모달 열기
@@ -325,15 +321,15 @@ const distancePercentage = Math.min(safeDivide(distance, distanceGoal), 100);
               fontWeight: 'bold',
             }}
           >
-            {((stepsPercentage + caloriesPercentage + distancePercentage) / 3).toFixed(1)}%
+            {achievementPercentage.toFixed(1)}%
           </div>
         </div>
 
         <div className="card-info text-right ml-4">
           {[
             { label: '걸음수', value: steps, color: 'text-blue-500' },
-            { label: '칼로리', value: `${calories}Kcal`, color: 'text-purple-500' },
-            { label: '이동거리', value: `${distance}Km`, color: 'text-green-500' },
+            { label: '칼로리', value: `${calories} Kcal`, color: 'text-purple-500' },
+            { label: '이동거리', value: `${distance} Km`, color: 'text-green-500' },
           ].map((item, index) => (
             <div key={index} className="flex items-center mb-2 text-sm">
               <span className={item.color}>{item.label}</span>

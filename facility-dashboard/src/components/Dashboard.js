@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Dashboard = ({
   showModal,
   setShowModal,
-  users,
-  setUsers,
-  searchQuery,
-  handleAddUser,
-  updateUser, // 추가된 부분
+  users,  // 서버에서 받은 사용자 데이터
+  setUsers, // 사용자 상태 설정 함수
+  searchQuery,  // 검색 쿼리
+  handleAddUser, // 사용자 추가 함수
+  updateUser, // 사용자 업데이트 함수
+  deleteUser, // 사용자 삭제 함수
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -109,6 +110,7 @@ const Dashboard = ({
                 user={user}
                 toggleFavorite={toggleFavorite}
                 updateUser={updateUser} // 추가된 부분: updateUser 함수를 Card에 전달
+                deleteUser={deleteUser}  // 추가된 부분: deleteUser 함수를 Card에 전달
               />
             </motion.div>
           ))}

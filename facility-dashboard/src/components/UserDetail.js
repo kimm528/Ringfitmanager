@@ -1,8 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, } from 'react';
 import { useParams } from 'react-router-dom';
-import { FaEllipsisV, FaHeartbeat, FaPlus, FaBed, FaSmile, FaTint, FaWalking, FaRegCalendarAlt, FaFireAlt, FaRoute } from 'react-icons/fa';
+import { FaEllipsisV, FaEdit, FaHeartbeat, FaPlus, FaBed, FaSmile, FaTint, FaWalking, FaRegCalendarAlt, FaFireAlt, FaRoute } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
+  // Helper 함수들
+  function getTodayDate() {
+    const today = new Date();
+    return `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+  }
+
+  function generateDateOptions() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
+    const day = today.getDate();
+    return Array.from({ length: day }, (_, i) => `${year}/${String(month).padStart(2, '0')}/${String(i + 1).padStart(2, '0')}`);
+  }
 // 반복적인 카드 UI를 재사용 가능한 컴포넌트로 분리
 const InfoCard = ({ icon, title, value }) => (
   <div className="bg-white p-4 rounded-lg shadow-md flex items-center">
@@ -14,93 +27,79 @@ const InfoCard = ({ icon, title, value }) => (
   </div>
 );
 
-const UserDetail = ({ users }) => {
-  const { userId } = useParams();
-
-  const getTodayDate = () => {
-    const today = new Date();
-    return `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
-  };
-
-  const generateDateOptions = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    const day = today.getDate();
-    return Array.from({ length: day }, (_, i) => `${year}/${String(month).padStart(2, '0')}/${String(i + 1).padStart(2, '0')}`);
-  };
-
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
-  const [showBpm, setShowBpm] = useState(true);
-  const [showOxygen, setShowOxygen] = useState(true);
-  const [showStress, setShowStress] = useState(true);
-  const [showSleep, setShowSleep] = useState(true);
-  const [showSteps, setShowSteps] = useState(true);
-  const [showCalories, setShowCalories] = useState(true);
-  const [showDistance, setShowDistance] = useState(true);
-
-  const [sortOption, setSortOption] = useState('all'); // 정렬 옵션
-  const [logItems, setLogItems] = useState([
-    { id: 1, medicine: '타이레놀 20mg', date: '2024/09/01', dose: '1정', time: '12:30', taken: false },
-    { id: 2, medicine: '타이레놀 20mg', date: '2024/09/02', dose: '1정', time: '14:00', taken: false },
-    { id: 3, medicine: '타이레놀 20mg', date: '2024/09/03', dose: '1정', time: '13:00', taken: false },
-  ]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false); // 추가 모달
-  const [newItem, setNewItem] = useState({
-    medicine: '',
-    date: '',
-    dose: '',
-    time: '12:00',
-    taken: false,
-  });
-
-  const user = users.find(user => user.id === parseInt(userId));
-  if (!user || !user.data) return <p>사용자를 찾을 수 없습니다.</p>;
-
-  const { bpm, oxygen, stress, sleep, steps, calories, distance } = user.data;
-
-  const lineData = Array.from({ length: 30 }, (_, index) => ({
-    date: String(index + 1),
-    bpm: Math.floor(Math.random() * 120) + 60,
-    oxygen: Math.floor(Math.random() * 5) + 95,
-    stress: Math.floor(Math.random() * 100),
-    sleep: Math.floor(Math.random() * 100),
-  }));
-
-  const barData = Array.from({ length: 30 }, (_, index) => ({
-    date: String(index + 1),
-    steps: Math.floor(Math.random() * 10000),
-    calories: Math.floor(Math.random() * 2000) + 500,
-    distance: Math.floor(Math.random() * 10000),
-  }));
-
-  const handleSort = (option) => {
-    let sortedItems = [...logItems];
+  const UserDetail = ({ users, updateUserLifeLog }) => {
+    const { userId } = useParams();
   
+    // 사용자 찾기
+    const user = users.find((u) => u.id === parseInt(userId));
+  
+// 상태 초기화
+const [logItems, setLogItems] = useState(user?.lifeLog || []);
+const [selectedDate, setSelectedDate] = useState(getTodayDate());
+const [showBpm, setShowBpm] = useState(true);
+const [showOxygen, setShowOxygen] = useState(true);
+const [showStress, setShowStress] = useState(true);
+const [showSleep, setShowSleep] = useState(true);
+const [showSteps, setShowSteps] = useState(true);
+const [showCalories, setShowCalories] = useState(true);
+const [showDistance, setShowDistance] = useState(true);
+const [sortOption, setSortOption] = useState('all'); // 정렬 옵션
+const [isAddModalOpen, setIsAddModalOpen] = useState(false); // 추가 모달
+const [newItem, setNewItem] = useState({
+  medicine: '',
+  date: '',
+  dose: '',
+  time: '12:00',
+  taken: false,
+});
+   // 수정 모달 상태 변수 추가
+   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+   const [editItem, setEditItem] = useState(null);
+
+// 사용자 변경 시 logItems 초기화
+useEffect(() => {
+  setLogItems(user.lifeLog || []);
+}, [user]);
+
+// 사용자 데이터가 없을 경우 처리
+if (!user || !user.data) return <p>사용자를 찾을 수 없습니다.</p>;
+
+const { bpm, oxygen, stress, sleep, steps, calories, distance } = user.data;
+
+ 
+     const handleSort = (option) => {
+    let sortedItems = [...logItems];
+
     // 먼저 체크 상태를 기준으로 정렬
     sortedItems.sort((a, b) => a.taken - b.taken);
-  
+
     // 선택한 옵션에 따라 추가로 정렬
     if (option === '처방일') {
       sortedItems.sort((a, b) => new Date(a.date) - new Date(b.date));
     } else if (option === '복용시간') {
       sortedItems.sort((a, b) => a.time.localeCompare(b.time));
     }
-  
+
     setLogItems(sortedItems);
     setSortOption(option);
   };
-  
 
   // 체크박스 상태 변경
   const handleCheckboxChange = (id) => {
-    setLogItems(logItems.map(item => item.id === id ? { ...item, taken: !item.taken } : item));
+    const updatedItems = logItems.map((item) =>
+      item.id === id ? { ...item, taken: !item.taken } : item
+    );
+    setLogItems(updatedItems);
+    updateUserLifeLog(user.id, updatedItems);
   };
- // 전체 선택 체크박스 상태 변경
- const handleSelectAllChange = (e) => {
-  const isChecked = e.target.checked;
-  setLogItems(logItems.map(item => ({ ...item, taken: isChecked })));
-};
+
+  // 전체 선택 체크박스 상태 변경
+  const handleSelectAllChange = (e) => {
+    const isChecked = e.target.checked;
+    const updatedItems = logItems.map((item) => ({ ...item, taken: isChecked }));
+    setLogItems(updatedItems);
+    updateUserLifeLog(user.id, updatedItems);
+  };
 
   // 항목 추가 팝업 열기/닫기
   const toggleAddModal = () => {
@@ -109,15 +108,12 @@ const UserDetail = ({ users }) => {
 
   // 항목 추가
   const handleAddItem = () => {
-    setLogItems([...logItems, { ...newItem, id: logItems.length + 1 }]);
-    toggleAddModal();
-    setNewItem({
-      medicine: '',
-      date: '',
-      dose: '',
-      time: '12:00',
-      taken: false,
-    });
+    const newId = logItems.length > 0 ? logItems[logItems.length - 1].id + 1 : 1;
+    const newLogItem = { ...newItem, id: newId };
+    const newLogItems = [...logItems, newLogItem];
+    setLogItems(newLogItems);
+    updateUserLifeLog(user.id, newLogItems); // 부모 컴포넌트의 상태 직접 업데이트
+    setIsAddModalOpen(false); // 모달 닫기
   };
 
   const weekExerciseData = [
@@ -131,6 +127,40 @@ const UserDetail = ({ users }) => {
   ];
 
   const dateOptions = generateDateOptions();
+
+
+  // Life 로그 아이템 준비 (빈 줄 포함)
+  const displayLogItems = [...logItems];
+
+  // 5줄 미만이면 빈 줄 추가
+  while (displayLogItems.length < 5) {
+    displayLogItems.push({
+      id: null,
+      medicine: '',
+      date: '',
+      dose: '',
+      time: '',
+      taken: false,
+    });
+  }
+
+
+   // 수정 모달 열기 함수
+   const openEditModal = (item) => {
+     setEditItem(item);
+     setIsEditModalOpen(true);
+   };
+ 
+   // 수정된 항목 저장 함수
+   const handleSaveEditItem = () => {
+     const updatedItems = logItems.map((item) =>
+       item.id === editItem.id ? editItem : item
+     );
+     setLogItems(updatedItems);
+     updateUserLifeLog(user.id, updatedItems);
+     setIsEditModalOpen(false); // 모달 닫기
+     setEditItem(null); // 편집 항목 초기화
+   };
 
   return (
     <div className="p-4">
@@ -183,15 +213,51 @@ const UserDetail = ({ users }) => {
         </div>
 
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={lineData}>
-            <CartesianGrid strokeDasharray="3 3" />
+          <LineChart data={user.data.lineData}>
+          <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis domain={[0, 200]} />
             <Tooltip />
-            {showBpm && <Line type="monotone" dataKey="bpm" stroke="#00c853" strokeWidth={2} dot={{ r: 4 }} unit=" BPM" />}
-            {showOxygen && <Line type="monotone" dataKey="oxygen" stroke="#1e88e5" strokeWidth={2} dot={{ r: 4 }} unit="%" />}
-            {showStress && <Line type="monotone" dataKey="stress" stroke="#d32f2f" strokeWidth={2} dot={{ r: 4 }} unit=" 점" />}
-            {showSleep && <Line type="monotone" dataKey="sleep" stroke="#8e24aa" strokeWidth={2} dot={{ r: 4 }} unit=" 점" />}
+            {showBpm && (
+              <Line
+                type="monotone"
+                dataKey="bpm"
+                stroke="#00c853"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                unit=" BPM"
+              />
+            )}
+            {showOxygen && (
+              <Line
+                type="monotone"
+                dataKey="oxygen"
+                stroke="#1e88e5"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                unit="%"
+              />
+            )}
+            {showStress && (
+              <Line
+                type="monotone"
+                dataKey="stress"
+                stroke="#d32f2f"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                unit=" 점"
+              />
+            )}
+            {showSleep && (
+              <Line
+                type="monotone"
+                dataKey="sleep"
+                stroke="#8e24aa"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                unit=" 점"
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -218,7 +284,7 @@ const UserDetail = ({ users }) => {
             ))}
         </div>
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={barData}>
+          <BarChart data={user.data.barData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
@@ -268,7 +334,6 @@ const UserDetail = ({ users }) => {
         </div>
       </div>
 
-{/* Life 로그와 앨범 섹션 */}
 <div className="life-album-sections flex gap-4 mt-6">
   {/* Life 로그 섹션 */}
   <div className="life-log bg-white p-4 rounded-lg shadow-md flex-grow">
@@ -278,40 +343,79 @@ const UserDetail = ({ users }) => {
               <select
                 value={sortOption}
                 onChange={(e) => handleSort(e.target.value)}
-                className="border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="border border-gray-300 p-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
               >
                 <option value="all">All</option>
                 <option value="미복용">미복용 순</option>
                 <option value="처방일">처방일 순</option>
                 <option value="복용시간">복용시간 순</option>
               </select>
-              <FaPlus onClick={toggleAddModal} className="text-blue-500 text-2xl cursor-pointer" />
-            </div>
+              <FaPlus 
+              onClick={toggleAddModal} 
+              className="text-blue-500 text-2xl cursor-pointer" 
+            />
           </div>
-
+        </div>
+        <div
+          className="overflow-y-auto"
+          style={{ maxHeight: '300px' }}
+        >
           <table className="w-full text-left table-auto">
             <thead>
               <tr className="bg-gray-100">
-              <th className="p-2"><input type="checkbox" onChange={handleSelectAllChange} /></th>
-              <th className="p-2">복용약</th>
-              <th className="p-2">처방일</th>
-              <th className="p-2">처방 개수</th>
-              <th className="p-2">복용 시간</th>
+              <th className="p-[8px] w-[50px] text-center">
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAllChange}
+                    checked={
+                      logItems.length > 0 &&
+                      logItems.every((item) => item.taken)
+                    }
+                  />
+                </th>
+                <th className="p-[8px] w-[100px] text-left">복용약</th>
+        <th className="p-[8px] w-[120px] text-left">처방일</th>
+        <th className="p-[0px] w-[100px] text-left">처방 개수</th>
+        <th className="p-[0px] w-[100px] text-left">복용 시간</th>
+        <th className="p-[0px] w-[50px] text-center">수정</th>
               </tr>
             </thead>
             <tbody>
-              {logItems.map(item => (
-                <tr key={item.id}>
-                  <td className="p-2"><input type="checkbox" checked={item.taken} onChange={() => handleCheckboxChange(item.id)} /></td>
-                  <td className="p-2 text-blue-600">{item.medicine}</td>
-                  <td className="p-2">{item.date}</td>
-                  <td className="p-2">{item.dose}</td>
-                  <td className="p-2">{item.time}</td>
+              {displayLogItems.map((item, index) => (
+                <tr key={index}>
+                  <td className="p-[8px] w-[100px] text-center">
+                    {item.id !== null ? (
+                      <input
+                        type="checkbox"
+                        checked={item.taken}
+                        onChange={() => handleCheckboxChange(item.id)}
+                      />
+                    ) : null}
+                  </td>
+                  <td className="p-[5px] w-[100px] text-left text-blue-600">
+            {item.medicine || ''}
+          </td>
+          <td className="p-[0px] w-[100px] text-left">{item.date || ''}</td>
+          <td className="p-[15px] w-[100px] text-left">{item.dose || ''}</td>
+          <td className="p-[15px] w-[100px] text-left">{item.time || ''}</td>
+          <td className="p-[8px] w-[50px] text-center">
+  {item.id !== null ? (
+    <button
+      onClick={() => openEditModal(item)}
+      className="text-blue-500 hover:text-blue-700"
+      aria-label="수정"
+    >
+      <FaEdit size={30} />
+    </button>
+  ) : null}
+</td>
+
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </div>
 
        {/* 팝업 모달 (항목 추가) */}
       {isAddModalOpen && (
@@ -366,13 +470,97 @@ const UserDetail = ({ users }) => {
 
       {/* 추가/닫기 버튼 */}
       <div className="flex justify-end space-x-4">
-      <button className="bg-blue-500 text-white py-2 px-4 rounded-lg" onClick={handleAddItem}>추가</button>
-              <button onClick={toggleAddModal} className="bg-gray-500 text-white py-2 px-4 rounded-lg">닫기</button>
+              <button
+                className="bg-blue-500 text-white py-2 px-4 rounded-lg"
+                onClick={handleAddItem}
+              >
+                추가
+              </button>
+              <button
+                onClick={toggleAddModal}
+                className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+              >
+                닫기
+              </button>
             </div>
     </div>
   </div>
 )}
+{/* 항목 수정 모달 */}
+{isEditModalOpen && editItem && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">항목 수정</h3>
 
+            {/* 복용약 입력 */}
+            <label className="block mb-2">복용약</label>
+            <input
+              type="text"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={editItem.medicine}
+              onChange={(e) =>
+                setEditItem({ ...editItem, medicine: e.target.value })
+              }
+            />
+
+            {/* 처방일 입력 */}
+            <label className="block mb-2">처방일</label>
+            <input
+              type="date"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={editItem.date}
+              onChange={(e) =>
+                setEditItem({ ...editItem, date: e.target.value })
+              }
+            />
+
+            {/* 처방 개수 입력 */}
+            <label className="block mb-2">처방 개수</label>
+            <input
+              type="number"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={editItem.dose}
+              onChange={(e) =>
+                setEditItem({ ...editItem, dose: e.target.value })
+              }
+            />
+
+            {/* 복용 시간 선택 */}
+            <label className="block mb-2">복용 시간</label>
+            <select
+              className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+              value={editItem.time}
+              onChange={(e) =>
+                setEditItem({ ...editItem, time: e.target.value })
+              }
+            >
+              {Array.from({ length: 24 }, (_, i) =>
+                ['00', '30'].map((minute) => (
+                  <option key={`${i}:${minute}`}>
+                    {`${String(i).padStart(2, '0')}:${minute}`}
+                  </option>
+                ))
+              )}
+            </select>
+
+            {/* 저장/닫기 버튼 */}
+            <div className="flex justify-end space-x-4">
+              <button
+                className="bg-blue-500 text-white py-2 px-4 rounded-lg"
+                onClick={handleSaveEditItem}
+              >
+                저장
+              </button>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
       </div>
