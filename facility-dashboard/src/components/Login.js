@@ -1,26 +1,23 @@
-import React, { useState } from "react";
-import { TEInput } from "tw-elements-react";
+import React, { useState, useCallback } from "react";
 
 export default function Login({ setIsLoggedIn }) {
-  const [username, setUsername] = useState(""); // 로그인 화면에서 입력한 아이디
-  const [password, setPassword] = useState(""); // 비밀번호 입력
-  const [newPassword, setNewPassword] = useState(""); // 새로운 비밀번호 입력
-  const [modalUsername, setModalUsername] = useState(""); // 모달에서 입력한 아이디
-  const [errorMessage, setErrorMessage] = useState(""); // 에러 메시지 상태 추가
-  const [isModalOpen, setIsModalOpen] = useState(false); // 모달 열림/닫힘 상태
-  const credentials = btoa(`${'Dotories'}:${'DotoriesAuthorization0312983335'}`);  // Base64로 인코딩
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [modalUsername, setModalUsername] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     if (!username || !password) {
       setErrorMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
-  
+
     try {
-      // 서버에 GET 요청 보내기
       const response = await fetch(
-        `https://dotoriesringcloudserver.azurewebsites.net/api/site?siteId=${username}`,
-        //`https://dotoriesringcloudserver.azurewebsites.net/api/user?siteId=${username}`,
+        `https://fitlife.dotories.com/api/site?siteId=${username}`,
         {
           method: "GET",
           headers: {
@@ -29,21 +26,18 @@ export default function Login({ setIsLoggedIn }) {
           }
         }
       );
-  
+
       const data = await response.json();
-  
-      // 응답 데이터 처리
+
       if (response.ok && data.header.command === 0) {
-        // 서버에서 받은 sitePassword와 사용자가 입력한 password 비교
         if (data.data.sitePassword === password) {
-          setIsLoggedIn(true); // 로그인 성공 처리
+          setIsLoggedIn(true);
+          localStorage.setItem('isLoggedIn', 'true');
           alert("로그인 성공");
-          // 로그인 후 입력 필드 초기화
           setUsername("");
           setPassword("");
           setErrorMessage("");
         } else {
-          // 비밀번호가 틀린 경우 처리
           setErrorMessage("비밀번호가 잘못되었습니다. 다시 시도하세요.");
         }
       } else {
@@ -53,18 +47,17 @@ export default function Login({ setIsLoggedIn }) {
       console.error("로그인 중 오류 발생:", error);
       setErrorMessage("서버와의 통신에 실패했습니다.");
     }
-  };
+  }, [username, password, credentials, setIsLoggedIn]);
 
-  const handleUpdatePassword = async () => {
+  const handleUpdatePassword = useCallback(async () => {
     if (!modalUsername || !password || !newPassword) {
       setErrorMessage("아이디, 현재 비밀번호, 새로운 비밀번호를 입력해주세요.");
       return;
     }
 
     try {
-      // 현재 비밀번호 확인을 위해 GET 요청
       const response = await fetch(
-        `https://dotoriesringcloudserver.azurewebsites.net/api/site?siteId=${modalUsername}`,
+        `https://fitlife.dotories.com/api/site?siteId=${modalUsername}`,
         {
           method: "GET",
           headers: {
@@ -77,11 +70,9 @@ export default function Login({ setIsLoggedIn }) {
       const data = await response.json();
 
       if (response.ok && data.header.command === 0) {
-        // 현재 비밀번호 확인
         if (data.data.sitePassword === password) {
-          // 비밀번호 업데이트 요청
           const updateResponse = await fetch(
-            `https://dotoriesringcloudserver.azurewebsites.net/api/site`,
+            `https://fitlife.dotories.com/api/site`,
             {
               method: "POST",
               headers: {
@@ -90,15 +81,15 @@ export default function Login({ setIsLoggedIn }) {
               },
               body: JSON.stringify({
                 "header": {
-                    "command": 0
+                  "command": 0
                 },
                 "data": {
-                    "siteId": `${modalUsername}`,
-                    "sitePassword": `${newPassword}`,
-                    "siteName": "윤섭센터~",
-                    "disconnectInterval": 5
+                  "siteId": modalUsername,
+                  "sitePassword": newPassword,
+                  "siteName": "윤섭센터~",
+                  "disconnectInterval": 5
                 }
-            })
+              })
             }
           );
 
@@ -106,8 +97,7 @@ export default function Login({ setIsLoggedIn }) {
 
           if (updateResponse.ok && updateData.header.command === 0) {
             alert("비밀번호가 성공적으로 변경되었습니다.");
-            setIsModalOpen(false); // 모달 닫기
-            // 모달 입력 필드 초기화
+            setIsModalOpen(false);
             setModalUsername("");
             setPassword("");
             setNewPassword("");
@@ -125,13 +115,13 @@ export default function Login({ setIsLoggedIn }) {
       console.error("비밀번호 변경 중 오류 발생:", error);
       setErrorMessage("서버와의 통신에 실패했습니다.");
     }
-  };
+  }, [modalUsername, password, newPassword, credentials]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter") {
       handleLogin();
     }
-  };
+  }, [handleLogin]);
 
   return (
     <section className="h-screen">
@@ -148,51 +138,51 @@ export default function Login({ setIsLoggedIn }) {
 
           {/* Right column container with form */}
           <div className="md:w-8/12 lg:ml-6 lg:w-5/12">
-            {/* 로그인 제목과 아이콘 */}
+            {/* Login Title */}
             <div className="text-center mb-6">
               <h2 className="text-3xl font-bold">로그인</h2>
             </div>
 
             <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleKeyDown}>
-              {/* 아이디 입력 */}
-<input
-  type="text"
-  className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
-  placeholder="아이디를 입력하세요"
-  value={username}
-  onChange={(e) => setUsername(e.target.value)}
-/>
+              {/* Username Input */}
+              <input
+                type="text"
+                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                placeholder="아이디를 입력하세요"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
 
-{/* 비밀번호 입력 */}
-<input
-  type="password"
-  className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
-  placeholder="비밀번호를 입력하세요"
-  value={password}
-  onChange={(e) => setPassword(e.target.value)}
-/>
+              {/* Password Input */}
+              <input
+                type="password"
+                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                placeholder="비밀번호를 입력하세요"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-              {/* 로그인 버튼 */}
+              {/* Login Button */}
               <button
                 type="button"
                 onClick={handleLogin}
                 className="inline-flex items-center justify-center w-full rounded-lg bg-blue-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-blue-600 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-blue-800 active:shadow-lg mt-0 relative"
-                style={{ zIndex: 10 }} // z-index 설정
+                style={{ zIndex: 10 }}
               >
                 로그인
               </button>
 
-              {/* 비밀번호 수정 버튼 */}
+              {/* Password Update Button */}
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)} // 모달 열기
+                onClick={() => setIsModalOpen(true)}
                 className="inline-flex items-center justify-center w-full rounded-lg bg-green-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-green-600 hover:shadow-lg focus:bg-green-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-green-800 active:shadow-lg mt-4 relative"
-                style={{ zIndex: 10 }} // z-index 설정
+                style={{ zIndex: 10 }}
               >
                 비밀번호 수정
               </button>
 
-              {/* 에러 메시지 출력 */}
+              {/* Error Message */}
               {errorMessage && (
                 <div className="text-red-500 mt-4">
                   {errorMessage}
@@ -203,67 +193,61 @@ export default function Login({ setIsLoggedIn }) {
         </div>
       </div>
 
-      {/* 비밀번호 수정 모달 */}
+      {/* Password Update Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-2xl font-semibold text-center mb-4">비밀번호 수정</h2>
             
-            {/* 아이디 입력 */}
-            <TEInput
+            {/* Username Input */}
+            <input
               type="text"
-              size="lg"
-              className="mb-4 focus:outline-none focus:ring-0 appearance-none"
+              className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
               placeholder="아이디를 입력하세요"
               value={modalUsername}
               onChange={(e) => setModalUsername(e.target.value)}
-              style={{ boxShadow: "none", border: "none" }}
             />
 
-            {/* 현재 비밀번호 입력 */}
-            <TEInput
+            {/* Current Password Input */}
+            <input
               type="password"
-              size="lg"
-              className="mb-4 focus:outline-none focus:ring-0 appearance-none"
+              className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
               placeholder="현재 비밀번호를 입력하세요"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ boxShadow: "none", border: "none" }}
             />
             
-            {/* 새로운 비밀번호 입력 */}
-            <TEInput
+            {/* New Password Input */}
+            <input
               type="password"
-              size="lg"
-              className="mb-4 focus:outline-none focus:ring-0 appearance-none"
+              className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
               placeholder="새로운 비밀번호를 입력하세요"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              style={{ boxShadow: "none", border: "none" }}
             />
             
-            {/* 비밀번호 수정 확인 버튼 */}
+            {/* Password Update Buttons */}
             <button
               type="button"
-              onClick={handleUpdatePassword} // 비밀번호 변경 함수 호출
+              onClick={handleUpdatePassword}
               className="inline-flex items-center justify-center w-full rounded-lg bg-blue-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-blue-600 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-blue-800 active:shadow-lg mt-4"
             >
               비밀번호 수정
             </button>
 
-            {/* 에러 메시지 출력 */}
+            {/* Error Message */}
             {errorMessage && (
               <div className="text-red-500 mt-4">
                 {errorMessage}
               </div>
             )}
 
-            {/* 모달 닫기 버튼 */}
+            {/* Close Modal Button */}
             <button
               type="button"
               onClick={() => {
-                setIsModalOpen(false); // 모달 닫기
-                setErrorMessage("");    // 에러 메시지 초기화
+                setIsModalOpen(false);
+                setErrorMessage("");
               }}
               className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 hover:shadow-lg focus:bg-gray-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-gray-800 active:shadow-lg mt-4"
             >

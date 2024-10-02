@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus } from 'react-icons/fa';
 
 const Header = ({ setShowModal, setSearchQuery }) => {
   const [localSearch, setLocalSearch] = useState('');
 
-  const handleSearchChange = (event) => {
+  const handleSearchChange = useCallback((event) => {
     const value = event.target.value;
     setLocalSearch(value);
-    setSearchQuery(value); // Send search query to the parent (App.js)
-  };
+    setSearchQuery(value);
+  }, [setSearchQuery]);
+
+  // Debounce search input to optimize performance
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchQuery(localSearch);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearch, setSearchQuery]);
 
   return (
     <header className="header flex justify-between items-center p-2 bg-white shadow-md">

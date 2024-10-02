@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+// src/components/Dashboard.js
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Card from './Card';
 import { motion, AnimatePresence } from 'framer-motion';
+import Modal from './Modal';
 
 const Dashboard = ({
   showModal,
   setShowModal,
-  users,  // 서버에서 받은 사용자 데이터
-  setUsers, // 사용자 상태 설정 함수
-  searchQuery,  // 검색 쿼리
-  handleAddUser, // 사용자 추가 함수
-  updateUser, // 사용자 업데이트 함수
-  deleteUser, // 사용자 삭제 함수
+  users,
+  setUsers,
+  searchQuery,
+  handleAddUser,
+  updateUser,
+  deleteUser,
+  availableRings,
+  assignRingToUser,
+  fetchUsers, // App.js에서 전달한 fetchUsers 함수
+  fetchRingData, // App.js에서 전달한 fetchRingData 함수
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -19,74 +25,90 @@ const Dashboard = ({
     profileImage: null,
   });
 
-  const [sortOption, setSortOption] = useState('이름 순'); // 기본 정렬 옵션
+  const [sortOption, setSortOption] = useState('이름 순');
 
-  // 즐겨찾기 상태를 토글하는 함수
-  const toggleFavorite = (userId) => {
+  // Toggle Favorite Status
+  const toggleFavorite = useCallback((userId) => {
     setUsers((prevUsers) =>
       prevUsers.map((user) =>
         user.id === userId ? { ...user, isFavorite: !user.isFavorite } : user
       )
     );
-  };
+  }, [setUsers]);
 
-  // 사용자를 필터링 (검색)
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter and Sort Users using useMemo for performance
+  const sortedUsers = useMemo(() => {
+    let filtered = users.filter((user) =>
+      user.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-  // 정렬 함수
-  const getSortedUsers = () => {
-    let sortedUsers = [...filteredUsers];
-    if (sortOption === '운동 점수 순') {
-      sortedUsers.sort((a, b) => b.data.steps - a.data.steps); // 운동 점수 순으로 정렬
-    } else if (sortOption === '심박수 순') {
-      sortedUsers.sort((a, b) => b.data.bpm - a.data.bpm); // 심박수 순으로 정렬
-    } else if (sortOption === '즐겨찾기 순') {
-      sortedUsers.sort((a, b) => b.isFavorite - a.isFavorite); // 즐겨찾기 순 정렬
-    } else if (sortOption === '이름 순') {
-      sortedUsers.sort((a, b) => a.name.localeCompare(b.name, 'ko')); // 이름 가나다 순으로 정렬
+    switch (sortOption) {
+      case '운동 점수 순':
+        filtered.sort((a, b) => {
+          const aGoal = a.goals?.stepsGoal || 1;
+          const bGoal = b.goals?.stepsGoal || 1;
+          const aAchievement = (a.data?.steps || 0) / aGoal;
+          const bAchievement = (b.data?.steps || 0) / bGoal;
+          return bAchievement - aAchievement;
+        });
+        break;
+      case '심박수 순':
+        filtered.sort((a, b) => (b.data?.bpm || 0) - (a.data?.bpm || 0));
+        break;
+      case '즐겨찾기 순':
+        filtered.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
+        break;
+      case '이름 순':
+      default:
+        filtered.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     }
-    return sortedUsers;
-  };
 
-  // 사용자 추가 처리 함수
-  const handleSubmit = () => {
+    return filtered;
+  }, [users, searchQuery, sortOption]);
+
+  // Handle User Addition
+  const handleSubmit = useCallback(() => {
+    if (!newUser.name || !newUser.gender || !newUser.age) {
+      alert('모든 필드를 입력하세요.');
+      return;
+    }
     handleAddUser(newUser);
     setNewUser({ name: '', gender: '', age: '', profileImage: null });
-  };
+  }, [newUser, handleAddUser]);
+
+  // 데이터 페칭 및 주기적 업데이트
+  useEffect(() => {
+    // 컴포넌트 마운트 시 데이터 페칭
+    fetchUsers();
+    fetchRingData();
+
+    // 30초 간격으로 데이터 페칭
+    const intervalId = setInterval(() => {
+      console.log('Fetching users and ring data every 30 seconds');
+      fetchUsers();
+      fetchRingData();
+    }, 30000); // 30초
+
+    // 컴포넌트 언마운트 시 interval 정리
+    return () => clearInterval(intervalId);
+  }, [fetchUsers, fetchRingData]);
 
   return (
     <div>
-      {/* 상단 정렬 버튼 */}
+      {/* Sorting Buttons */}
       <div className="flex justify-end mb-4">
-        <button
-          className={`px-4 py-2 ${sortOption === '운동 점수 순' ? 'font-bold' : 'text-gray-500'}`}
-          onClick={() => setSortOption('운동 점수 순')}
-        >
-          운동 점수 순
-        </button>
-        <button
-          className={`px-4 py-2 ${sortOption === '심박수 순' ? 'font-bold' : 'text-gray-500'}`}
-          onClick={() => setSortOption('심박수 순')}
-        >
-          심박수 순
-        </button>
-        <button
-          className={`px-4 py-2 ${sortOption === '즐겨찾기 순' ? 'font-bold' : 'text-gray-500'}`}
-          onClick={() => setSortOption('즐겨찾기 순')}
-        >
-          즐겨찾기 순
-        </button>
-        <button
-          className={`px-4 py-2 ${sortOption === '이름 순' ? 'font-bold' : 'text-gray-500'}`}
-          onClick={() => setSortOption('이름 순')}
-        >
-          이름 순
-        </button>
+        {['운동 점수 순', '심박수 순', '즐겨찾기 순', '이름 순'].map((option) => (
+          <button
+            key={option}
+            className={`px-4 py-2 ${sortOption === option ? 'font-bold' : 'text-gray-500'}`}
+            onClick={() => setSortOption(option)}
+          >
+            {option}
+          </button>
+        ))}
       </div>
 
-      {/* 카드 표시 */}
+      {/* User Cards */}
       <div
         className="dashboard-container"
         style={{
@@ -97,7 +119,7 @@ const Dashboard = ({
         }}
       >
         <AnimatePresence>
-          {getSortedUsers().map((user) => (
+          {sortedUsers.map((user) => (
             <motion.div
               key={user.id}
               layout
@@ -106,24 +128,22 @@ const Dashboard = ({
               exit={{ opacity: 0, scale: 0.9 }}
             >
               <Card
-                key={user.id}
                 user={user}
                 toggleFavorite={toggleFavorite}
-                updateUser={updateUser} // 추가된 부분: updateUser 함수를 Card에 전달
-                deleteUser={deleteUser}  // 추가된 부분: deleteUser 함수를 Card에 전달
+                updateUser={updateUser}
+                deleteUser={deleteUser}
+                availableRings={availableRings}
+                assignRingToUser={assignRingToUser}
               />
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
-      {/* 사용자 추가 모달 */}
+      {/* Add User Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div
-            className="bg-white p-8 rounded-lg shadow-lg w-[500px]"
-            style={{ zIndex: 1100 }}
-          >
+        <Modal onClose={() => setShowModal(false)}>
+          <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
             <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -173,6 +193,13 @@ const Dashboard = ({
                   }
                   className="p-2 border border-gray-300 rounded w-full"
                 />
+                {newUser.profileImage && (
+                  <img
+                    src={newUser.profileImage}
+                    alt="프로필 미리보기"
+                    className="mt-2 w-24 h-24 rounded-full object-cover"
+                  />
+                )}
               </div>
             </div>
             <div className="mt-4 flex justify-between">
@@ -190,7 +217,7 @@ const Dashboard = ({
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
