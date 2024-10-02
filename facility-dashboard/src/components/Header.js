@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus } from 'react-icons/fa';
+import BotfitLogo from '../assets/BotfitLogo.svg';
 
 const Header = ({ setShowModal, setSearchQuery }) => {
   const [localSearch, setLocalSearch] = useState('');
@@ -23,8 +24,8 @@ const Header = ({ setShowModal, setSearchQuery }) => {
 
   return (
     <header className="header flex justify-between items-center p-2 bg-white shadow-md">
-      <h1 className="text-xl font-bold text-black">Home</h1>
-      <div className="flex items-center justify-end w-full">
+  <img src={BotfitLogo} alt="Home Icon" className="w-8 h-8" /> {/* 아이콘 이미지로 교체 */}
+  <div className="flex items-center justify-end w-full">
         <input
           type="text"
           value={localSearch}

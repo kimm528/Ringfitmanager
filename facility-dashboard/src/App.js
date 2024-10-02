@@ -18,7 +18,7 @@ const saveToLocalStorage = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
-// Move getCurrentYYMMDD outside the App component to ensure stable reference
+// 날짜를 'YYMMDD' 형식으로 반환하는 함수
 const getCurrentYYMMDD = () => {
   const today = new Date();
   const year = today.getFullYear().toString().slice(-2);
@@ -33,14 +33,14 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState(loadFromLocalStorage('users', []));
-  const [availableRings, setAvailableRings] = useState(loadFromLocalStorage('availableRings', []));
-  const [sortOption, setSortOption] = useState('name'); // 기본값 'name'으로 설정
+  const [sortOption, setSortOption] = useState('name');
+  const [availableRings, setAvailableRings] = useState([]); // 링 데이터를 저장할 상태 추가
 
-  // Fetch Users from API
-  const fetchUsers = useCallback(async () => {
+  // Fetch Users and Ring Data from API
+  const fetchUsersAndRingData = useCallback(async () => {
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await axios.get(
+      const userResponse = await axios.get(
         'https://fitlife.dotories.com/api/user?siteId=Dotories',
         {
           headers: {
@@ -50,133 +50,72 @@ function App() {
         }
       );
 
-      const data = response.data.Data;
+      const userData = userResponse.data.Data;
 
-      const fetchedUsers = data.map((user) => ({
-        id: user.Id,
-        name: user.Name,
-        gender: user.Gender,
-        age: user.Age,
-        profileImage: user.TitleImagePath || 'https://default-image-url.com/default.jpg',
-        address: user.Address,
-        stepTarget: user.StepTarget || 10000,
-        kcalTarget: user.KcalTarget || 2000,
-        kmTarget: user.KmTarget || 5,
-        macAddr: user.MacAddr,
-        albumPath: user.AlbumPath || [],
-        lifeLogs: (user.LifeLogs || []).map((log, index) => ({
-          id: index + 1,
-          medicine: log.LogContent,
-          date: log.LogDateTime.split('T')[0],
-          time: log.LogDateTime.split('T')[1].substring(0, 5),
-          dose: log.Description,
-          taken: log.IsChecked,
-        })),
-        ring: null,
-        data: {
-          bpm: user.BPM || 0,
-          oxygen: user.Oxygen || 0,
-          stress: user.Stress || 0,
-          sleep: user.Sleep || 0,
-          steps: user.Steps || 0,
-          calories: user.Calories || 0,
-          distance: user.Distance || 0,
-          lineData: [],
-          barData: [],
-        },
-      }));
-
-      // Automatically assign rings to users based on MacAddr
-      const updatedUsersWithRings = fetchedUsers.map((user) => {
-        if (!user.ring && user.macAddr) {
-          const matchingRing = availableRings.find(
-            (ring) => ring.MacAddr === user.macAddr
-          );
-
-          if (matchingRing) {
-            // Assuming matchingRing contains steps, calories, distance
-            return {
-              ...user,
-              ring: matchingRing,
-              data: {
-                ...user.data,
-                steps: matchingRing.Steps || user.data.steps,
-                calories: matchingRing.Calories || user.data.calories,
-                distance: matchingRing.Distance || user.data.distance,
-              },
-            };
-          }
-        }
-        return user;
-      });
-
-      // Update state and localStorage if data has changed
-      setUsers((prevUsers) => {
-        const isDifferent = JSON.stringify(prevUsers) !== JSON.stringify(updatedUsersWithRings);
-        if (isDifferent) {
-          saveToLocalStorage('users', updatedUsersWithRings);
-          return updatedUsersWithRings;
-        }
-        return prevUsers;
-      });
-    } catch (error) {
-      console.error('Failed to fetch user data:', error.response || error.message);
-    }
-  }, [availableRings]);
-
-  // Fetch Ring Data from API
-  const fetchRingData = useCallback(async () => {
-    try {
-      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
+      // Fetch Ring Data
       const currentDate = getCurrentYYMMDD();
       const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=Dotories&yearMonthDay=${currentDate}`;
 
-      const response = await axios.get(ringUrl, {
+      const ringResponse = await axios.get(ringUrl, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Basic ${credentials}`,
-        }
+        },
       });
 
-      if (response.status !== 200) {
-        throw new Error(`API response error: ${response.status}`);
-      }
+      const ringData = ringResponse.data.Data;
+      setAvailableRings(ringData); // 링 데이터를 상태로 저장
 
-      const data = response.data.Data;
-      if (!data) {
-        throw new Error('No data received.');
-      }
-
-      // Prevent duplicate entries
-      setAvailableRings((prevRings) => {
-        const isDifferent = JSON.stringify(prevRings) !== JSON.stringify(data);
-        if (isDifferent) {
-          saveToLocalStorage('availableRings', data);
-          return data;
-        }
-        return prevRings;
+      // Map Ring Data to Users
+      const updatedUsers = userData.map((user) => {
+        const userRingData = ringData.find((ring) => ring.MacAddr === user.MacAddr);
+        return {
+          id: user.Id,
+          name: user.Name,
+          gender: user.Gender,
+          age: user.Age,
+          profileImage: user.TitleImagePath || 'https://default-image-url.com/default.jpg',
+          address: user.Address,
+          stepTarget: user.StepTarget || 10000,
+          kcalTarget: user.KcalTarget || 2000,
+          kmTarget: user.KmTarget || 5,
+          macAddr: user.MacAddr,
+          albumPath: user.AlbumPath || [],
+          lifeLogs: (user.LifeLogs || []).map((log, index) => ({
+            id: index + 1,
+            medicine: log.LogContent,
+            date: log.LogDateTime.split('T')[0],
+            time: log.LogDateTime.split('T')[1].substring(0, 5),
+            dose: log.Description,
+            taken: log.IsChecked,
+          })),
+          ring: userRingData || null,
+          data: {
+            bpm: user.BPM || 0,
+            oxygen: user.Oxygen || 0,
+            stress: user.Stress || 0,
+            sleep: user.Sleep || 0,
+            steps: user.Steps || 0,
+            calories: user.Calories || 0,
+            distance: user.Distance || 0,
+            lineData: [],
+            barData: [],
+          },
+        };
       });
+
+      // Update state and localStorage
+      setUsers(updatedUsers);
+      saveToLocalStorage('users', updatedUsers);
     } catch (error) {
-      console.error('Failed to fetch ring data:', error);
+      console.error('Failed to fetch user or ring data:', error.response || error.message);
     }
   }, []);
 
-  // Initial Load and Date Check
+  // Initial Load
   useEffect(() => {
-    const todayYYMMDD = getCurrentYYMMDD();
-    const storedDate = localStorage.getItem('lastFetchedDate');
-
-    if (storedDate !== todayYYMMDD) {
-      setUsers([]);
-      setAvailableRings([]);
-      fetchUsers();
-      fetchRingData();
-      localStorage.setItem('lastFetchedDate', todayYYMMDD);
-    }
-  }, [fetchUsers, fetchRingData]);
-
-  // Remove the periodic fetching useEffect from App.js
-  // Instead, handle periodic fetching in Dashboard.js
+    fetchUsersAndRingData();
+  }, [fetchUsersAndRingData]);
 
   // Add User Handler
   const handleAddUser = useCallback((newUser) => {
@@ -228,7 +167,9 @@ function App() {
   const updateUser = useCallback((updatedUser) => {
     console.log('Updating user:', updatedUser);
     setUsers((prevUsers) => {
-      const updatedUsers = prevUsers.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
+      const updatedUsers = prevUsers.map((u) =>
+        u.id === updatedUser.id ? { ...u, ...updatedUser } : u
+      );
       const isDifferent = JSON.stringify(prevUsers) !== JSON.stringify(updatedUsers);
       if (isDifferent) {
         saveToLocalStorage('users', updatedUsers);
@@ -242,42 +183,20 @@ function App() {
   const deleteUser = useCallback((userId) => {
     console.log('Deleting user with ID:', userId);
     setUsers((prevUsers) => {
-      const userToDelete = prevUsers.find((user) => user.id === userId);
-      if (userToDelete && userToDelete.ring) {
-        setAvailableRings((prevRings) => [...prevRings, userToDelete.ring]);
-      }
       const updatedUsers = prevUsers.filter((user) => user.id !== userId);
       saveToLocalStorage('users', updatedUsers);
       return updatedUsers;
     });
   }, []);
 
-  // Assign Ring to User Handler
-  const assignRingToUser = useCallback((userId, ring) => {
-    console.log(`Assigning ring ${ring.MacAddr} to user ${userId}`);
+  // Toggle Favorite
+  const toggleFavorite = useCallback((userId) => {
     setUsers((prevUsers) => {
-      const updatedUsers = prevUsers.map((user) => {
-        if (user.id === userId) {
-          return {
-            ...user,
-            ring: ring,
-            data: {
-              ...user.data,
-              steps: ring.Steps || user.data.steps,
-              calories: ring.Calories || user.data.calories,
-              distance: ring.Distance || user.data.distance,
-            },
-          };
-        }
-        return user;
-      });
+      const updatedUsers = prevUsers.map((user) =>
+        user.id === userId ? { ...user, isFavorite: !user.isFavorite } : user
+      );
       saveToLocalStorage('users', updatedUsers);
       return updatedUsers;
-    });
-    setAvailableRings((prevRings) => {
-      const updatedRings = prevRings.filter((r) => r.MacAddr !== ring.MacAddr);
-      saveToLocalStorage('availableRings', updatedRings);
-      return updatedRings;
     });
   }, []);
 
@@ -313,12 +232,11 @@ function App() {
                           handleAddUser={handleAddUser}
                           updateUser={updateUser}
                           deleteUser={deleteUser}
-                          availableRings={availableRings}
-                          assignRingToUser={assignRingToUser}
-                          fetchUsers={fetchUsers}
-                          fetchRingData={fetchRingData}
+                          fetchUsers={fetchUsersAndRingData}
                           sortOption={sortOption}
                           setSortOption={setSortOption}
+                          toggleFavorite={toggleFavorite}
+                          availableRings={availableRings} // availableRings를 Dashboard에 전달
                         />
                       </main>
                     </>

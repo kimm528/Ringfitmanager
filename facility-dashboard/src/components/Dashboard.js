@@ -16,7 +16,6 @@ const Dashboard = ({
   availableRings,
   assignRingToUser,
   fetchUsers, // App.js에서 전달한 fetchUsers 함수
-  fetchRingData, // App.js에서 전달한 fetchRingData 함수
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -80,18 +79,16 @@ const Dashboard = ({
   useEffect(() => {
     // 컴포넌트 마운트 시 데이터 페칭
     fetchUsers();
-    fetchRingData();
 
     // 30초 간격으로 데이터 페칭
     const intervalId = setInterval(() => {
       console.log('Fetching users and ring data every 30 seconds');
       fetchUsers();
-      fetchRingData();
     }, 30000); // 30초
 
     // 컴포넌트 언마운트 시 interval 정리
     return () => clearInterval(intervalId);
-  }, [fetchUsers, fetchRingData]);
+  }, [fetchUsers]);
 
   return (
     <div>

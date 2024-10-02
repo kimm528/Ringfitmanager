@@ -39,9 +39,17 @@ const InfoCard = ({ icon, title, value }) => (
 
 const UserDetail = ({ users, updateUserLifeLog }) => {
   const { userId } = useParams();  // Get userId from URL
-  const user = useMemo(() => users.find((u) => u.id === parseInt(userId)), [users, userId]);
 
-  // Destructure user data with default values
+  // 사용자 상태를 useState로 관리
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const foundUser = users.find((u) => u.id === parseInt(userId));
+    setUser(foundUser);
+  }, [users, userId]);
+
+  
+  // 사용자 데이터 구조 분해 (기본값 설정)
   const {
     bpm = 0,
     oxygen = 0,
@@ -81,6 +89,9 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
   const [showDistance, setShowDistance] = useState(true);
   const [selectedRingData, setSelectedRingData] = useState(null); // State to hold fetched ring data
 
+  // 추가된 캐시 상태
+  const [ringDataCache, setRingDataCache] = useState({});
+
   // Static Weekly Exercise Data (Memoized)
   const weekExerciseData = useMemo(() => [
     { day: '월', score: 79, date: '9/1' },
@@ -92,20 +103,28 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
     { day: '일', score: 100, date: '9/7' },
   ], []);
 
-  // Fetch ring data by date
+  // Fetch ring data by date with caching
   const fetchRingDataByDate = useCallback(async (date, userMacAddr) => { 
     try {
+      const dateKey = date.toISOString().split('T')[0]; // 'YYYY-MM-DD' 형식
+      const cacheKey = `${dateKey}_${userMacAddr}`; // 캐시 키에 사용자 MAC 주소 포함
+
+      // 캐시에 데이터가 있는지 확인
+      if (ringDataCache[cacheKey]) {
+        return ringDataCache[cacheKey];
+      }
+
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
       
-      // Format date to 'YYMMDD'
+      // 날짜를 'YYMMDD' 형식으로 변환
       const year = String(date.getFullYear()).slice(-2);
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}${month}${day}`; // e.g., '240930'
+      const formattedDate = `${year}${month}${day}`; // 예: '240930'
 
       console.log(`Fetching ring data for formattedDate: ${formattedDate} and macAddr: ${userMacAddr}`);
 
-      // Include MAC address in query parameters
+      // MAC 주소를 쿼리 파라미터에 포함
       const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=Dotories&yearMonthDay=${formattedDate}&macAddr=${userMacAddr}`;
 
       const response = await axios.get(ringUrl, {
@@ -124,28 +143,36 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
       );
 
       const fetchedData = response.data.Data[dataIndex];
+
+      // 캐시에 저장
+      setRingDataCache((prevCache) => ({
+        ...prevCache,
+        [cacheKey]: fetchedData,
+      }));
+
       return fetchedData;
       
     } catch (error) {
       console.error('Failed to fetch data:', error);
       return null;
     }
-  }, []);
+  }, [ringDataCache]);
 
-  // Handle date change
+  // 날짜 변경 핸들러
   const handleDateChange = useCallback((e) => {
     const dateString = e.target.value;
     const selected = new Date(dateString);
     setSelectedDate(selected);
   }, []);
 
-  // Fetch ring data when selectedDate or user changes
+  // 선택된 날짜 또는 사용자가 변경될 때 링 데이터 가져오기
   useEffect(() => {
     if (user && selectedDate) {
       const userMacAddr = user?.ring?.MacAddr;
 
       if (!userMacAddr) {
         console.error('User MAC address not found.');
+        setSelectedRingData(null); // 이전 데이터 초기화
         return;
       }
 
@@ -156,12 +183,15 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
           setSelectedRingData(null);
         }
       });
+    } else {
+      setSelectedRingData(null);
     }
   }, [selectedDate, user, fetchRingDataByDate]);
 
-  // Process selectedRingData when it changes
+  // 선택된 링 데이터가 변경될 때 데이터 처리
   useEffect(() => {
     if (selectedRingData) {
+      // ... 기존 데이터 처리 코드
       const {
         HeartRateArr = [],
         MinBloodOxygenArr = [],
@@ -176,7 +206,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
         WalkDistanceArr = [],
       } = Sport;
 
-      // Process BPM and Oxygen data
+      // BPM 및 산소 데이터 처리
       const aggregatedBpmArr = HeartRateArr.filter((_, index) => index % 2 === 0);
 
       const timePoints = Array.from({ length: 24 * 6 }, (_, i) => {
@@ -200,7 +230,6 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
         };
       });
 
-      const latestStress = getLastNonZero(PressureArr);
       const mergedData = timePoints.map((time, index) => ({
         time,
         bpm: bpmData[index] ? bpmData[index].bpm : null,
@@ -209,10 +238,14 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
 
       setLineChartData(mergedData);
 
-      // Process activity data
+      // 활동 데이터 처리
+      const lastCalorie = getLastNonZero(CalorieArr);
+      const lastDistance = getLastNonZero(WalkDistanceArr);
+
       const ringSteps = getLastNonZero(TotalStepsArr);
-      const ringCalories = (getLastNonZero(CalorieArr) / 1000).toFixed(2); // kcal
-      const ringDistance = (getLastNonZero(WalkDistanceArr) / 1000).toFixed(2); // km
+      const ringCalories = lastCalorie ? (lastCalorie / 1000).toFixed(2) : 0; // kcal
+      const ringDistance = lastDistance ? (lastDistance / 1000).toFixed(2) : 0; // km
+      const latestStress = getLastNonZero(PressureArr);
 
       setProcessedRingData({
         latestBpm: Number(getLastNonZero(aggregatedBpmArr)),
@@ -235,31 +268,85 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
     }
   }, [selectedRingData]);
 
-  // Prepare activity line chart data
+  // 활동 라인 차트 데이터 준비
   useEffect(() => {
     if (selectedRingData?.Sport) {
-      const { TotalStepsArr, CalorieArr, WalkDistanceArr } = selectedRingData.Sport;
-
+      const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = selectedRingData.Sport;
+  
       const timePoints = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-
+  
       let lastKnownData = { steps: 0, calories: 0, distance: 0 };
-
+  
       const activityData = timePoints.map((time, index) => {
-        if (TotalStepsArr[index] !== undefined || CalorieArr[index] !== undefined || WalkDistanceArr[index] !== undefined) {
-          lastKnownData = {
-            steps: TotalStepsArr[index] || lastKnownData.steps,
-            calories: (CalorieArr[index] || lastKnownData.calories) / 1000, // kcal
-            distance: (WalkDistanceArr[index] || lastKnownData.distance) / 1000, // km
-          };
+        let steps = lastKnownData.steps;
+        let calories = lastKnownData.calories;
+        let distance = lastKnownData.distance;
+  
+        if (TotalStepsArr[index] !== undefined) {
+          steps = TotalStepsArr[index];
         }
+        if (CalorieArr[index] !== undefined) {
+          calories = CalorieArr[index] / 1000; // kcal
+        }
+        if (WalkDistanceArr[index] !== undefined) {
+          distance = WalkDistanceArr[index] / 1000; // km
+        }
+  
+        lastKnownData = { steps, calories, distance };
+  
         return {
           time,
-          steps: lastKnownData.steps,
-          calories: lastKnownData.calories,
-          distance: lastKnownData.distance,
+          steps,
+          calories,
+          distance,
         };
       });
+  
+      setActivityLineChartData(activityData);
+    } else {
+      setActivityLineChartData([]);
+    }
+  }, [selectedRingData]);
 
+  // 사용자 변경 시 logItems 업데이트
+  useEffect(() => {
+    setLogItems(user?.data?.lifeLogs || []);
+  }, [user]);
+
+  // 활동 라인 차트 데이터 준비
+  useEffect(() => {
+    if (selectedRingData?.Sport) {
+      const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = selectedRingData.Sport;
+  
+      const timePoints = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+  
+      let lastKnownData = { steps: 0, calories: 0, distance: 0 };
+  
+      const activityData = timePoints.map((time, index) => {
+        let steps = lastKnownData.steps;
+        let calories = lastKnownData.calories;
+        let distance = lastKnownData.distance;
+  
+        if (TotalStepsArr[index] !== undefined) {
+          steps = TotalStepsArr[index];
+        }
+        if (CalorieArr[index] !== undefined) {
+          calories = CalorieArr[index] / 1000; // kcal
+        }
+        if (WalkDistanceArr[index] !== undefined) {
+          distance = WalkDistanceArr[index] ; // km
+        }
+  
+        lastKnownData = { steps, calories, distance };
+  
+        return {
+          time,
+          steps,
+          calories,
+          distance,
+        };
+      });
+  
       setActivityLineChartData(activityData);
     } else {
       setActivityLineChartData([]);
@@ -388,8 +475,10 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
   const activityLegend = useMemo(() => [
     { dataKey: 'steps', value: '걸음수', color: '#82ca9d', show: showSteps, setShow: setShowSteps },
     { dataKey: 'calories', value: '소모 칼로리 (kcal)', color: '#ff9800', show: showCalories, setShow: setShowCalories },
-    { dataKey: 'distance', value: '이동거리 (km)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: km
+    { dataKey: 'distance', value: '이동거리 (m)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: km
   ], [showSteps, showCalories, showDistance]);
+
+
   return (
     <div className="p-4">
       {/* User Profile Header */}
@@ -560,7 +649,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                     stroke="#4caf50"
                     strokeWidth={2}
                     connectNulls={true}
-                    name="이동 거리 (km)"
+                    name="이동 거리 (m)"
                     dot={false} // 점 숨기기
                   />
                 )}

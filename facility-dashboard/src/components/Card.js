@@ -1,4 +1,3 @@
-// Card.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaStar, FaEllipsisV } from 'react-icons/fa';
@@ -6,14 +5,14 @@ import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import Modal from './Modal';
 
-const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, assignRingToUser }) => {
+const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) => {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showAssignRingModal, setShowAssignRingModal] = useState(false);
+  const [showRingModal, setShowRingModal] = useState(false); // 링 관리 모달 상태 추가
 
   const [editedName, setEditedName] = useState(user.name);
   const [editedGender, setEditedGender] = useState(user.gender);
@@ -33,30 +32,35 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
   const menuRef = useRef(null);
   const modalRef = useRef(null);
 
-  // Open Goal Modal with event propagation stopped
-  const openGoalModal = useCallback((e) => {
-    e.stopPropagation(); // 이벤트 전파 중단
-    setShowGoalModal(true);
-    setMenuOpen(false);
-  }, []);
+  // 수면 점수 계산 함수
+  const calculateSleepScore = useCallback(
+    (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
+      if (
+        totalSleepDuration !== 0 &&
+        deepSleepDuration !== 0 &&
+        awakeDuration !== 0 &&
+        shallowSleepDuration !== 0
+      ) {
+        const totalSleepScore = (totalSleepDuration / 480.0) * 50;
+        const deepSleepScore = (deepSleepDuration / totalSleepDuration) * 30;
+        const awakePenalty = (awakeDuration / totalSleepDuration) * -20;
+        const shallowSleepPenalty = (shallowSleepDuration / totalSleepDuration) * -10;
 
-  // Decode Heart Rate Array
-  const decodeHeartRate = useCallback((base64Str) => {
-    try {
-      const binaryStr = atob(base64Str);
-      const heartRates = [];
-      for (let i = 0; i < binaryStr.length; i++) {
-        heartRates.push(binaryStr.charCodeAt(i));
+        let sleepScore = totalSleepScore + deepSleepScore + awakePenalty + shallowSleepPenalty;
+
+        sleepScore = Math.max(0, Math.min(100, sleepScore));
+
+        return Math.round(sleepScore);
+      } else {
+        return 0;
       }
-      return heartRates;
-    } catch (error) {
-      console.error('Failed to decode heart rate array:', error);
-      return [];
-    }
-  }, []);
+    },
+    []
+  );
 
   // Get Last Non-Zero Value
   const getLastNonZero = useCallback((arr) => {
+    if (!arr || !Array.isArray(arr)) return 0;
     for (let i = arr.length - 1; i >= 0; i--) {
       if (arr[i] !== 0) {
         return arr[i];
@@ -65,101 +69,136 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
     return 0;
   }, []);
 
-  // Calculate Average
-  const calculateAverage = useCallback((arr) => {
-    if (!arr || arr.length === 0) return 0;
-    const sum = arr.reduce((acc, val) => acc + val, 0);
-    return (sum / arr.length).toFixed(2);
-  }, []);
-
-  // Process Ring Data and Assign Automatically
+  // Process Ring Data
   useEffect(() => {
-    let intervalId;
+    if (user.ring) {
+      const {
+        HeartRateArr = [],
+        MinBloodOxygenArr = [],
+        MaxBloodOxygenArr = [],
+        Sport = {},
+        PressureArr = [],
+        Sleep = {},
+      } = user.ring;
+      const latestHeartRate = getLastNonZero(HeartRateArr);
+      const latestMinOxygen = getLastNonZero(MinBloodOxygenArr);
+      const latestMaxOxygen = getLastNonZero(MaxBloodOxygenArr);
+      const avgOxygen = ((latestMinOxygen + latestMaxOxygen) / 2).toFixed(2);
+      const latestStress = getLastNonZero(PressureArr);
 
-    const processRingData = () => {
-      if (user.ring) {
-        const latestHeartRate = getLastNonZero(user.ring.HeartRateArr);
-        const latestMinOxygen = getLastNonZero(user.ring.MinBloodOxygenArr);
-        const latestMaxOxygen = getLastNonZero(user.ring.MaxBloodOxygenArr);
-        const avgOxygen = ((latestMinOxygen + latestMaxOxygen) / 2).toFixed(2);
-        const { Sport } = user.ring;
-        const latestSteps = getLastNonZero(Sport.TotalStepsArr);
-        const latestCalories = getLastNonZero(Sport.CalorieArr);
-        const latestDistance = getLastNonZero(Sport.WalkDistanceArr) / 1000; // km 단위로 변환
+      const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = Sport;
+      const latestSteps = getLastNonZero(TotalStepsArr);
+      const latestCalories = getLastNonZero(CalorieArr);
+      const latestDistance = getLastNonZero(WalkDistanceArr) / 1000; // km 단위로 변환
 
-        setProcessedData({
-          bpm: latestHeartRate,
-          oxygen: avgOxygen,
-          stress: user.data?.stress || 0,
-          sleep: user.data?.sleep || 0,
-          steps: latestSteps,
-          calories: latestCalories,
-          distance: latestDistance,
-        });
+      // 수면 데이터 추출 및 단위 변환 (필요한 경우)
+      const {
+        TotalSleepDuration = 0,
+        DeepSleepDuration = 0,
+        ShallowSleepDuration = 0,
+        AwakeDuration = 0,
+      } = Sleep;
 
-        const shouldUpdateUser =
-          latestHeartRate !== user.data?.bpm ||
-          avgOxygen !== user.data?.oxygen ||
-          latestSteps !== user.data?.steps ||
-          latestCalories !== user.data?.calories ||
-          latestDistance !== user.data?.distance;
+      // 수면 시간이 초 단위라면 분 단위로 변환
+      const totalSleepMinutes = TotalSleepDuration / 60;
+      const deepSleepMinutes = DeepSleepDuration / 60;
+      const shallowSleepMinutes = ShallowSleepDuration / 60;
+      const awakeMinutes = AwakeDuration / 60;
 
-        if (shouldUpdateUser) {
-          const updatedUser = {
-            ...user,
-            data: {
-              ...(user.data || {}),
-              bpm: Number(latestHeartRate),
-              oxygen: Number(avgOxygen),
-              steps: latestSteps,
-              calories: latestCalories,
-              distance: latestDistance,
-            },
-          };
-          updateUser(updatedUser);
-        }
-      } else {
-        const assignedRing = availableRings.find(
-          (ring) => ring.MacAddr === user.macAddr
-        );
+      // 수면 점수 계산
+      const sleepScore = calculateSleepScore(
+        totalSleepMinutes,
+        deepSleepMinutes,
+        awakeMinutes,
+        shallowSleepMinutes
+      );
 
-        if (assignedRing) {
-          assignRingToUser(user.id, assignedRing);
-        }
+      setProcessedData({
+        bpm: latestHeartRate || 0,
+        oxygen: avgOxygen || 0,
+        stress: latestStress || 0,
+        sleep: sleepScore || 0,
+        steps: latestSteps || 0,
+        calories: latestCalories || 0,
+        distance: latestDistance || 0,
+      });
 
-        setProcessedData({
-          bpm: Number(user.data?.bpm) || 0,
-          oxygen: Number(user.data?.oxygen?.toFixed(1)) || 0,
-          stress: Number(user.data?.stress) || 0,
-          sleep: Number(user.data?.sleep) || 0,
-          steps: Number(user.data?.steps) || 0,
-          calories: Number(user.data?.calories) || 0,
-          distance: Number(user.data?.distance) || 0,
-        });
+      // 사용자 데이터 업데이트 (필요한 경우)
+      const shouldUpdateUser =
+        latestHeartRate !== user.data?.bpm ||
+        avgOxygen !== user.data?.oxygen ||
+        latestSteps !== user.data?.steps ||
+        latestCalories !== user.data?.calories ||
+        latestDistance !== user.data?.distance ||
+        latestStress !== user.data?.stress ||
+        sleepScore !== user.data?.sleep;
+
+      if (shouldUpdateUser) {
+        const updatedUser = {
+          ...user,
+          data: {
+            ...(user.data || {}),
+            bpm: Number(latestHeartRate),
+            oxygen: Number(avgOxygen),
+            steps: latestSteps,
+            calories: latestCalories,
+            distance: latestDistance,
+            stress: latestStress,
+            sleep: sleepScore,
+          },
+        };
+        updateUser(updatedUser);
       }
-    };
-
-    processRingData();
-    intervalId = setInterval(processRingData, 10000); // Every 10 seconds
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [user, availableRings, updateUser, assignRingToUser, getLastNonZero]);
+    } else {
+      // 링 데이터가 없을 경우 기본값 사용
+      setProcessedData({
+        bpm: user.data?.bpm || 0,
+        oxygen: user.data?.oxygen || 0,
+        stress: user.data?.stress || 0,
+        sleep: user.data?.sleep || 0,
+        steps: user.data?.steps || 0,
+        calories: user.data?.calories || 0,
+        distance: user.data?.distance || 0,
+      });
+    }
+  }, [user, getLastNonZero, updateUser, calculateSleepScore]);
 
   // Extract Variables from Processed Data
   const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
 
+  // Open Goal Modal
+  const openGoalModal = useCallback(
+    (e) => {
+      e.stopPropagation(); // 이벤트 전파 중단
+      setShowGoalModal(true);
+      setMenuOpen(false);
+    },
+    []
+  );
+
+  // Open Ring Management Modal
+  const openRingModal = useCallback(
+    (e) => {
+      e.stopPropagation();
+      setShowRingModal(true);
+      setMenuOpen(false);
+    },
+    []
+  );
+
   const navigateToUserDetail = useCallback(() => {
-    if (!showGoalModal && !showEditModal && !showDeleteModal && !showAssignRingModal) {
+    if (!showGoalModal && !showEditModal && !showDeleteModal && !showRingModal) {
       navigate(`/users/${user.id}`);
     }
-  }, [navigate, user, showGoalModal, showEditModal, showDeleteModal, showAssignRingModal]);
+  }, [navigate, user.id, showGoalModal, showEditModal, showDeleteModal, showRingModal]);
 
-  const toggleMenu = useCallback((e) => {
-    e.stopPropagation();
-    setMenuOpen((prev) => !prev);
-  }, []);
+  const toggleMenu = useCallback(
+    (e) => {
+      e.stopPropagation();
+      setMenuOpen((prev) => !prev);
+    },
+    []
+  );
 
   // Goal Modal Handlers
   const [tempStepsGoal, setTempStepsGoal] = useState(user.stepTarget || 10000);
@@ -185,7 +224,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
         setMenuOpen(false);
       }
 
-      if (showEditModal || showGoalModal || showDeleteModal || showAssignRingModal) {
+      if (showEditModal || showGoalModal || showDeleteModal || showRingModal) {
         if (modalRef.current && !modalRef.current.contains(event.target)) {
           event.stopPropagation();
         }
@@ -196,7 +235,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showEditModal, showGoalModal, showDeleteModal, showAssignRingModal]);
+  }, [showEditModal, showGoalModal, showDeleteModal, showRingModal]);
 
   // Reset Edited Fields when User Changes
   useEffect(() => {
@@ -207,18 +246,24 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
   }, [user]);
 
   // Open Edit Modal
-  const openEditModal = useCallback((e) => {
-    e.stopPropagation();
-    setShowEditModal(true);
-    setMenuOpen(false);
-  }, []);
+  const openEditModal = useCallback(
+    (e) => {
+      e.stopPropagation();
+      setShowEditModal(true);
+      setMenuOpen(false);
+    },
+    []
+  );
 
   // Delete Modal Handlers
-  const openDeleteModal = useCallback((e) => {
-    e.stopPropagation();
-    setShowDeleteModal(true);
-    setMenuOpen(false);
-  }, []);
+  const openDeleteModal = useCallback(
+    (e) => {
+      e.stopPropagation();
+      setShowDeleteModal(true);
+      setMenuOpen(false);
+    },
+    []
+  );
 
   const handleConfirmDelete = useCallback(() => {
     deleteUser(user.id);
@@ -243,50 +288,36 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
     setShowEditModal(false);
   }, [user, editedName, editedGender, editedAge, editedProfileImage, updateUser]);
 
-  // Assign Ring Modal Handlers
-  const openAssignRingModal = useCallback((e) => {
-    e.stopPropagation();
-    setShowAssignRingModal(true);
-    setMenuOpen(false);
-  }, []);
-
-  const closeAssignRingModal = useCallback(() => {
-    setShowAssignRingModal(false);
-  }, []);
-
-  const handleAssignRing = useCallback((ring) => {
-    assignRingToUser(user.id, ring);
-    closeAssignRingModal();
-  }, [assignRingToUser, user.id, closeAssignRingModal]);
-
-  // Get Available Rings excluding the current one
-  const getAvailableRings = useCallback(() => {
-    return availableRings.filter(ring => ring.MacAddr !== user.macAddr);
-  }, [availableRings, user.macAddr]);
-
   // Calculate Achievement Percentage
-  const safeDivide = useCallback((numerator, denominator) =>
-    denominator === 0 ? 0 : (numerator / denominator) * 100, []
+  const safeDivide = useCallback(
+    (numerator, denominator) => (denominator === 0 ? 0 : (numerator / denominator) * 100),
+    []
   );
 
   const stepsPercentage = Math.min(safeDivide(steps, user.stepTarget || 10000), 100);
-  const caloriesPercentage = Math.min(safeDivide(calories / 1000, user.kcalTarget || 2000), 100);
-  const distancePercentage = Math.min(safeDivide(distance / 1000, user.kmTarget || 5), 100);
+  const caloriesPercentage = Math.min(
+    safeDivide(calories / 1000, user.kcalTarget || 2000),
+    100
+  );
+  const distancePercentage = Math.min(safeDivide(distance, user.kmTarget || 5), 100);
 
   const achievementPercentage = (stepsPercentage + caloriesPercentage + distancePercentage) / 3;
 
   // Render Progress Bar
-  const renderProgressBar = useCallback((value, color, trailColor, size) => (
-    <CircularProgressbar
-      value={value}
-      strokeWidth={10}
-      styles={buildStyles({
-        pathColor: color,
-        trailColor: trailColor,
-      })}
-      style={{ width: `${size}px`, height: `${size}px` }}
-    />
-  ), []);
+  const renderProgressBar = useCallback(
+    (value, color, trailColor, size) => (
+      <CircularProgressbar
+        value={value}
+        strokeWidth={10}
+        styles={buildStyles({
+          pathColor: color,
+          trailColor: trailColor,
+        })}
+        style={{ width: `${size}px`, height: `${size}px` }}
+      />
+    ),
+    []
+  );
 
   return (
     <div
@@ -307,8 +338,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
           }}
         >
           <FaStar
-            className={`mr-3 ${user.isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
-            size={25}
+            className={`mr-1 ${user.isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
+            size={20}
           />
         </button>
         <button onClick={toggleMenu}>
@@ -329,16 +360,16 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
               수정
             </button>
             <button
+              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+              onClick={openRingModal}
+            >
+              링 관리
+            </button>
+            <button
               className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
               onClick={openDeleteModal}
             >
               삭제
-            </button>
-            <button
-              className="block px-4 py-2 text-blue-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openAssignRingModal}
-            >
-              링 선택
             </button>
           </div>
         )}
@@ -352,7 +383,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
         />
         <div className="ml-3">
           <h2 className="font-bold text-lg">
-            {user.name} ({user.gender}, {user.age})
+            {user.name} ({user.gender === 0 ? '남성' : user.gender === 1 ? '여성' : '기타'}, {user.age}
+            )
           </h2>
         </div>
       </div>
@@ -402,8 +434,16 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
         <div className="card-info text-right ml-4">
           {[
             { label: '걸음수', value: steps, color: 'text-blue-500' },
-            { label: '칼로리', value: `${calories.toFixed(2) / 1000} kcal`, color: 'text-orange-500' }, // 이미 kcalTarget을 적용함
-            { label: '이동거리', value: `${distance.toFixed(2)} km`, color: 'text-green-500' },
+            {
+              label: '칼로리',
+              value: `${(calories / 1000).toFixed(2)} kcal`,
+              color: 'text-orange-500',
+            },
+            {
+              label: '이동거리',
+              value: `${distance.toFixed(2)} km`,
+              color: 'text-green-500',
+            },
           ].map((item, index) => (
             <div key={index} className="flex items-center mb-2 text-sm">
               <span className={item.color}>{item.label}</span>
@@ -432,26 +472,76 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
       {/* Ring Connection Status */}
       <div className="ring-status mt-4 flex items-center justify-center gap-4">
         {user.ring ? (
-          (() => {
-            const now = new Date();
-            const lastDataTime = new Date(user.ring.lastDataTime);
-            const diffInMinutes = (now - lastDataTime) / (1000 * 60);
-
-            if (diffInMinutes > 5) {
-              return <span className="text-yellow-500 font-semibold">연결 해제</span>;
-            } else {
-              return (
-                <>
-                  <span className="text-green-500 font-semibold">링 연결됨</span>
-                  <span className="text-gray-700 font-medium">배터리: {user.ring.BatteryLevel}%</span>
-                </>
-              );
-            }
-          })()
+          <>
+            <span className="text-green-500 font-semibold">링 연결됨</span>
+            <span className="text-gray-700 font-medium">
+              배터리: {user.ring.BatteryLevel}%
+            </span>
+          </>
         ) : (
           <span className="text-red-500 font-semibold">링 미연결</span>
         )}
       </div>
+
+      {/* Ring Management Modal */}
+      {showRingModal && (
+        <Modal onClose={() => setShowRingModal(false)} ref={modalRef}>
+          <h2 className="text-xl font-semibold mb-4">링 관리</h2>
+          {user.ring ? (
+            <div className="mb-4">
+              <p>현재 연결된 링: {user.ring.Name || 'Unknown Ring'}</p>
+              <button
+                onClick={() => {
+                  // 링 연결 해제
+                  const updatedUser = { ...user, ring: null };
+                  updateUser(updatedUser);
+                  setShowRingModal(false);
+                }}
+                className="mt-2 px-4 py-2 bg-red-500 text-white rounded-md"
+              >
+                연결 해제
+              </button>
+            </div>
+          ) : (
+            <p>현재 연결된 링이 없습니다.</p>
+          )}
+
+          <div className="mt-4">
+            <h3 className="text-lg font-medium mb-2">링 목록</h3>
+            <ul>
+              {availableRings.length > 0 ? (
+                availableRings.map((ring) => (
+                  <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
+                    <span>{ring.Name}</span>
+                    <button
+                      onClick={() => {
+                        // 링 연결
+                        const updatedUser = { ...user, ring: ring };
+                        updateUser(updatedUser);
+                        setShowRingModal(false);
+                      }}
+                      className="px-2 py-1 bg-blue-500 text-white rounded-md"
+                    >
+                      연결
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <p>사용 가능한 링이 없습니다.</p>
+              )}
+            </ul>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => setShowRingModal(false)}
+              className="px-4 py-2 bg-gray-300 text-black rounded-md"
+            >
+              닫기
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Goal Setting Modal */}
       {showGoalModal && (
@@ -556,9 +646,9 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
               onChange={(e) => setEditedGender(e.target.value)}
               className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="남">남성</option>
-              <option value="여">여성</option>
-              <option value="기타">기타</option>
+              <option value={0}>남성</option>
+              <option value={1}>여성</option>
+              <option value={2}>기타</option>
             </select>
           </div>
 
@@ -607,43 +697,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, as
               className="px-4 py-2 bg-red-500 text-white rounded-md"
             >
               확인
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Assign Ring Modal */}
-      {showAssignRingModal && (
-        <Modal onClose={closeAssignRingModal} ref={modalRef}>
-          <h2 className="text-xl font-semibold mb-4">링 선택</h2>
-          {getAvailableRings().length > 0 ? (
-            <div className="ring-list overflow-y-auto" style={{ maxHeight: '300px' }}>
-              <ul>
-                {getAvailableRings().map((ring) => (
-                  <li
-                    key={ring.MacAddr}
-                    className="p-2 border-b cursor-pointer hover:bg-gray-100 flex justify-between items-center"
-                    onClick={() => handleAssignRing(ring)}
-                  >
-                    <div>
-                      <p><strong>{ring.Name}</strong></p>
-                    </div>
-                    <div>
-                      <span className="text-green-500">할당</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p>할당 가능한 링이 없습니다.</p>
-          )}
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={closeAssignRingModal}
-              className="px-4 py-2 bg-gray-300 text-black rounded-md"
-            >
-              닫기
             </button>
           </div>
         </Modal>
