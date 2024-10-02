@@ -100,7 +100,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
       } = Sleep;
 
       // 수면 시간이 초 단위라면 분 단위로 변환
-      const totalSleepMinutes = TotalSleepDuration / 60;
+      const totalSleepMinutes = TotalSleepDuration ;
       const deepSleepMinutes = DeepSleepDuration / 60;
       const shallowSleepMinutes = ShallowSleepDuration / 60;
       const awakeMinutes = AwakeDuration / 60;
