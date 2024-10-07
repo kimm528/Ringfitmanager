@@ -92,17 +92,6 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
   // 추가된 캐시 상태
   const [ringDataCache, setRingDataCache] = useState({});
 
-  // Static Weekly Exercise Data (Memoized)
-  const weekExerciseData = useMemo(() => [
-    { day: '월', score: 79, date: '9/1' },
-    { day: '화', score: 65, date: '9/2' },
-    { day: '수', score: 100, date: '9/3' },
-    { day: '목', score: 72, date: '9/4' },
-    { day: '금', score: 78, date: '9/5' },
-    { day: '토', score: 100, date: '9/6' },
-    { day: '일', score: 100, date: '9/7' },
-  ], []);
-
   // Fetch ring data by date with caching
   const fetchRingDataByDate = useCallback(async (date, userMacAddr) => { 
     try {
@@ -657,50 +646,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
             </ResponsiveContainer>
           </div>
 
-          {/* 주간 운동 섹션 */}
-          <div className="weekly-exercise bg-white p-4 rounded-lg shadow-md mt-6 relative">
-            <h3 className="text-xl font-bold mb-4">주간 운동</h3>
-            <div className="flex justify-end mb-2">
-              <FaEdit className="text-gray-500 cursor-pointer" title="운동 점수 수정" />
-            </div>
-            <div className="grid grid-cols-7 gap-2 justify-between">
-              {weekExerciseData.map((item) => (
-                <div key={item.date} className="flex flex-col items-center">
-                  <PieChart width={80} height={80}>
-                    <Pie
-                      data={[
-                        { name: '점수', value: item.score },
-                        { name: '나머지', value: 100 - item.score },
-                      ]}
-                      startAngle={90}
-                      endAngle={-270}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={25}
-                      outerRadius={35}
-                      stroke="none"
-                      dataKey="value"
-                    >
-                      <Cell key={`cell-${item.date}`} fill="#0088FE" />
-                    </Pie>
-                    <text 
-                      x="50%" 
-                      y="50%" 
-                      textAnchor="middle" 
-                      dominantBaseline="middle" 
-                      className="text-blue-500 font-bold"
-                    >
-                      {item.score}%
-                    </text>
-                  </PieChart>
-                  <div className="text-center mt-1">
-                    <div className="font-bold text-gray-800">{item.day}</div>
-                    <div className="text-sm text-gray-500">{item.date}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+         
 
           {/* Life 로그 섹션 */}
           <div className="life-log bg-white p-4 rounded-lg shadow-md mt-6">
