@@ -5,7 +5,7 @@ import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import Modal from './Modal';
 
-const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) => {
+const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users }) => {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,6 +18,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
   const [editedProfileImage, setEditedProfileImage] = useState(user.profileImage);
+  const [localProfileImage, setLocalProfileImage] = useState(user.profileImage || '');
+
 
   const [processedData, setProcessedData] = useState({
     bpm: 0,
@@ -32,6 +34,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
   const menuRef = useRef(null);
   const modalRef = useRef(null);
 
+
+  
   // 수면 점수 계산 함수
   const calculateSleepScore = useCallback(
     (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
@@ -205,6 +209,14 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
   const [tempCaloriesGoal, setTempCaloriesGoal] = useState(user.kcalTarget || 2000);
   const [tempDistanceGoal, setTempDistanceGoal] = useState(user.kmTarget || 5);
 
+
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const filePath = URL.createObjectURL(file); // 로컬 이미지 경로 생성
+      setLocalProfileImage(filePath); // 경로를 state로 관리
+    }
+  };
   const handleSaveGoals = useCallback(() => {
     const updatedUser = {
       ...user,
@@ -290,7 +302,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
       name: editedName,
       gender: editedGender,
       age: editedAge,
-      profileImage: editedProfileImage,
+    //  profileImage: editedProfileImage,
       address: user.address,
       stepTarget: user.stepTarget,
       kcalTarget: user.kcalTarget,
@@ -538,45 +550,52 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
           )}
 
 <div className="mt-4">
-            <h3 className="text-lg font-medium mb-2">링 목록</h3>
-            <ul>
-              {availableRings.length > 0 ? (
-                availableRings.map((ring) => (
-                  <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
-                    <span>{ring.Name}</span>
-                    <button
-                      onClick={() => {
-                        // 링 연결
-                        const updatedUser = {
-                          ...user,
-                          ring: ring,
-                          macAddr: ring.MacAddr, // 선택한 링의 MacAddr로 설정
-                          // 필요한 다른 필드들도 포함
-                          name: user.name,
-                          gender: user.gender,
-                          age: user.age,
-                          profileImage: user.profileImage,
-                          address: user.address,
-                          stepTarget: user.stepTarget,
-                          kcalTarget: user.kcalTarget,
-                          kmTarget: user.kmTarget,
-                          albumPath: user.albumPath,
-                          lifeLogs: user.lifeLogs,
-                        };
-                        updateUser(updatedUser, true); // 서버로 전송
-                        setShowRingModal(false);
-                      }}
-                      className="px-2 py-1 bg-blue-500 text-white rounded-md"
-                    >
-                      연결
-                    </button>
-                  </li>
-                ))
-              ) : (
-                <p>사용 가능한 링이 없습니다.</p>
-              )}
-            </ul>
-          </div>
+  <h3 className="text-lg font-medium mb-2">링 목록</h3>
+  <ul>
+    {availableRings.length > 0 ? (
+      availableRings
+        // 이미 다른 사용자에게 할당된 링은 제외
+        .filter(
+          (ring) =>
+            !users.some((otherUser) => otherUser.macAddr === ring.MacAddr)
+        )
+        .map((ring) => (
+          <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
+            <span>{ring.Name || "Unknown Ring"}</span>
+            <button
+              onClick={() => {
+                // 링 연결
+                const updatedUser = {
+                  ...user,
+                  ring: ring,
+                  macAddr: ring.MacAddr, // 선택한 링의 MacAddr로 설정
+                  // 필요한 다른 필드들도 포함
+                  name: user.name,
+                  gender: user.gender,
+                  age: user.age,
+                  profileImage: user.profileImage,
+                  address: user.address,
+                  stepTarget: user.stepTarget,
+                  kcalTarget: user.kcalTarget,
+                  kmTarget: user.kmTarget,
+                  albumPath: user.albumPath,
+                  lifeLogs: user.lifeLogs,
+                };
+                updateUser(updatedUser, true); // 서버로 전송
+                setShowRingModal(false);
+              }}
+              className="px-2 py-1 bg-blue-500 text-white rounded-md"
+            >
+              연결
+            </button>
+          </li>
+        ))
+    ) : (
+      <p>사용 가능한 링이 없습니다.</p>
+    )}
+  </ul>
+</div>
+
 
           <div className="flex justify-end mt-4">
             <button
@@ -649,29 +668,32 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
           <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
 
           {/* Profile Image Change */}
-          <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">
-              프로필 이미지
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  setEditedProfileImage(URL.createObjectURL(file));
-                }
-              }}
-              className="block w-full text-sm text-gray-700"
-            />
-            {editedProfileImage && (
-              <img
-                src={editedProfileImage}
-                alt="프로필 미리보기"
-                className="mt-2 w-24 h-24 rounded-full object-cover"
-              />
-            )}
-          </div>
+<div className="mb-4">
+  <label className="block mb-2 text-sm font-medium text-gray-700">
+    프로필 이미지
+  </label>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const filePath = URL.createObjectURL(file); // 로컬 이미지 경로 생성
+        setLocalProfileImage(filePath); // 경로를 state로 관리
+        setEditedProfileImage(filePath); // 수정된 프로필 이미지 경로 설정
+      }
+    }}
+    className="block w-full text-sm text-gray-700"
+  />
+  {localProfileImage && (
+    <img
+      src={localProfileImage} // 로컬 이미지 경로 사용
+      alt="프로필 미리보기"
+      className="mt-2 w-24 h-24 rounded-full object-cover"
+    />
+  )}
+</div>
+
 
           {/* Name Edit */}
           <div className="mb-4">

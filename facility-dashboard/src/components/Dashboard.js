@@ -140,6 +140,8 @@ const Dashboard = ({
                 deleteUser={deleteUser}
                 availableRings={availableRings}
                 assignRingToUser={assignRingToUser}
+                users={users}  // users 데이터를 전달
+
               />
             </motion.div>
           ))}
