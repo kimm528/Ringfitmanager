@@ -100,7 +100,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
       } = Sleep;
 
       // 수면 시간이 초 단위라면 분 단위로 변환
-      const totalSleepMinutes = TotalSleepDuration ;
+      const totalSleepMinutes = TotalSleepDuration / 60;
       const deepSleepMinutes = DeepSleepDuration / 60;
       const shallowSleepMinutes = ShallowSleepDuration / 60;
       const awakeMinutes = AwakeDuration / 60;
@@ -147,7 +147,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
             sleep: sleepScore,
           },
         };
-        updateUser(updatedUser);
+        updateUser(updatedUser, false);
       }
     } else {
       // 링 데이터가 없을 경우 기본값 사용
@@ -211,12 +211,21 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
       stepTarget: tempStepsGoal,
       kcalTarget: tempCaloriesGoal,
       kmTarget: tempDistanceGoal,
+      // 필요한 다른 필드들도 포함
+      name: user.name,
+      gender: user.gender,
+      age: user.age,
+      profileImage: user.profileImage,
+      address: user.address,
+      macAddr: user.macAddr,
+      albumPath: user.albumPath,
+      lifeLogs: user.lifeLogs,
     };
     console.log('Updated Goals:', updatedUser);
-    updateUser(updatedUser);
+    updateUser(updatedUser, true); // 서버로 요청 보내기 위해 sendToServer를 true로 설정
     setShowGoalModal(false);
   }, [user, tempStepsGoal, tempCaloriesGoal, tempDistanceGoal, updateUser]);
-
+  
   // Click Outside to Close Menu or Prevent Navigation
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -282,9 +291,16 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
       gender: editedGender,
       age: editedAge,
       profileImage: editedProfileImage,
+      address: user.address,
+      stepTarget: user.stepTarget,
+      kcalTarget: user.kcalTarget,
+      kmTarget: user.kmTarget,
+      macAddr: user.macAddr,
+      albumPath: user.albumPath,
+      lifeLogs: user.lifeLogs,
     };
     console.log('Updated User Info:', updatedUser);
-    updateUser(updatedUser);
+    updateUser(updatedUser, true); // 서버로 요청 보내기 위해 sendToServer를 true로 설정
     setShowEditModal(false);
   }, [user, editedName, editedGender, editedAge, editedProfileImage, updateUser]);
 
@@ -382,10 +398,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
           className="w-12 h-12 rounded-full object-cover"
         />
         <div className="ml-3">
-          <h2 className="font-bold text-lg">
-            {user.name} ({user.gender === 0 ? '남성' : user.gender === 1 ? '여성' : '기타'}, {user.age}
-            )
-          </h2>
+<h2 className="font-bold text-lg">
+  {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
+</h2>
+
         </div>
       </div>
 
@@ -483,8 +499,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
         )}
       </div>
 
-      {/* Ring Management Modal */}
-      {showRingModal && (
+       {/* Ring Management Modal */}
+       {showRingModal && (
         <Modal onClose={() => setShowRingModal(false)} ref={modalRef}>
           <h2 className="text-xl font-semibold mb-4">링 관리</h2>
           {user.ring ? (
@@ -493,8 +509,23 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
               <button
                 onClick={() => {
                   // 링 연결 해제
-                  const updatedUser = { ...user, ring: null };
-                  updateUser(updatedUser);
+                  const updatedUser = {
+                    ...user,
+                    ring: null,
+                    macAddr: '', // macAddr를 빈 문자열로 설정
+                    // 필요한 다른 필드들도 포함
+                    name: user.name,
+                    gender: user.gender,
+                    age: user.age,
+                    profileImage: user.profileImage,
+                    address: user.address,
+                    stepTarget: user.stepTarget,
+                    kcalTarget: user.kcalTarget,
+                    kmTarget: user.kmTarget,
+                    albumPath: user.albumPath,
+                    lifeLogs: user.lifeLogs,
+                  };
+                  updateUser(updatedUser, true); // 서버로 전송
                   setShowRingModal(false);
                 }}
                 className="mt-2 px-4 py-2 bg-red-500 text-white rounded-md"
@@ -506,7 +537,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
             <p>현재 연결된 링이 없습니다.</p>
           )}
 
-          <div className="mt-4">
+<div className="mt-4">
             <h3 className="text-lg font-medium mb-2">링 목록</h3>
             <ul>
               {availableRings.length > 0 ? (
@@ -516,8 +547,23 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
                     <button
                       onClick={() => {
                         // 링 연결
-                        const updatedUser = { ...user, ring: ring };
-                        updateUser(updatedUser);
+                        const updatedUser = {
+                          ...user,
+                          ring: ring,
+                          macAddr: ring.MacAddr, // 선택한 링의 MacAddr로 설정
+                          // 필요한 다른 필드들도 포함
+                          name: user.name,
+                          gender: user.gender,
+                          age: user.age,
+                          profileImage: user.profileImage,
+                          address: user.address,
+                          stepTarget: user.stepTarget,
+                          kcalTarget: user.kcalTarget,
+                          kmTarget: user.kmTarget,
+                          albumPath: user.albumPath,
+                          lifeLogs: user.lifeLogs,
+                        };
+                        updateUser(updatedUser, true); // 서버로 전송
                         setShowRingModal(false);
                       }}
                       className="px-2 py-1 bg-blue-500 text-white rounded-md"
@@ -643,12 +689,11 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings }) 
             <label className="block mb-2 text-sm font-medium text-gray-700">성별</label>
             <select
               value={editedGender}
-              onChange={(e) => setEditedGender(e.target.value)}
+              onChange={(e) => setEditedGender(Number(e.target.value))}
               className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value={0}>남성</option>
               <option value={1}>여성</option>
-              <option value={2}>기타</option>
             </select>
           </div>
 

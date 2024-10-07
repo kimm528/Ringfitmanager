@@ -1,4 +1,3 @@
-// src/components/Dashboard.js
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Card from './Card';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +14,7 @@ const Dashboard = ({
   deleteUser,
   availableRings,
   assignRingToUser,
-  fetchUsers, // App.js에서 전달한 fetchUsers 함수
+  fetchUsers,
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -27,18 +26,21 @@ const Dashboard = ({
   const [sortOption, setSortOption] = useState('이름 순');
 
   // Toggle Favorite Status
-  const toggleFavorite = useCallback((userId) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.id === userId ? { ...user, isFavorite: !user.isFavorite } : user
-      )
-    );
-  }, [setUsers]);
+  const toggleFavorite = useCallback(
+    (userId) => {
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === userId ? { ...user, isFavorite: !user.isFavorite } : user
+        )
+      );
+    },
+    [setUsers]
+  );
 
   // Filter and Sort Users using useMemo for performance
   const sortedUsers = useMemo(() => {
     let filtered = users.filter((user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase())
+      user.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     switch (sortOption) {
@@ -59,7 +61,7 @@ const Dashboard = ({
         break;
       case '이름 순':
       default:
-        filtered.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
     }
 
     return filtered;
@@ -71,9 +73,16 @@ const Dashboard = ({
       alert('모든 필드를 입력하세요.');
       return;
     }
-    handleAddUser(newUser);
+
+    const userToAdd = {
+      ...newUser,
+      profileImage: newUser.profileImage || 'https://default-image-url.com/default.jpg', // 기본 프로필 이미지 처리
+    };
+
+    handleAddUser(userToAdd);
     setNewUser({ name: '', gender: '', age: '', profileImage: null });
-  }, [newUser, handleAddUser]);
+    setShowModal(false);
+  }, [newUser, handleAddUser, setShowModal]);
 
   // 데이터 페칭 및 주기적 업데이트
   useEffect(() => {
@@ -183,7 +192,7 @@ const Dashboard = ({
                 <input
                   type="file"
                   onChange={(e) =>
-                    setNewUser({
+                    e.target.files && setNewUser({
                       ...newUser,
                       profileImage: URL.createObjectURL(e.target.files[0]),
                     })

@@ -1,4 +1,3 @@
-// Sidebar.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { HomeIcon, Cog6ToothIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
@@ -21,7 +20,7 @@ const Sidebar = ({
 
   // Memoized sorted users based on sortOption
   const sortedUsers = useMemo(() => {
-    let sorted = [...users];
+    let sorted = [...users].filter(user => user && user.name);  // user와 name이 존재하는 경우만 포함
     switch (sortOption) {
       case "score":
         sorted.sort((a, b) => {
@@ -40,7 +39,7 @@ const Sidebar = ({
         break;
       case "name":
       default:
-        sorted.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
     }
     return sorted;
   }, [users, sortOption]);
@@ -73,8 +72,6 @@ const Sidebar = ({
   if (isMobile) {
     return null;
   }
-
-
 
   return (
     <>
@@ -126,19 +123,7 @@ const Sidebar = ({
           {/* Search and Sort Options */}
           {isSidebarOpen && (
             <>
-              {/* Search Box */}
-              <div className="p-2">
-                <label htmlFor="nameSearch" className="block text-sm font-medium text-gray-300 mb-2">이름 검색</label>
-                <input
-                  id="nameSearch"
-                  type="text"
-                  placeholder="이름을 입력하세요"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full p-2 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
+              
               {/* Sort Options */}
               <div className="p-4">
                 <label htmlFor="sortOptions" className="block text-sm font-medium text-gray-300 mb-2">정렬 옵션</label>

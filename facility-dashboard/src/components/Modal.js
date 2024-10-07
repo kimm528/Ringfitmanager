@@ -1,47 +1,26 @@
 // Modal.js
 import React from 'react';
-import ReactDOM from 'react-dom';
 
-const Modal = ({ children, onClose }) => {
-  return ReactDOM.createPortal(
+const Modal = ({ onClose, children }) => {
+  return (
     <div
-      className="modal-backdrop"
-      onClick={onClose}
-      style={modalBackdropStyle}
+      className="modal-overlay fixed inset-0 bg-gray-500 bg-opacity-50 flex justify-center items-center z-50"
+      onClick={onClose} // 클릭 시 모달 닫기
     >
       <div
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
-        style={modalContentStyle}
+        className="modal-content bg-white rounded-lg shadow-lg p-6 relative"
+        onClick={(e) => e.stopPropagation()} // 모달 내부 클릭 시 닫기 방지
       >
         {children}
+        <button
+          className="absolute top-2 right-2 text-gray-600 hover:text-gray-900"
+          onClick={onClose}
+        >
+          &times;
+        </button>
       </div>
-    </div>,
-    document.body
+    </div>
   );
-};
-
-// Modal Styles
-const modalBackdropStyle = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: '100vh',
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 1000,
-};
-
-const modalContentStyle = {
-  backgroundColor: 'white',
-  padding: '20px',
-  borderRadius: '8px',
-  width: '400px',
-  maxWidth: '90vw',
-  zIndex: 1001,
 };
 
 export default Modal;
