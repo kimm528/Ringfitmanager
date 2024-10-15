@@ -612,7 +612,7 @@ function App() {
                 />
                 <Route
                   path="/users/:userId"
-                  element={<UserDetail users={users} updateUserLifeLog={updateUser} />}
+                  element={<UserDetail users={users} updateUserLifeLog={updateUser} siteId={siteId}/>}
                 />
                 <Route
                   path="/settings"

@@ -39,7 +39,7 @@ const InfoCard = ({ icon, title, value }) => (
   </div>
 );
 
-const UserDetail = ({ users, updateUserLifeLog }) => {
+const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const { userId } = useParams();  // Get userId from URL
 
   // 사용자 상태를 useState로 관리
@@ -118,7 +118,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
       console.log(`Fetching ring data for formattedDate: ${formattedDate} and macAddr: ${userMacAddr}`);
 
       // MAC 주소를 쿼리 파라미터에 포함
-      const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=Dotories&yearMonthDay=${formattedDate}&macAddr=${userMacAddr}`;
+      const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=${siteId}&yearMonthDay=${formattedDate}&macAddr=${userMacAddr}`;
 
       const response = await axios.get(ringUrl, {
         headers: {
@@ -149,7 +149,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
       console.error('Failed to fetch data:', error);
       return null;
     }
-  }, [ringDataCache]);
+  }, [ringDataCache, siteId]);
 
   // 날짜 변경 핸들러
   const handleDateChange = useCallback((e) => {
