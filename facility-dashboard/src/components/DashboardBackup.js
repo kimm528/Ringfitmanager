@@ -1,9 +1,7 @@
-// Dashboard.js
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Card from './Card';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
-import { calculateUserStatus } from './calculateUserStatus'; // 함수 임포트
 
 const Dashboard = ({
   showModal,
@@ -15,7 +13,8 @@ const Dashboard = ({
   updateUser,
   deleteUser,
   availableRings,
-  toggleFavorite,
+  assignRingToUser,
+  fetchUsers,
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -26,41 +25,46 @@ const Dashboard = ({
 
   const [sortOption, setSortOption] = useState('이름 순');
 
+  // Toggle Favorite Status
+  const toggleFavorite = useCallback(
+    (userId) => {
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === userId ? { ...user, isFavorite: !user.isFavorite } : user
+        )
+      );
+    },
+    [setUsers]
+  );
+
   // Filter and Sort Users using useMemo for performance
   const sortedUsers = useMemo(() => {
-    // 검색어로 필터링
-    const filtered = users.filter((user) =>
+    let filtered = users.filter((user) =>
       user.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // 각 사용자에 대해 위험 상태 계산
-    const usersWithStatus = filtered.map((user) => ({
-      ...user,
-      status: calculateUserStatus(user),
-    }));
+    switch (sortOption) {
+      case '운동 점수 순':
+        filtered.sort((a, b) => {
+          const aGoal = a.goals?.stepsGoal || 1;
+          const bGoal = b.goals?.stepsGoal || 1;
+          const aAchievement = (a.data?.steps || 0) / aGoal;
+          const bAchievement = (b.data?.steps || 0) / bGoal;
+          return bAchievement - aAchievement;
+        });
+        break;
+      case '심박수 순':
+        filtered.sort((a, b) => (b.data?.bpm || 0) - (a.data?.bpm || 0));
+        break;
+      case '즐겨찾기 순':
+        filtered.sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
+        break;
+      case '이름 순':
+      default:
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+    }
 
-    // 사용자 정렬
-    usersWithStatus.sort((a, b) => {
-      // 먼저 위험 상태로 정렬 ('danger' 상태만 상단으로)
-      if (a.status === 'danger' && b.status !== 'danger') {
-        return -1;
-      } else if (a.status !== 'danger' && b.status === 'danger') {
-        return 1;
-      } else {
-        // 위험 상태가 동일한 경우 선택한 정렬 옵션으로 정렬
-        switch (sortOption) {
-          case '심박수 순':
-            return (b.data?.bpm || 0) - (a.data?.bpm || 0);
-          case '즐겨찾기 순':
-            return (b.isFavorite === true) - (a.isFavorite === true);
-          case '이름 순':
-          default:
-            return (a.name || '').localeCompare(b.name || '', 'ko');
-        }
-      }
-    });
-
-    return usersWithStatus;
+    return filtered;
   }, [users, searchQuery, sortOption]);
 
   // Handle User Addition
@@ -72,8 +76,7 @@ const Dashboard = ({
 
     const userToAdd = {
       ...newUser,
-      profileImage:
-        newUser.profileImage || 'https://default-image-url.com/default.jpg', // 기본 프로필 이미지 처리
+      profileImage: newUser.profileImage || 'https://default-image-url.com/default.jpg', // 기본 프로필 이미지 처리
     };
 
     handleAddUser(userToAdd);
@@ -81,16 +84,29 @@ const Dashboard = ({
     setShowModal(false);
   }, [newUser, handleAddUser, setShowModal]);
 
+  // 데이터 페칭 및 주기적 업데이트
+  useEffect(() => {
+    // 컴포넌트 마운트 시 데이터 페칭
+    fetchUsers();
+
+    // 30초 간격으로 데이터 페칭
+    const intervalId = setInterval(() => {
+      console.log('Fetching users and ring data every 30 seconds');
+      fetchUsers();
+    }, 30000); // 30초
+
+    // 컴포넌트 언마운트 시 interval 정리
+    return () => clearInterval(intervalId);
+  }, [fetchUsers]);
+
   return (
     <div>
       {/* Sorting Buttons */}
       <div className="flex justify-end mb-4">
-        {['심박수 순', '즐겨찾기 순', '이름 순'].map((option) => (
+        {['운동 점수 순', '심박수 순', '즐겨찾기 순', '이름 순'].map((option) => (
           <button
             key={option}
-            className={`px-4 py-2 ${
-              sortOption === option ? 'font-bold' : 'text-gray-500'
-            }`}
+            className={`px-4 py-2 ${sortOption === option ? 'font-bold' : 'text-gray-500'}`}
             onClick={() => setSortOption(option)}
           >
             {option}
@@ -123,7 +139,9 @@ const Dashboard = ({
                 updateUser={updateUser}
                 deleteUser={deleteUser}
                 availableRings={availableRings}
-                users={users} // users 데이터를 전달
+                assignRingToUser={assignRingToUser}
+                users={users}  // users 데이터를 전달
+
               />
             </motion.div>
           ))}
@@ -142,9 +160,7 @@ const Dashboard = ({
                   type="text"
                   name="name"
                   value={newUser.name}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, name: e.target.value })
-                  }
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                   className="p-2 border border-gray-300 rounded w-full"
                   placeholder="이름을 입력하세요"
                 />
@@ -154,9 +170,7 @@ const Dashboard = ({
                 <select
                   name="gender"
                   value={newUser.gender}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, gender: e.target.value })
-                  }
+                  onChange={(e) => setNewUser({ ...newUser, gender: e.target.value })}
                   className="p-2 border border-gray-300 rounded w-full"
                 >
                   <option value="">성별을 선택하세요</option>
@@ -170,9 +184,7 @@ const Dashboard = ({
                   type="number"
                   name="age"
                   value={newUser.age}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, age: e.target.value })
-                  }
+                  onChange={(e) => setNewUser({ ...newUser, age: e.target.value })}
                   className="p-2 border border-gray-300 rounded w-full"
                   placeholder="나이를 입력하세요"
                 />
@@ -182,8 +194,7 @@ const Dashboard = ({
                 <input
                   type="file"
                   onChange={(e) =>
-                    e.target.files &&
-                    setNewUser({
+                    e.target.files && setNewUser({
                       ...newUser,
                       profileImage: URL.createObjectURL(e.target.files[0]),
                     })

@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'Nanum Gothic';
-  src: url('/fonts/NanumGothic-Regular.ttf') format('truetype');
+  src: url('./fonts/NanumGothic.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
@@ -10,43 +10,90 @@ body {
   font-family: 'Nanum Gothic', sans-serif;
 }
 
-
 .App {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+/* 깜박이는 애니메이션 */
+@keyframes blink-border {
+  0% {
+    border-color: red;
+  }
+  50% {
+    border-color: transparent;
+  }
+  100% {
+    border-color: red;
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+.animate-blink {
+  animation: blink-border 1s infinite;
 }
 
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+/* 필요하다면 벤더 프리픽스 추가 */
+@-webkit-keyframes blink-border {
+  0% {
+    border-color: red;
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    border-color: transparent;
+  }
+  100% {
+    border-color: red;
   }
 }
 
+@-moz-keyframes blink-border {
+  0% {
+    border-color: red;
+  }
+  50% {
+    border-color: transparent;
+  }
+  100% {
+    border-color: red;
+  }
+}
+
+@-o-keyframes blink-border {
+  0% {
+    border-color: red;
+  }
+  50% {
+    border-color: transparent;
+  }
+  100% {
+    border-color: red;
+  }
+}
+
+.animate-blink {
+  animation: blink-border 1s infinite;
+  -webkit-animation: blink-border 1s infinite;
+  -moz-animation: blink-border 1s infinite;
+  -o-animation: blink-border 1s infinite;
+}
+/* App.css 또는 별도의 CSS 파일에 추가 */
+.horizontal-slider {
+  width: 100%;
+  height: 10px;
+  margin-top: 10px;
+}
+
+.example-thumb {
+  height: 25px;
+  width: 25px;
+  background-color: #4caf50;
+  cursor: pointer;
+  border-radius: 50%;
+  top: -10px;
+  position: relative;
+}
+
+.example-track {
+  background: #ddd;
+  height: 5px;
+  top: 10px;
+  position: relative;
+}

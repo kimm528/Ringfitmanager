@@ -1,40 +1,25 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaStar, FaEllipsisV } from 'react-icons/fa';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  LabelList,
-} from 'recharts';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 import Modal from './Modal';
-import {
-  MdDirectionsWalk,
-  MdLocalFireDepartment,
-  MdLocationOn,
-  MdHotel,
-} from 'react-icons/md';
-import '../App.css'; // 경로 수정: '../App.css'로 변경
-import ReactSlider from 'react-slider';
-import { calculateUserStatus } from './calculateUserStatus'; // 함수 임포트
 
 const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users }) => {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showThresholdModal, setShowThresholdModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRingModal, setShowRingModal] = useState(false);
+  const [showRingModal, setShowRingModal] = useState(false); // 링 관리 모달 상태 추가
 
   const [editedName, setEditedName] = useState(user.name);
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
+  const [editedProfileImage, setEditedProfileImage] = useState(user.profileImage);
+  const [localProfileImage, setLocalProfileImage] = useState(user.profileImage || '');
+
 
   const [processedData, setProcessedData] = useState({
     bpm: 0,
@@ -49,28 +34,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   const menuRef = useRef(null);
   const modalRef = useRef(null);
 
-  // 산소포화도 임계값 상수로 정의
-  const OXYGEN_WARNING_THRESHOLD = 95;
-  const OXYGEN_DANGER_THRESHOLD = 90;
 
-  // 위험/경고 수준 상태 추가 (심박수 임계값만 포함)
-  const [thresholds, setThresholds] = useState({
-    heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
-    heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
-    heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
-    heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
-  });
-
-  // 사용자 변경 시 임계값 상태 업데이트
-  useEffect(() => {
-    setThresholds({
-      heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
-      heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
-      heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
-      heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
-    });
-  }, [user]);
-
+  
   // 수면 점수 계산 함수
   const calculateSleepScore = useCallback(
     (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
@@ -122,7 +87,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       const latestHeartRate = getLastNonZero(HeartRateArr);
       const latestMinOxygen = getLastNonZero(MinBloodOxygenArr);
       const latestMaxOxygen = getLastNonZero(MaxBloodOxygenArr);
-      const avgOxygen = Math.round((latestMinOxygen + latestMaxOxygen) / 2); // 소수점 제거
+      const avgOxygen = ((latestMinOxygen + latestMaxOxygen) / 2).toFixed(2);
       const latestStress = getLastNonZero(PressureArr);
 
       const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = Sport;
@@ -205,49 +170,11 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   // Extract Variables from Processed Data
   const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
 
-  // 위험 수준에 따른 색상 설정 함수 (동적 임계값 사용)
-  const getHeartRateColor = (value) => {
-    if (value === 0) return '#cccccc'; // 값이 0이면 회색
-    if (value >= thresholds.heartRateDangerHigh || value <= thresholds.heartRateDangerLow)
-      return '#f44336'; // 위험 (빨간색)
-    if (value >= thresholds.heartRateWarningHigh || value <= thresholds.heartRateWarningLow)
-      return '#ff9800'; // 주의 (주황색)
-    return '#4caf50'; // 정상 (초록색)
-  };
-
-  const getOxygenColor = (value) => {
-    if (value === 0) return '#cccccc';
-    if (value < OXYGEN_DANGER_THRESHOLD) return '#f44336'; // 위험
-    if (value < OXYGEN_WARNING_THRESHOLD) return '#ff9800'; // 주의
-    return '#4caf50'; // 정상
-  };
-
-  const getStressColor = (value) => {
-    if (value === 0) return '#cccccc';
-    if (value >= 66) return '#f44336'; // 높음
-    if (value >= 33) return '#ff9800'; // 보통
-    return '#4caf50'; // 낮음
-  };
-
-  // 바 차트 데이터 준비
-  const barChartData = [
-    { name: '심박수', value: bpm, fill: getHeartRateColor(bpm) },
-    { name: '산소포화도', value: oxygen, fill: getOxygenColor(oxygen) },
-    { name: '스트레스', value: stress, fill: getStressColor(stress) },
-  ];
-
-  // 카드 상태 계산 (중복 제거)
-  const status = calculateUserStatus({
-    ...user,
-    data: { ...user.data, bpm, oxygen },
-    thresholds,
-  });
-
-  // Open Threshold Modal
-  const openThresholdModal = useCallback(
+  // Open Goal Modal
+  const openGoalModal = useCallback(
     (e) => {
       e.stopPropagation(); // 이벤트 전파 중단
-      setShowThresholdModal(true);
+      setShowGoalModal(true);
       setMenuOpen(false);
     },
     []
@@ -264,10 +191,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   );
 
   const navigateToUserDetail = useCallback(() => {
-    if (!showThresholdModal && !showEditModal && !showDeleteModal && !showRingModal) {
+    if (!showGoalModal && !showEditModal && !showDeleteModal && !showRingModal) {
       navigate(`/users/${user.id}`);
     }
-  }, [navigate, user.id, showThresholdModal, showEditModal, showDeleteModal, showRingModal]);
+  }, [navigate, user.id, showGoalModal, showEditModal, showDeleteModal, showRingModal]);
 
   const toggleMenu = useCallback(
     (e) => {
@@ -277,6 +204,40 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     []
   );
 
+  // Goal Modal Handlers
+  const [tempStepsGoal, setTempStepsGoal] = useState(user.stepTarget || 10000);
+  const [tempCaloriesGoal, setTempCaloriesGoal] = useState(user.kcalTarget || 2000);
+  const [tempDistanceGoal, setTempDistanceGoal] = useState(user.kmTarget || 5);
+
+
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const filePath = URL.createObjectURL(file); // 로컬 이미지 경로 생성
+      setLocalProfileImage(filePath); // 경로를 state로 관리
+    }
+  };
+  const handleSaveGoals = useCallback(() => {
+    const updatedUser = {
+      ...user,
+      stepTarget: tempStepsGoal,
+      kcalTarget: tempCaloriesGoal,
+      kmTarget: tempDistanceGoal,
+      // 필요한 다른 필드들도 포함
+      name: user.name,
+      gender: user.gender,
+      age: user.age,
+      profileImage: user.profileImage,
+      address: user.address,
+      macAddr: user.macAddr,
+      albumPath: user.albumPath,
+      lifeLogs: user.lifeLogs,
+    };
+    console.log('Updated Goals:', updatedUser);
+    updateUser(updatedUser, true); // 서버로 요청 보내기 위해 sendToServer를 true로 설정
+    setShowGoalModal(false);
+  }, [user, tempStepsGoal, tempCaloriesGoal, tempDistanceGoal, updateUser]);
+  
   // Click Outside to Close Menu or Prevent Navigation
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -284,12 +245,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         setMenuOpen(false);
       }
 
-      if (
-        (showEditModal || showThresholdModal || showDeleteModal || showRingModal) &&
-        modalRef.current &&
-        !modalRef.current.contains(event.target)
-      ) {
-        event.stopPropagation();
+      if (showEditModal || showGoalModal || showDeleteModal || showRingModal) {
+        if (modalRef.current && !modalRef.current.contains(event.target)) {
+          event.stopPropagation();
+        }
       }
     };
 
@@ -297,13 +256,14 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [menuRef, modalRef, showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
+  }, [showEditModal, showGoalModal, showDeleteModal, showRingModal]);
 
   // Reset Edited Fields when User Changes
   useEffect(() => {
     setEditedName(user.name);
     setEditedGender(user.gender);
     setEditedAge(user.age);
+    setEditedProfileImage(user.profileImage);
   }, [user]);
 
   // Open Edit Modal
@@ -342,6 +302,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       name: editedName,
       gender: editedGender,
       age: editedAge,
+    //  profileImage: editedProfileImage,
       address: user.address,
       stepTarget: user.stepTarget,
       kcalTarget: user.kcalTarget,
@@ -353,13 +314,42 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     console.log('Updated User Info:', updatedUser);
     updateUser(updatedUser, true); // 서버로 요청 보내기 위해 sendToServer를 true로 설정
     setShowEditModal(false);
-  }, [user, editedName, editedGender, editedAge, updateUser]);
+  }, [user, editedName, editedGender, editedAge, editedProfileImage, updateUser]);
+
+  // Calculate Achievement Percentage
+  const safeDivide = useCallback(
+    (numerator, denominator) => (denominator === 0 ? 0 : (numerator / denominator) * 100),
+    []
+  );
+
+  const stepsPercentage = Math.min(safeDivide(steps, user.stepTarget || 10000), 100);
+  const caloriesPercentage = Math.min(
+    safeDivide(calories / 1000, user.kcalTarget || 2000),
+    100
+  );
+  const distancePercentage = Math.min(safeDivide(distance, user.kmTarget || 5), 100);
+
+  const achievementPercentage = (stepsPercentage + caloriesPercentage + distancePercentage) / 3;
+
+  // Render Progress Bar
+  const renderProgressBar = useCallback(
+    (value, color, trailColor, size) => (
+      <CircularProgressbar
+        value={value}
+        strokeWidth={10}
+        styles={buildStyles({
+          pathColor: color,
+          trailColor: trailColor,
+        })}
+        style={{ width: `${size}px`, height: `${size}px` }}
+      />
+    ),
+    []
+  );
 
   return (
     <div
-      className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
-        status === 'warning' ? 'border-4 border-yellow-500' : ''
-      } ${status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''}`}
+      className="card p-4 rounded-lg shadow-md bg-white relative cursor-pointer"
       style={{ width: '350px', margin: '10px', fontFamily: 'Nanum Gothic, sans-serif' }}
       onClick={navigateToUserDetail}
     >
@@ -387,15 +377,15 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
           <div className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-10">
             <button
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openThresholdModal}
+              onClick={openGoalModal}
             >
-              위험도 수정
+              목표 설정
             </button>
             <button
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
               onClick={openEditModal}
             >
-              정보 수정
+              수정
             </button>
             <button
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
@@ -413,244 +403,102 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         )}
       </div>
 
-      <div className="card-header mb-4">
-        <h2 className="font-bold text-lg">
-          {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
-        </h2>
+      <div className="card-header flex items-center mb-4">
+        <img
+          src={user.profileImage}
+          alt="Profile"
+          className="w-12 h-12 rounded-full object-cover"
+        />
+        <div className="ml-3">
+<h2 className="font-bold text-lg">
+  {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
+</h2>
+
+        </div>
       </div>
 
-      <div className="card-body">
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart
-            data={barChartData}
-            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-            barCategoryGap={30}
+      <div className="card-body flex justify-between items-center">
+        <div
+          className="multi-circular-progress"
+          style={{ width: '120px', height: '120px', position: 'relative' }}
+        >
+          {renderProgressBar(stepsPercentage, '#3b82f6', '#e0f2fe', 120)}
+          <div
+            style={{
+              position: 'absolute',
+              top: '10%',
+              left: '10%',
+              width: '80%',
+              height: '80%',
+            }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis domain={[0, 200]} ticks={[0, 50, 100, 150, 200]} />
-            <Tooltip />
-            <Bar dataKey="value">
-              {/* 각 막대 위에 수치 표시 */}
-              <LabelList dataKey="value" position="top" />
-              {barChartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+            {renderProgressBar(caloriesPercentage, '#a78bfa', '#ede9fe', 100)}
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: '20%',
+              left: '20%',
+              width: '60%',
+              height: '60%',
+            }}
+          >
+            {renderProgressBar(distancePercentage, '#34d399', '#d1fae5', 80)}
+          </div>
+          <div
+            className="score-text"
+            style={{
+              position: 'absolute',
+              top: '40%',
+              left: '35%',
+              fontSize: '14px',
+              fontWeight: 'bold',
+            }}
+          >
+            {achievementPercentage.toFixed(1)}%
+          </div>
+        </div>
+
+        <div className="card-info text-right ml-4">
+          {[
+            { label: '걸음수', value: steps, color: 'text-blue-500' },
+            {
+              label: '칼로리',
+              value: `${(calories / 1000).toFixed(2)} kcal`,
+              color: 'text-orange-500',
+            },
+            {
+              label: '이동거리',
+              value: `${distance.toFixed(2)} km`,
+              color: 'text-green-500',
+            },
+          ].map((item, index) => (
+            <div key={index} className="flex items-center mb-2 text-sm">
+              <span className={item.color}>{item.label}</span>
+              <span className="ml-2">{item.value}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-     
-      {/* Footer with Steps, Calories, Distance, Sleep Score */}
       <div className="card-footer mt-4 grid grid-cols-4 gap-2 text-center text-sm p-2 bg-gray-100 rounded-md">
         {[
-          {
-            icon: <MdDirectionsWalk size={24} color="#3b82f6" />,
-            label: '걸음수',
-            value: steps,
-          },
-          {
-            icon: <MdLocalFireDepartment size={24} color="#ff5722" />,
-            label: '칼로리',
-            value: `${(calories / 1000).toFixed(0)} kcal`,
-          },
-          {
-            icon: <MdLocationOn size={24} color="#4caf50" />,
-            label: '이동거리',
-            value: `${distance.toFixed(2)} km`,
-          },
-          {
-            icon: <MdHotel size={24} color="#9c27b0" />,
-            label: '수면점수',
-            value: `${sleep}점`,
-          },
+          { emoji: '❤️', label: `${bpm} BPM` },
+          { emoji: '💧', label: `${oxygen}%` },
+          { emoji: '🛌', label: `${sleep}점` },
+          { emoji: '😓', label: `${stress}점` },
         ].map((item, index) => (
           <div key={index}>
-            <div className="flex flex-col items-center">
-              {item.icon}
-              <p>{item.label}</p>
-              <p>{item.value}</p>
-            </div>
+            <span role="img" aria-label={item.label}>
+              {item.emoji}
+            </span>
+            <p>{item.label}</p>
           </div>
         ))}
       </div>
 
-{/* Threshold Setting Modal */}
-{showThresholdModal && (
-  <Modal onClose={() => setShowThresholdModal(false)}>
-    <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
-    <div className="mb-6">
-      <h3 className="font-semibold mb-2">심박수 임계값</h3>
-      
-      {/* 다중 핸들 슬라이더 */}
-      <ReactSlider
-        className="horizontal-slider"
-        min={30}
-        max={200}
-        value={[
-          thresholds.heartRateDangerLow,
-          thresholds.heartRateWarningLow,
-          thresholds.heartRateWarningHigh,
-          thresholds.heartRateDangerHigh,
-        ]}
-        onChange={(values) => {
-          setThresholds({
-            ...thresholds,
-            heartRateDangerLow: values[0],
-            heartRateWarningLow: values[1],
-            heartRateWarningHigh: values[2],
-            heartRateDangerHigh: values[3],
-          });
-        }}
-        withTracks={true}
-        pearling={true}
-        minDistance={1}
-        renderThumb={(props, state) => (
-          <div
-            {...props}
-            style={{
-              ...props.style,
-              height: '25px',
-              width: '25px',
-              backgroundColor:
-                state.index === 0 || state.index === 3
-                  ? '#f44336' // 위험 수준 핸들 - 빨간색
-                  : '#ff9800', // 경고 수준 핸들 - 주황색
-              borderRadius: '50%',
-              cursor: 'pointer',
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          />
-        )}
-        renderTrack={(props, state) => (
-          <div
-            {...props}
-            style={{
-              ...props.style,
-              height: '10px',
-              backgroundColor: (() => {
-                switch (state.index) {
-                  case 0:
-                    return '#f44336'; // 위험 구간 (하한선 이하) - 빨간색
-                  case 1:
-                    return '#ff9800'; // 경고 구간 (하한선과 상한선 사이) - 주황색
-                  case 2:
-                    return '#4caf50'; // 정상 구간 - 초록색
-                  case 3:
-                    return '#ff9800'; // 경고 구간 (상한선과 위험 상한선 사이) - 주황색
-                  case 4:
-                    return '#f44336'; // 위험 구간 (상한선 이상) - 빨간색
-                  default:
-                    return '#ddd'; // 기본 색상
-                }
-              })(),
-            }}
-          />
-        )}
-      />
-      {/* 현재 값 표시 */}
-      <div className="flex justify-between mt-4 text-sm">
-        <div className="text-center">
-          <p>위험 수준 (하한)</p>
-          <p>{thresholds.heartRateDangerLow} bpm</p>
-        </div>
-        <div className="text-center">
-          <p>경고 수준 (하한)</p>
-          <p>{thresholds.heartRateWarningLow} bpm</p>
-        </div>
-        <div className="text-center">
-          <p>경고 수준 (상한)</p>
-          <p>{thresholds.heartRateWarningHigh} bpm</p>
-        </div>
-        <div className="text-center">
-          <p>위험 수준 (상한)</p>
-          <p>{thresholds.heartRateDangerHigh} bpm</p>
-        </div>
-      </div>
-    </div>
-
-    <div className="flex justify-end">
-    <button
-  onClick={() => {
-    // 임계값을 업데이트한 사용자 객체 생성
-    const updatedUser = {
-      ...user,
-      thresholds: { ...thresholds },
-    };
-    // 사용자 업데이트 함수 호출 (서버로 전송)
-    updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
-    setShowThresholdModal(false);
-  }}
-  className="px-4 py-2 bg-blue-500 text-white rounded-md"
->
-  저장
-</button>
-    </div>
-  </Modal>
-)}
-
-      {/* Edit User Modal */}
-      {showEditModal && (
-        <Modal onClose={() => setShowEditModal(false)}>
-          <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
-
-          {/* Name Edit */}
-          <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">이름</label>
-            <input
-              type="text"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Gender Edit */}
-          <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">성별</label>
-            <select
-              value={editedGender}
-              onChange={(e) => setEditedGender(Number(e.target.value))}
-              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value={0}>남성</option>
-              <option value={1}>여성</option>
-            </select>
-          </div>
-
-          {/* Age Edit */}
-          <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">나이</label>
-            <input
-              type="number"
-              value={editedAge}
-              onChange={(e) => setEditedAge(e.target.value)}
-              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowEditModal(false)}
-              className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
-            >
-              취소
-            </button>
-            <button
-              onClick={handleSaveUserInfo}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
-            >
-              저장
-            </button>
-          </div>
-        </Modal>
-      )}
-      
-            {/* Ring Connection Status */}
-            <div className="ring-status mt-4 flex items-center justify-center gap-4">
+      {/* Ring Connection Status */}
+      <div className="ring-status mt-4 flex items-center justify-center gap-4">
         {user.ring ? (
           <>
             <span className="text-green-500 font-semibold">링 연결됨</span>
@@ -760,9 +608,149 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         </Modal>
       )}
 
+      {/* Goal Setting Modal */}
+      {showGoalModal && (
+        <Modal onClose={() => setShowGoalModal(false)} ref={modalRef}>
+          <h2 className="text-xl font-semibold mb-4">목표 설정</h2>
+          <div className="my-4">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              걸음수 목표
+            </label>
+            <input
+              type="number"
+              value={tempStepsGoal}
+              onChange={(e) => setTempStepsGoal(Number(e.target.value))}
+              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="my-4">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              칼로리 목표 (kcal)
+            </label>
+            <input
+              type="number"
+              value={tempCaloriesGoal}
+              onChange={(e) => setTempCaloriesGoal(Number(e.target.value))}
+              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="my-4">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
+              이동 거리 목표 (km)
+            </label>
+            <input
+              type="number"
+              value={tempDistanceGoal}
+              onChange={(e) => setTempDistanceGoal(Number(e.target.value))}
+              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowGoalModal(false)}
+              className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSaveGoals}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              저장
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <Modal onClose={() => setShowEditModal(false)} ref={modalRef}>
+          <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
+
+          {/* Profile Image Change */}
+<div className="mb-4">
+  <label className="block mb-2 text-sm font-medium text-gray-700">
+    프로필 이미지
+  </label>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const filePath = URL.createObjectURL(file); // 로컬 이미지 경로 생성
+        setLocalProfileImage(filePath); // 경로를 state로 관리
+        setEditedProfileImage(filePath); // 수정된 프로필 이미지 경로 설정
+      }
+    }}
+    className="block w-full text-sm text-gray-700"
+  />
+  {localProfileImage && (
+    <img
+      src={localProfileImage} // 로컬 이미지 경로 사용
+      alt="프로필 미리보기"
+      className="mt-2 w-24 h-24 rounded-full object-cover"
+    />
+  )}
+</div>
+
+
+          {/* Name Edit */}
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium text-gray-700">이름</label>
+            <input
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Gender Edit */}
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium text-gray-700">성별</label>
+            <select
+              value={editedGender}
+              onChange={(e) => setEditedGender(Number(e.target.value))}
+              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={0}>남성</option>
+              <option value={1}>여성</option>
+            </select>
+          </div>
+
+          {/* Age Edit */}
+          <div className="mb-4">
+            <label className="block mb-2 text-sm font-medium text-gray-700">나이</label>
+            <input
+              type="number"
+              value={editedAge}
+              onChange={(e) => setEditedAge(e.target.value)}
+              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleSaveUserInfo}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              저장
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <Modal onClose={() => setShowDeleteModal(false)}>
+        <Modal onClose={() => setShowDeleteModal(false)} ref={modalRef}>
           <h2 className="text-xl font-semibold mb-4">삭제 하시겠습니까?</h2>
           <div className="flex justify-end">
             <button

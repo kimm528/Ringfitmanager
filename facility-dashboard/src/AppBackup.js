@@ -1,5 +1,4 @@
 // src/App.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
@@ -8,23 +7,15 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import UserDetail from './components/UserDetail';
 import Login from './components/Login';
-import Settings from './components/Settings'; // Settings 컴포넌트 추가
-import Modal from './components/Modal';
 
 // 기본 프로필 이미지 URL 설정
 const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';
 
+
 // Helper functions for localStorage operations
 const loadFromLocalStorage = (key, defaultValue) => {
   const stored = localStorage.getItem(key);
-  if (!stored) return defaultValue;
-
-  try {
-    return JSON.parse(stored);
-  } catch (error) {
-    console.error(`Error parsing localStorage key "${key}":`, error);
-    return defaultValue;
-  }
+  return stored ? JSON.parse(stored) : defaultValue;
 };
 
 const saveToLocalStorage = (key, value) => {
@@ -50,26 +41,12 @@ function App() {
   const [availableRings, setAvailableRings] = useState([]); // 링 데이터를 저장할 상태 추가
   const [successMessage, setSuccessMessage] = useState('');
 
-  // 동적 siteId 상태 추가
-  const [siteId, setSiteId] = useState(loadFromLocalStorage('siteId', ''));
-
-  // 관리자 정보 상태
-  const [adminInfo, setAdminInfo] = useState({
-    adminId: '',
-    password: '',
-  });
-
   // Fetch Users and Ring Data from API
   const fetchUsersAndRingData = useCallback(async () => {
-    if (!siteId) {
-      console.warn('siteId가 설정되지 않았습니다.');
-      return;
-    }
-
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
       const userResponse = await axios.get(
-        `https://fitlife.dotories.com/api/user?siteId=${siteId}`,
+        'https://fitlife.dotories.com/api/user?siteId=Dotories',
         {
           headers: {
             'Content-Type': 'application/json',
@@ -82,7 +59,7 @@ function App() {
 
       // Fetch Ring Data
       const currentDate = getCurrentYYMMDD();
-      const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=${siteId}&yearMonthDay=${currentDate}`;
+      const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=Dotories&yearMonthDay=${currentDate}`;
 
       const ringResponse = await axios.get(ringUrl, {
         headers: {
@@ -94,6 +71,7 @@ function App() {
       const ringData = ringResponse.data.Data;
       setAvailableRings(ringData); // 링 데이터를 상태로 저장
 
+      // Map Ring Data to Users
       const updatedUsers = userData.map((user) => {
         const userRingData = ringData.find((ring) => ring.MacAddr === user.MacAddr);
         return {
@@ -128,13 +106,6 @@ function App() {
             lineData: [],
             barData: [],
           },
-          thresholds: {
-            heartRateWarningLow: user.WarningHeartRate ? user.WarningHeartRate[0] : 80,
-            heartRateWarningHigh: user.WarningHeartRate ? user.WarningHeartRate[1] : 120,
-            heartRateDangerLow: user.DangersHeartRate ? user.DangersHeartRate[0] : 70,
-            heartRateDangerHigh: user.DangersHeartRate ? user.DangersHeartRate[1] : 140,
-          },
-          isFavorite: user.Favorite || false,
         };
       });
 
@@ -144,26 +115,12 @@ function App() {
     } catch (error) {
       console.error('Failed to fetch user or ring data:', error.response || error.message);
     }
-  }, [siteId]);
-
-  // 주기적인 데이터 업데이트
-  useEffect(() => {
-    if (!siteId) return;
-
-    const intervalId = setInterval(() => {
-      console.log('Fetching users and ring data every 30 seconds');
-      fetchUsersAndRingData();
-    }, 30000); // 30초
-
-    return () => clearInterval(intervalId);
-  }, [fetchUsersAndRingData, siteId]);
+  }, []);
 
   // Initial Load
   useEffect(() => {
-    if (siteId) {
-      fetchUsersAndRingData();
-    }
-  }, [fetchUsersAndRingData, siteId]);
+    fetchUsersAndRingData();
+  }, [fetchUsersAndRingData]);
 
   const getNewId = (users) => {
     const existingIds = users.map((user) => user.id).sort((a, b) => a - b); // ID 정렬
@@ -183,18 +140,13 @@ function App() {
   // Add User Handler (서버로 POST 요청 추가)
   const handleAddUser = useCallback(
     async (newUser) => {
-      if (!siteId) {
-        alert('사이트 ID가 설정되지 않았습니다.');
-        return;
-      }
-
       try {
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
         const apiUrl = 'https://fitlife.dotories.com/api/user';
         const gender = newUser.gender === '남성' || newUser.gender === 0 ? 0 : 1;
-
+  
         let newId = getNewId(users);
-
+  
         // 새 사용자 데이터를 서버로 POST 요청
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -204,8 +156,8 @@ function App() {
           },
           body: JSON.stringify({
             header: {
-              command: 6, // 사용자 추가를 위한 명령 코드
-              siteId: siteId, // 동적 siteId 추가
+              command: 5, // 사용자 추가를 위한 명령 코드
+              siteId: 'Dotories',
             },
             data: {
               Id: newId, // 새로운 ID 할당
@@ -223,18 +175,18 @@ function App() {
             },
           }),
         });
-
+  
         const responseText = await response.text();
-
+  
         if (response.ok && responseText.includes('User Insert success')) {
           console.log('User added successfully:', responseText);
-
+  
           const createdUser = {
             id: newId,
             name: newUser.name,
             gender: gender,
             age: newUser.age,
-            profileImage: newUser.profileImage || defaultProfileImage,
+            profileImage: newUser.profileImage || 'https://default-image-url.com/default.jpg',
             address: newUser.address || '',
             stepTarget: newUser.stepTarget || 10000,
             kcalTarget: newUser.kcalTarget || 2000,
@@ -255,25 +207,19 @@ function App() {
               lineData: [],
               barData: [],
             },
-            thresholds: {
-              heartRateWarningLow: 80,
-              heartRateWarningHigh: 120,
-              heartRateDangerLow: 70,
-              heartRateDangerHigh: 140,
-            },
           };
-
+  
           setUsers((prevUsers) => {
             const updatedUsers = [...prevUsers, createdUser];
             saveToLocalStorage('users', updatedUsers);
             return updatedUsers;
           });
-
+  
           setShowModal(false);
-
+  
           // 사용자 추가 성공 메시지 설정
           setSuccessMessage('사용자가 추가되었습니다.');
-
+  
           // 일정 시간 후 메시지를 자동으로 사라지게 설정 (3초 후)
           setTimeout(() => {
             setSuccessMessage('');
@@ -287,7 +233,7 @@ function App() {
         alert('사용자 추가 중 오류가 발생했습니다.');
       }
     },
-    [users, siteId]
+    [users]
   );
 
   // Update User Handler (서버로 POST 요청 추가)
@@ -309,7 +255,7 @@ function App() {
       });
 
       // 서버로 POST 요청을 보낼지 여부를 결정
-      if (sendToServer && siteId) {
+      if (sendToServer) {
         try {
           const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
           const apiUrl = 'https://fitlife.dotories.com/api/user';
@@ -324,8 +270,8 @@ function App() {
             },
             body: JSON.stringify({
               header: {
-                command: 6, // 사용자 업데이트를 위한 명령 코드
-                siteId: siteId, // 동적 siteId 추가
+                command: 5, // 사용자 업데이트를 위한 명령 코드
+                siteId: 'Dotories',
               },
               data: {
                 Id: updatedUser.id, // 업데이트할 사용자 ID
@@ -339,21 +285,7 @@ function App() {
                 KmTarget: updatedUser.kmTarget || 5,
                 MacAddr: updatedUser.macAddr || '',
                 AlbumPath: updatedUser.albumPath || [],
-                LifeLogs: updatedUser.lifeLogs.map((log) => ({
-                  IsChecked: log.taken,
-                  LogContent: log.medicine,
-                  LogDateTime: `${log.date}T${log.time}:00+00:00`,
-                  Description: log.dose,
-                })),
-                WarningHeartRate: [
-                  updatedUser.thresholds.heartRateWarningLow,
-                  updatedUser.thresholds.heartRateWarningHigh,
-                ],
-                DangersHeartRate: [
-                  updatedUser.thresholds.heartRateDangerLow,
-                  updatedUser.thresholds.heartRateDangerHigh,
-                ],
-                Favorite: updatedUser.isFavorite,
+                LifeLogs: updatedUser.lifeLogs || [],
               },
             }),
           });
@@ -378,201 +310,91 @@ function App() {
         }
       }
     },
-    [siteId]
+    [setUsers]
   );
 
-  // Delete User Handler
-  const deleteUser = useCallback(
-    async (userId) => {
-      console.log('Deleting user with ID:', userId);
+// Delete User Handler
+const deleteUser = useCallback(
+  async (userId) => {
+    console.log('Deleting user with ID:', userId);
 
-      try {
-        const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-        const apiUrl = 'https://fitlife.dotories.com/api/user';
+    try {
+      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
+      const apiUrl = 'https://fitlife.dotories.com/api/user';
 
-        const response = await fetch(`${apiUrl}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Basic ${credentials}`,
+      const response = await fetch(`${apiUrl}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${credentials}`,
+        },
+        body: JSON.stringify({
+          header: {
+            command: 8, // 사용자 삭제를 위한 명령 코드
+            siteId: 'Dotories',
           },
-          body: JSON.stringify({
-            header: {
-              command: 8, // 사용자 삭제를 위한 명령 코드
-              siteId: siteId, // 동적 siteId 추가
-            },
-            data: {
-              Id: userId,
-            },
-          }),
-        });
+          data: {
+            Id: userId,
+          },
+        }),
+      });
 
-        // HTTP 상태 코드가 성공 범위에 있는지 확인
-        if (response.ok) {
-          console.log('User deleted successfully on server.');
-
-          // 로컬 상태 업데이트
-          setUsers((prevUsers) => {
-            const updatedUsers = prevUsers.filter((user) => user && user.id !== userId);
-            saveToLocalStorage('users', updatedUsers);
-            return updatedUsers;
-          });
-
-          // 성공 메시지 설정
-          setSuccessMessage('사용자가 성공적으로 삭제되었습니다.');
-
-          // 3초 후 성공 메시지 제거
-          setTimeout(() => {
-            setSuccessMessage('');
-          }, 3000);
-        } else {
-          // 서버에서 성공적으로 처리되지 않은 경우
-          console.error('Failed to delete user on server.');
-          alert('서버에서 사용자 삭제에 실패했습니다.');
-        }
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('사용자 삭제 중 오류가 발생했습니다.');
-      }
-    },
-    [siteId]
-  );
-
-  // Toggle Favorite
-  const toggleFavorite = useCallback(
-    (userId) => {
-      // 업데이트할 사용자 찾기
-      const userToUpdate = users.find((user) => user.id === userId);
-      if (userToUpdate) {
-        // 즐겨찾기 상태 토글
-        const updatedUser = { ...userToUpdate, isFavorite: !userToUpdate.isFavorite };
-
-        // 서버로 업데이트
-        updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
+      // HTTP 상태 코드가 성공 범위에 있는지 확인
+      if (response.ok) {
+        console.log('User deleted successfully on server.');
 
         // 로컬 상태 업데이트
         setUsers((prevUsers) => {
-          const updatedUsers = prevUsers.map((user) =>
-            user.id === userId ? updatedUser : user
-          );
+          const updatedUsers = prevUsers.filter((user) => user && user.id !== userId);
           saveToLocalStorage('users', updatedUsers);
           return updatedUsers;
         });
+
+        // 성공 메시지 설정
+        setSuccessMessage('사용자가 성공적으로 삭제되었습니다.');
+
+        // 3초 후 성공 메시지 제거
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      } else {
+        // 서버에서 성공적으로 처리되지 않은 경우
+        console.error('Failed to delete user on server.');
+        alert('서버에서 사용자 삭제에 실패했습니다.');
       }
-    },
-    [users, updateUser]
-  );
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('사용자 삭제 중 오류가 발생했습니다.');
+    }
+  },
+  [setUsers]
+);
 
-  // 관리자 정보 수정 함수
-  const handleUpdateAdminInfo = useCallback(
-    async (updatedAdminInfo) => {
-      if (!siteId) {
-        alert('사이트 ID가 설정되지 않았습니다.');
-        return;
-      }
 
-      try {
-        const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-        const apiUrl = 'https://fitlife.dotories.com/api/admin'; // 관리자 정보 수정 API 엔드포인트
 
-        const response = await fetch(apiUrl, {
-          method: 'POST', // 관리자 정보 수정을 위한 명령 코드는 POST
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Basic ${credentials}`,
-          },
-          body: JSON.stringify({
-            header: {
-              command: 7, // 관리자 정보 수정을 위한 명령 코드
-              siteId: siteId, // 동적 siteId 추가
-            },
-            data: {
-              AdminId: updatedAdminInfo.adminId,
-              Password: updatedAdminInfo.password,
-            },
-          }),
-        });
-
-        const responseData = await response.json();
-
-        if (response.ok && responseData.status !== 'ExistsId') {
-          console.log('Admin info updated successfully:', responseData);
-          setAdminInfo(updatedAdminInfo);
-          saveToLocalStorage('adminInfo', updatedAdminInfo);
-          setSuccessMessage('관리자 정보가 성공적으로 수정되었습니다.');
-
-          // 3초 후 성공 메시지 제거
-          setTimeout(() => {
-            setSuccessMessage('');
-          }, 3000);
-        } else if (responseData.status === 'ExistsId') {
-          // 아이디 중복 오류 처리
-          alert('아이디가 이미 존재합니다. 다른 아이디를 사용해주세요.');
-        } else {
-          console.error('Failed to update admin info:', responseData);
-          alert('관리자 정보 수정에 실패했습니다.');
-        }
-      } catch (error) {
-        console.error('Error updating admin info:', error);
-        alert('관리자 정보 수정 중 오류가 발생했습니다.');
-      }
-    },
-    [siteId]
-  );
-
-  // 관리자 정보 초기화 (예시: 로그인 시 서버로부터 관리자 정보 받아오기)
-  useEffect(() => {
-    if (!isLoggedIn || !siteId) return;
-
-    const fetchAdminInfo = async () => {
-      try {
-        const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-        const apiUrl = `https://fitlife.dotories.com/api/admin?siteId=${siteId}&adminId=currentAdminId`; // 동적 siteId 추가
-
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Basic ${credentials}`,
-          },
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.Data && data.Data.length > 0) {
-          const admin = data.Data[0];
-          setAdminInfo({
-            adminId: admin.AdminId,
-            password: admin.Password, // 실제로는 비밀번호를 클라이언트에 저장하지 않는 것이 좋습니다.
-          });
-          saveToLocalStorage('adminInfo', {
-            adminId: admin.AdminId,
-            password: admin.Password,
-          });
-        } else {
-          console.error('Failed to fetch admin info:', data);
-        }
-      } catch (error) {
-        console.error('Error fetching admin info:', error);
-      }
-    };
-
-    fetchAdminInfo();
-  }, [isLoggedIn, siteId]);
+   // Toggle Favorite
+   const toggleFavorite = useCallback((userId) => {
+    setUsers((prevUsers) => {
+      const updatedUsers = prevUsers.map((user) =>
+        user.id === userId ? { ...user, isFavorite: !user.isFavorite } : user
+      );
+      saveToLocalStorage('users', updatedUsers);
+      return updatedUsers;
+    });
+  }, []);
 
   return (
     <Router>
       <div className="flex h-screen bg-gray-100">
         {isLoggedIn ? (
           <>
-            {/* 성공 메시지 모달 */}
             <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col space-y-2 z-50">
-              {successMessage && (
-                <div className="bg-green-500 text-white px-4 py-2 rounded shadow">
-                  {successMessage}
-                </div>
-              )}
-            </div>
+  {successMessage && (
+    <div className="bg-green-500 text-white px-4 py-2 rounded shadow">
+      {successMessage}
+    </div>
+  )}
+</div>
 
             <Sidebar
               isSidebarOpen={isSidebarOpen}
@@ -601,6 +423,7 @@ function App() {
                           handleAddUser={handleAddUser}
                           updateUser={updateUser}
                           deleteUser={deleteUser}
+                          fetchUsers={fetchUsersAndRingData}
                           sortOption={sortOption}
                           setSortOption={setSortOption}
                           toggleFavorite={toggleFavorite}
@@ -614,24 +437,11 @@ function App() {
                   path="/users/:userId"
                   element={<UserDetail users={users} updateUserLifeLog={updateUser} />}
                 />
-                <Route
-                  path="/settings"
-                  element={
-                    <Settings
-                      adminInfo={adminInfo}
-                      handleUpdateAdminInfo={handleUpdateAdminInfo}
-                      users={users}
-                      deleteUser={deleteUser}
-                      siteId={siteId} // 동적 siteId 전달
-                    />
-                  }
-                />
-                {/* 기타 라우트 추가 */}
               </Routes>
             </div>
           </>
         ) : (
-          <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} /> 
+          <Login setIsLoggedIn={setIsLoggedIn} />
         )}
       </div>
     </Router>

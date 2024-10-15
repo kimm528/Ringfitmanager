@@ -1,15 +1,16 @@
 // Modal.js
-import React from 'react';
+import React, { forwardRef } from 'react';
 
-const Modal = ({ onClose, children }) => {
+const Modal = forwardRef(({ onClose, children }, ref) => {
   return (
     <div
+      ref={ref}
       className="modal-overlay fixed inset-0 bg-gray-500 bg-opacity-50 flex justify-center items-center z-50"
-      onClick={onClose} // 클릭 시 모달 닫기
+      onClick={onClose}
     >
       <div
         className="modal-content bg-white rounded-lg shadow-lg p-6 relative"
-        onClick={(e) => e.stopPropagation()} // 모달 내부 클릭 시 닫기 방지
+        onClick={(e) => e.stopPropagation()}
       >
         {children}
         <button
@@ -21,6 +22,6 @@ const Modal = ({ onClose, children }) => {
       </div>
     </div>
   );
-};
+});
 
 export default Modal;

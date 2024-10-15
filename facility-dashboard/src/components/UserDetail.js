@@ -1,3 +1,5 @@
+// UserDetail.js
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -7,7 +9,7 @@ import {
 } from 'react-icons/fa';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend, PieChart, Pie, Cell 
+  ResponsiveContainer, Legend 
 } from 'recharts';
 import Modal from './Modal';
 import CustomLegend from './CustomLegend';
@@ -55,18 +57,20 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
     oxygen = 0,
     stress = 0,
     sleep = 0,
-    lifeLogs = [],
   } = user?.data || {};
 
+  const lifeLogs = user?.lifeLogs || [];
+
+
   // State variables
-  const [logItems, setLogItems] = useState(lifeLogs || []);
+  const [logItems, setLogItems] = useState(lifeLogs);
   const [selectedDate, setSelectedDate] = useState(new Date()); // Use Date object
   const [sortOption, setSortOption] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newItem, setNewItem] = useState({
     medicine: '',
     date: '',
-    dose: '',
+    dose: '', // 'dose'는 '세부 사항'을 의미합니다.
     time: '12:00',
     taken: false,
   });
@@ -180,7 +184,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
   // 선택된 링 데이터가 변경될 때 데이터 처리
   useEffect(() => {
     if (selectedRingData) {
-      // ... 기존 데이터 처리 코드
+      // 데이터 처리 로직
       const {
         HeartRateArr = [],
         MinBloodOxygenArr = [],
@@ -299,48 +303,8 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
 
   // 사용자 변경 시 logItems 업데이트
   useEffect(() => {
-    setLogItems(user?.data?.lifeLogs || []);
+    setLogItems(user?.lifeLogs || []);
   }, [user]);
-
-  // 활동 라인 차트 데이터 준비
-  useEffect(() => {
-    if (selectedRingData?.Sport) {
-      const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = selectedRingData.Sport;
-  
-      const timePoints = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-  
-      let lastKnownData = { steps: 0, calories: 0, distance: 0 };
-  
-      const activityData = timePoints.map((time, index) => {
-        let steps = lastKnownData.steps;
-        let calories = lastKnownData.calories;
-        let distance = lastKnownData.distance;
-  
-        if (TotalStepsArr[index] !== undefined) {
-          steps = TotalStepsArr[index];
-        }
-        if (CalorieArr[index] !== undefined) {
-          calories = CalorieArr[index] / 1000; // kcal
-        }
-        if (WalkDistanceArr[index] !== undefined) {
-          distance = WalkDistanceArr[index] ; // km
-        }
-  
-        lastKnownData = { steps, calories, distance };
-  
-        return {
-          time,
-          steps,
-          calories,
-          distance,
-        };
-      });
-  
-      setActivityLineChartData(activityData);
-    } else {
-      setActivityLineChartData([]);
-    }
-  }, [selectedRingData]);
 
   // Sorting Function
   const handleSort = useCallback((option) => {
@@ -365,7 +329,15 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
       item.id === id ? { ...item, taken: !item.taken } : item
     );
     setLogItems(updatedItems);
-    updateUserLifeLog(user.id, updatedItems);
+
+    // 업데이트된 user 객체 생성
+    const updatedUser = {
+      ...user,
+      lifeLogs: updatedItems,
+    };
+
+    // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
+    updateUserLifeLog(updatedUser, true);
   }, [logItems, updateUserLifeLog, user]);
 
   // Add Modal Toggle
@@ -377,7 +349,9 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
   const openEditModal = useCallback((item) => {
     setEditItem({
       ...item,
-      dose: item.dose.endsWith('정') ? item.dose.slice(0, -1) : item.dose,
+      // 'dose' 필드는 이제 '세부 사항'을 의미하므로 '정'을 제거할 필요가 없습니다.
+      // dose: item.dose.endsWith('정') ? item.dose.slice(0, -1) : item.dose, // 제거
+      dose: item.dose, // '세부 사항'을 그대로 사용
     });
     setIsEditModalOpen(true);
   }, []);
@@ -392,13 +366,22 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
 
     const newLogItem = {
       ...newItem,
-      dose: `${dose}정`,
+      dose: dose, // '세부 사항'으로 변경
       id: logItems.length > 0 ? Math.max(...logItems.map(item => item.id || 0)) + 1 : 1,
     };
 
     const updatedLogItems = [...logItems, newLogItem];
     setLogItems(updatedLogItems);
-    updateUserLifeLog(user.id, updatedLogItems);
+
+    // 업데이트된 user 객체 생성
+    const updatedUser = {
+      ...user,
+      lifeLogs: updatedLogItems,
+    };
+
+    // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
+    updateUserLifeLog(updatedUser, true);
+
     toggleAddModal();
     setNewItem({ medicine: '', date: '', dose: '', time: '12:00', taken: false });
   }, [newItem, logItems, updateUserLifeLog, user, toggleAddModal]);
@@ -413,7 +396,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
 
     const updatedEditItem = {
       ...editItem,
-      dose: `${dose}정`,
+      dose: dose, // '세부 사항'으로 변경
     };
 
     const updatedItems = logItems.map((item) =>
@@ -421,17 +404,58 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
     );
 
     setLogItems(updatedItems);
-    updateUserLifeLog(user.id, updatedItems);
+
+    // 업데이트된 user 객체 생성
+    const updatedUser = {
+      ...user,
+      lifeLogs: updatedItems,
+    };
+
+    // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
+    updateUserLifeLog(updatedUser, true);
+
     setIsEditModalOpen(false);
     setEditItem(null);
   }, [editItem, logItems, updateUserLifeLog, user]);
+
+  // Delete Life Log Item Handler
+  const handleDeleteItem = useCallback(() => {
+    if (window.confirm('정말 이 Life 로그를 삭제하시겠습니까?')) {
+      const updatedItems = logItems.filter(item => item.id !== editItem.id);
+      setLogItems(updatedItems);
+
+      // 업데이트된 user 객체 생성
+      const updatedUser = {
+        ...user,
+        lifeLogs: updatedItems,
+      };
+
+      // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
+      updateUserLifeLog(updatedUser, true);
+
+      setIsEditModalOpen(false);
+      setEditItem(null);
+
+      // 성공 메시지 설정
+      // 이 부분은 App.js에서 관리되는 'successMessage' 상태에 의존합니다.
+      // 따라서 'updateUserLifeLog'에서 성공 시 메시지를 설정하도록 구현해야 합니다.
+    }
+  }, [editItem, logItems, user, updateUserLifeLog]);
 
   // Select All Checkbox Handler
   const handleSelectAllChange = useCallback((e) => {
     const isChecked = e.target.checked;
     const updatedItems = logItems.map((item) => ({ ...item, taken: isChecked }));
     setLogItems(updatedItems);
-    updateUserLifeLog(user.id, updatedItems);
+
+    // 업데이트된 user 객체 생성
+    const updatedUser = {
+      ...user,
+      lifeLogs: updatedItems,
+    };
+
+    // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
+    updateUserLifeLog(updatedUser, true);
   }, [logItems, updateUserLifeLog, user]);
 
   // Prepare log items for display
@@ -464,9 +488,8 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
   const activityLegend = useMemo(() => [
     { dataKey: 'steps', value: '걸음수', color: '#82ca9d', show: showSteps, setShow: setShowSteps },
     { dataKey: 'calories', value: '소모 칼로리 (kcal)', color: '#ff9800', show: showCalories, setShow: setShowCalories },
-    { dataKey: 'distance', value: '이동거리 (m)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: km
+    { dataKey: 'distance', value: '이동거리 (m)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: m
   ], [showSteps, showCalories, showDistance]);
-
 
   return (
     <div className="p-4">
@@ -646,8 +669,6 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
             </ResponsiveContainer>
           </div>
 
-         
-
           {/* Life 로그 섹션 */}
           <div className="life-log bg-white p-4 rounded-lg shadow-md mt-6">
             <h3 className="text-xl font-bold mb-4">Life 로그</h3>
@@ -675,7 +696,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                     <th className="p-2 text-center">복용</th> {/* 새 체크박스 헤더 */}
                     <th className="p-2">복용약</th>
                     <th className="p-2">처방일</th>
-                    <th className="p-2">처방 개수</th>
+                    <th className="p-2">세부 사항</th> {/* 변경 */}
                     <th className="p-2">복용 시간</th>
                     <th className="p-2">수정</th>
                   </tr>
@@ -697,10 +718,10 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                       </td>
                       <td className="p-2">{item.medicine || 'N/A'}</td>
                       <td className="p-2">{item.date || 'N/A'}</td>
-                      <td className="p-2">{item.dose || 'N/A'}</td>
+                      <td className="p-2">{item.dose || 'N/A'}</td>  {/* 세부 사항을 여기에 표시 */}
                       <td className="p-2">{item.time || 'N/A'}</td>
                       <td className="p-2">
-                        {item.id !== 'empty-1' && item.id !== null ? (
+                        {item.id !== 'empty-1' && item.id !== null && (
                           <button
                             onClick={() => openEditModal(item)}
                             className="text-blue-500 hover:text-blue-700"
@@ -708,7 +729,7 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                           >
                             <FaEdit size={20} />
                           </button>
-                        ) : null}
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -742,12 +763,12 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                   onChange={(e) => setNewItem({ ...newItem, date: e.target.value })}
                 />
 
-                {/* 처방 개수 입력 */}
-                <label className="block mb-2">처방 개수</label>
+                {/* 세부 사항 입력 */}
+                <label className="block mb-2">세부 사항</label>
                 <input
-                  type="number"
+                  type="text" // number -> text로 변경
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  placeholder="처방 개수 입력"
+                  placeholder="세부 사항 입력"
                   value={newItem.dose}
                   onChange={(e) => setNewItem({ ...newItem, dose: e.target.value })}
                 />
@@ -811,10 +832,10 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                   onChange={(e) => setEditItem({ ...editItem, date: e.target.value })}
                 />
 
-                {/* 처방 개수 입력 */}
-                <label className="block mb-2">처방 개수</label>
+                {/* 세부 사항 입력 */}
+                <label className="block mb-2">세부 사항</label>
                 <input
-                  type="number"
+                  type="text" // number -> text로 변경
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={editItem.dose}
                   onChange={(e) => setEditItem({ ...editItem, dose: e.target.value })}
@@ -836,8 +857,15 @@ const UserDetail = ({ users, updateUserLifeLog }) => {
                   )}
                 </select>
 
-                {/* 저장/닫기 버튼 */}
+                {/* 저장/삭제/닫기 버튼 */}
                 <div className="flex justify-end space-x-4">
+                  {/* 삭제 버튼 추가 */}
+                  <button
+                    className="bg-red-500 text-white py-2 px-4 rounded-lg"
+                    onClick={handleDeleteItem}
+                  >
+                    삭제
+                  </button>
                   <button
                     className="bg-blue-500 text-white py-2 px-4 rounded-lg"
                     onClick={handleSaveEditItem}

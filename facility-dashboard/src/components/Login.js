@@ -1,127 +1,205 @@
 import React, { useState, useCallback } from "react";
 
-export default function Login({ setIsLoggedIn }) {
+export default function Login({ setIsLoggedIn, setSiteId }) {
+  // State for login
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [modalUsername, setModalUsername] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loginErrorMessage, setLoginErrorMessage] = useState("");
+
+  // State for sign-up modal
+  const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+  const [signUpSiteId, setSignUpSiteId] = useState("");
+  const [signUpAdminId, setSignUpAdminId] = useState("");
+  const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpName, setSignUpName] = useState("");
+  const [signUpErrorMessage, setSignUpErrorMessage] = useState("");
+
   const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 
-  const handleLogin = useCallback(async () => {
+  // Handle login
+  const handleLogin = useCallback(async (e) => {
+    e.preventDefault(); // Prevent form submission default behavior
+
     if (!username || !password) {
-      setErrorMessage("아이디와 비밀번호를 입력해주세요.");
+      setLoginErrorMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
 
     try {
       const response = await fetch(
-        `https://fitlife.dotories.com/api/site?siteId=${username}`,
+        `https://fitlife.dotories.com/api/manager?adminId=${username}`,
         {
           method: "GET",
           headers: {
+            "Authorization": `Basic ${credentials}`,
             "Content-Type": "application/json",
-            "Authorization": `Basic ${credentials}`
           }
         }
       );
 
-      const data = await response.json();
+      let data;
 
-      if (response.ok && data.header.command === 0) {
-        if (data.data.sitePassword === password) {
-          setIsLoggedIn(true);
-          localStorage.setItem('isLoggedIn', 'true');
-          alert("로그인 성공");
-          setUsername("");
-          setPassword("");
-          setErrorMessage("");
+      // 첫 번째 파싱 시도
+      try {
+        data = await response.json();
+        console.log("첫 번째 파싱 결과:", data);
+
+        // 만약 data가 문자열이라면, 두 번째 파싱 시도
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+          console.log("두 번째 파싱 결과:", data);
+        }
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 텍스트로 가져와서 다시 파싱 시도
+        const textData = await response.text();
+        try {
+          data = JSON.parse(textData);
+          console.log("로그인 응답 데이터 (텍스트 파싱):", data);
+
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+            console.log("로그인 응답 데이터 (이중 파싱):", data);
+          }
+        } catch (parseError) {
+          console.error("응답 데이터 파싱 실패:", parseError);
+          setLoginErrorMessage("로그인 실패. 응답 데이터 형식이 올바르지 않습니다.");
+          return;
+        }
+      }
+
+      // 디버깅용 로그
+      console.log("로그인 응답 데이터:", data);
+      console.log("데이터 타입:", typeof data);
+      console.log("Header 존재 여부:", data.Header !== undefined);
+      console.log("Header 내용:", data.Header);
+
+      if (response.ok) {
+        if (data.Header && data.Header.Command === 3) { // Command 3 indicates success
+          if (Array.isArray(data.Data) && data.Data.length > 0) {
+            const admin = data.Data[0];
+            // 서버 측에서 비밀번호 검증을 처리하도록 변경
+            if (admin.Password === password) { // 클라이언트 측 비밀번호 검증 (보안상 권장되지 않음)
+              setIsLoggedIn(true);
+              setSiteId(admin.SiteId || ""); // 서버 응답에서 siteId 추출
+              localStorage.setItem('isLoggedIn', JSON.stringify(true));
+              localStorage.setItem('siteId', JSON.stringify(admin.SiteId || ""));
+              alert("로그인 성공");
+              setUsername("");
+              setPassword("");
+              setLoginErrorMessage("");
+            } else {
+              setLoginErrorMessage("비밀번호가 잘못되었습니다. 다시 시도하세요.");
+            }
+          } else {
+            setLoginErrorMessage("로그인 실패. 관리자 정보를 찾을 수 없습니다.");
+          }
         } else {
-          setErrorMessage("비밀번호가 잘못되었습니다. 다시 시도하세요.");
+          setLoginErrorMessage("로그인 실패. 다시 시도하세요.");
         }
       } else {
-        setErrorMessage(data.message || "로그인 실패. 다시 시도하세요.");
+        setLoginErrorMessage("로그인 실패. 다시 시도하세요.");
       }
     } catch (error) {
       console.error("로그인 중 오류 발생:", error);
-      setErrorMessage("서버와의 통신에 실패했습니다.");
+      setLoginErrorMessage("서버와의 통신에 실패했습니다.");
     }
-  }, [username, password, credentials, setIsLoggedIn]);
+  }, [username, password, credentials, setIsLoggedIn, setSiteId]);
 
-  const handleUpdatePassword = useCallback(async () => {
-    if (!modalUsername || !password || !newPassword) {
-      setErrorMessage("아이디, 현재 비밀번호, 새로운 비밀번호를 입력해주세요.");
+  // Handle sign-up
+  const handleSignUp = useCallback(async (e) => {
+    e.preventDefault(); // Prevent form submission default behavior
+
+    if (!signUpSiteId || !signUpAdminId || !signUpPassword || !signUpName) {
+      setSignUpErrorMessage("모든 필드를 입력해주세요.");
       return;
     }
 
     try {
       const response = await fetch(
-        `https://fitlife.dotories.com/api/site?siteId=${modalUsername}`,
+        `https://fitlife.dotories.com/api/manager`,
         {
-          method: "GET",
+          method: "INSERT",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Basic ${credentials}`
-          }
+          },
+          body: JSON.stringify({
+            header: {
+              command: 7, // 회원가입을 위한 명령 코드 (PostAdminCommand)
+               // siteId 추가
+            },
+            data: {
+              AdminId: signUpAdminId,
+              Password: signUpPassword,
+              siteId: signUpSiteId,
+              Name: signUpName
+            }
+          })
         }
       );
 
-      const data = await response.json();
+      let data;
 
-      if (response.ok && data.header.command === 0) {
-        if (data.data.sitePassword === password) {
-          const updateResponse = await fetch(
-            `https://fitlife.dotories.com/api/site`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Basic ${credentials}`
-              },
-              body: JSON.stringify({
-                "header": {
-                  "command": 0
-                },
-                "data": {
-                  "siteId": modalUsername,
-                  "sitePassword": newPassword,
-                  "siteName": "윤섭센터~",
-                  "disconnectInterval": 5
-                }
-              })
-            }
-          );
+      // 첫 번째 파싱 시도
+      try {
+        data = await response.json();
+        console.log("첫 번째 파싱 결과:", data);
 
-          const updateData = await updateResponse.json();
+        // 만약 data가 문자열이라면, 두 번째 파싱 시도
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+          console.log("두 번째 파싱 결과:", data);
+        }
+      } catch (jsonError) {
+        // JSON 파싱 실패 시 텍스트로 가져와서 다시 파싱 시도
+        const textData = await response.text();
+        try {
+          data = JSON.parse(textData);
+          console.log("회원가입 응답 데이터 (텍스트 파싱):", data);
 
-          if (updateResponse.ok && updateData.header.command === 0) {
-            alert("비밀번호가 성공적으로 변경되었습니다.");
-            setIsModalOpen(false);
-            setModalUsername("");
-            setPassword("");
-            setNewPassword("");
-            setErrorMessage("");
-          } else {
-            setErrorMessage(updateData.message || "비밀번호 변경에 실패했습니다. 다시 시도하세요.");
+          if (typeof data === 'string') {
+            data = JSON.parse(data);
+            console.log("회원가입 응답 데이터 (이중 파싱):", data);
           }
+        } catch (parseError) {
+          console.error("응답 데이터 파싱 실패:", parseError);
+          setSignUpErrorMessage("회원가입 실패. 응답 데이터 형식이 올바르지 않습니다.");
+          return;
+        }
+      }
+
+      // 디버깅용 로그
+      console.log("회원가입 응답 데이터:", data);
+      console.log("데이터 타입:", typeof data);
+
+      if (response.ok) {
+        // 서버에서 status 필드로 중복 여부 반환
+        if (true) { 
+          alert("회원가입이 성공적으로 완료되었습니다.");
+          setIsSignUpModalOpen(false);
+          setSignUpSiteId("");
+          setSignUpAdminId("");
+          setSignUpPassword("");
+          setSignUpName("");
+          setSignUpErrorMessage("");
         } else {
-          setErrorMessage("현재 비밀번호가 올바르지 않습니다.");
+          // 기타 오류 처리
+          setSignUpErrorMessage("회원가입에 실패했습니다. 다시 시도하세요.");
         }
       } else {
-        setErrorMessage(data.message || "아이디를 찾을 수 없습니다.");
+        // response.ok가 false일 때, 오류 응답을 파싱하여 처리
+        if (data.status === "ExistsId") {
+          // 아이디 중복 오류 처리
+          setSignUpErrorMessage("아이디가 이미 존재합니다. 다른 아이디를 사용해주세요.");
+        } else {
+          setSignUpErrorMessage(data.message || "회원가입에 실패했습니다. 다시 시도하세요.");
+        }
       }
     } catch (error) {
-      console.error("비밀번호 변경 중 오류 발생:", error);
-      setErrorMessage("서버와의 통신에 실패했습니다.");
+      console.error("회원가입 중 오류 발생:", error);
+      setSignUpErrorMessage("서버와의 통신에 실패했습니다.");
     }
-  }, [modalUsername, password, newPassword, credentials]);
-
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      handleLogin();
-    }
-  }, [handleLogin]);
+  }, [signUpSiteId, signUpAdminId, signUpPassword, signUpName, credentials]);
 
   return (
     <section className="h-screen">
@@ -143,7 +221,7 @@ export default function Login({ setIsLoggedIn }) {
               <h2 className="text-3xl font-bold">로그인</h2>
             </div>
 
-            <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleKeyDown}>
+            <form onSubmit={handleLogin}>
               {/* Username Input */}
               <input
                 type="text"
@@ -151,6 +229,7 @@ export default function Login({ setIsLoggedIn }) {
                 placeholder="아이디를 입력하세요"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                aria-label="아이디 입력"
               />
 
               {/* Password Input */}
@@ -160,32 +239,32 @@ export default function Login({ setIsLoggedIn }) {
                 placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-label="비밀번호 입력"
               />
 
               {/* Login Button */}
               <button
-                type="button"
-                onClick={handleLogin}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-blue-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-blue-600 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-blue-800 active:shadow-lg mt-0 relative"
+                type="submit"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-blue-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-blue-600 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-blue-800 active:shadow-lg relative"
                 style={{ zIndex: 10 }}
               >
                 로그인
               </button>
 
-              {/* Password Update Button */}
+              {/* Sign Up Button */}
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-green-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-green-600 hover:shadow-lg focus:bg-green-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-green-800 active:shadow-lg mt-4 relative"
+                onClick={() => setIsSignUpModalOpen(true)}
+                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg mt-4 relative"
                 style={{ zIndex: 10 }}
               >
-                비밀번호 수정
+                회원가입
               </button>
 
-              {/* Error Message */}
-              {errorMessage && (
+              {/* Login Error Message */}
+              {loginErrorMessage && (
                 <div className="text-red-500 mt-4">
-                  {errorMessage}
+                  {loginErrorMessage}
                 </div>
               )}
             </form>
@@ -193,66 +272,84 @@ export default function Login({ setIsLoggedIn }) {
         </div>
       </div>
 
-      {/* Password Update Modal */}
-      {isModalOpen && (
+      {/* Sign Up Modal */}
+      {isSignUpModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h2 className="text-2xl font-semibold text-center mb-4">비밀번호 수정</h2>
-            
-            {/* Username Input */}
-            <input
-              type="text"
-              className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
-              placeholder="아이디를 입력하세요"
-              value={modalUsername}
-              onChange={(e) => setModalUsername(e.target.value)}
-            />
+            <h2 className="text-2xl font-semibold text-center mb-4">회원가입</h2>
 
-            {/* Current Password Input */}
-            <input
-              type="password"
-              className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
-              placeholder="현재 비밀번호를 입력하세요"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            
-            {/* New Password Input */}
-            <input
-              type="password"
-              className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
-              placeholder="새로운 비밀번호를 입력하세요"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-            
-            {/* Password Update Buttons */}
-            <button
-              type="button"
-              onClick={handleUpdatePassword}
-              className="inline-flex items-center justify-center w-full rounded-lg bg-blue-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-blue-600 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-blue-800 active:shadow-lg mt-4"
-            >
-              비밀번호 수정
-            </button>
+            <form onSubmit={handleSignUp}>
+              {/* siteId Input */}
+              <input
+                type="text"
+                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                placeholder="siteId를 입력하세요"
+                value={signUpSiteId}
+                onChange={(e) => setSignUpSiteId(e.target.value)}
+                aria-label="siteId 입력"
+              />
 
-            {/* Error Message */}
-            {errorMessage && (
-              <div className="text-red-500 mt-4">
-                {errorMessage}
-              </div>
-            )}
+              {/* AdminId Input */}
+              <input
+                type="text"
+                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                placeholder="관리자 아이디를 입력하세요"
+                value={signUpAdminId}
+                onChange={(e) => setSignUpAdminId(e.target.value)}
+                aria-label="관리자 아이디 입력"
+              />
 
-            {/* Close Modal Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsModalOpen(false);
-                setErrorMessage("");
-              }}
-              className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 hover:shadow-lg focus:bg-gray-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-gray-800 active:shadow-lg mt-4"
-            >
-              닫기
-            </button>
+              {/* Password Input */}
+              <input
+                type="password"
+                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                placeholder="비밀번호를 입력하세요"
+                value={signUpPassword}
+                onChange={(e) => setSignUpPassword(e.target.value)}
+                aria-label="비밀번호 입력"
+              />
+
+              {/* Name Input */}
+              <input
+                type="text"
+                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                placeholder="이름을 입력하세요"
+                value={signUpName}
+                onChange={(e) => setSignUpName(e.target.value)}
+                aria-label="이름 입력"
+              />
+
+              {/* Sign Up Button */}
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+              >
+                회원가입
+              </button>
+
+              {/* Sign Up Error Message */}
+              {signUpErrorMessage && (
+                <div className="text-red-500 mt-4">
+                  {signUpErrorMessage}
+                </div>
+              )}
+
+              {/* Close Modal Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUpModalOpen(false);
+                  setSignUpSiteId("");
+                  setSignUpAdminId("");
+                  setSignUpPassword("");
+                  setSignUpName("");
+                  setSignUpErrorMessage("");
+                }}
+                className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 hover:shadow-lg focus:bg-gray-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-gray-800 active:shadow-lg mt-4"
+              >
+                닫기
+              </button>
+            </form>
           </div>
         </div>
       )}
