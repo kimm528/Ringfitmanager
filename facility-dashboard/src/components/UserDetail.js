@@ -53,9 +53,6 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   
   // 사용자 데이터 구조 분해 (기본값 설정)
   const {
-    bpm = 0,
-    oxygen = 0,
-    stress = 0,
     sleep = 0,
   } = user?.data || {};
 
