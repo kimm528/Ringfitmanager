@@ -415,7 +415,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
             data={barChartData}
-            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+            margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
             barCategoryGap={30}
           >
             <CartesianGrid strokeDasharray="3 3" />
@@ -473,115 +473,148 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   <Modal onClose={() => setShowThresholdModal(false)} ref={modalRef}>
     <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
     <div className="mb-6">
-      <h3 className="font-semibold mb-6">심박수 임계값</h3>
+      <h3 className="font-semibold mb-8">심박수 임계값</h3>
       
       {/* 다중 핸들 슬라이더 */}
-      <ReactSlider
-        className="horizontal-slider"
-        min={30}
-        max={200}
-        value={[
-          thresholds.heartRateDangerLow,
-          thresholds.heartRateWarningLow,
-          thresholds.heartRateWarningHigh,
-          thresholds.heartRateDangerHigh,
-        ]}
-        onChange={(values) => {
-          setThresholds({
-            ...thresholds,
-            heartRateDangerLow: values[0],
-            heartRateWarningLow: values[1],
-            heartRateWarningHigh: values[2],
-            heartRateDangerHigh: values[3],
-          });
-        }}
-        withTracks={true}
-        pearling={true}
-        minDistance={1}
-        renderThumb={(props, state) => (
-          <div
-            {...props}
-            style={{
-              ...props.style,
-              height: '25px',
-              width: '25px',
-              backgroundColor:
-                state.index === 0 || state.index === 3
-                  ? '#f44336' // 위험 수준 핸들 - 빨간색
-                  : '#ff9800', // 경고 수준 핸들 - 주황색
-              borderRadius: '50%',
-              cursor: 'pointer',
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          />
-        )}
-        renderTrack={(props, state) => (
-          <div
-            {...props}
-            style={{
-              ...props.style,
-              height: '10px',
-              backgroundColor: (() => {
-                switch (state.index) {
-                  case 0:
-                    return '#f44336'; // 위험 구간 (하한선 이하) - 빨간색
-                  case 1:
-                    return '#ff9800'; // 경고 구간 (하한선과 상한선 사이) - 주황색
-                  case 2:
-                    return '#4caf50'; // 정상 구간 - 초록색
-                  case 3:
-                    return '#ff9800'; // 경고 구간 (상한선과 위험 상한선 사이) - 주황색
-                  case 4:
-                    return '#f44336'; // 위험 구간 (상한선 이상) - 빨간색
-                  default:
-                    return '#ddd'; // 기본 색상
-                }
-              })(),
-            }}
-          />
-        )}
-      />
-      {/* 현재 값 표시 */}
-      <div className="flex justify-between mt-6 text-sm">
+      <div className="relative mb-6">
+        <ReactSlider
+          className="horizontal-slider"
+          min={30}
+          max={200}
+          value={[
+            thresholds.heartRateDangerLow,
+            thresholds.heartRateWarningLow,
+            thresholds.heartRateWarningHigh,
+            thresholds.heartRateDangerHigh,
+          ]}
+          onChange={(values) => {
+            setThresholds({
+              ...thresholds,
+              heartRateDangerLow: values[0],
+              heartRateWarningLow: values[1],
+              heartRateWarningHigh: values[2],
+              heartRateDangerHigh: values[3],
+            });
+          }}
+          withTracks={true}
+          pearling={true}
+          minDistance={1}
+          renderThumb={(props, state) => (
+            <div
+              {...props}
+              style={{
+                ...props.style,
+                height: '25px',
+                width: '25px',
+                backgroundColor:
+                  state.index === 0 || state.index === 3
+                    ? '#f44336' // 위험 수준 핸들 - 빨간색
+                    : '#ff9800', // 경고 수준 핸들 - 주황색
+                borderRadius: '50%',
+                cursor: 'pointer',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                position: 'absolute',
+              }}
+            >
+              {/* 핸들 레이블 추가 */}
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-30px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  color: '#000',
+                  fontSize: '12px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+              </span>
+            </div>
+          )}
+          renderTrack={(props, state) => (
+            <div
+              {...props}
+              style={{
+                ...props.style,
+                height: '10px',
+                backgroundColor: (() => {
+                  switch (state.index) {
+                    case 0:
+                      return '#f44336'; // 위험 구간 (하한선 이하) - 빨간색
+                    case 1:
+                      return '#ff9800'; // 경고 구간 (하한선과 상한선 사이) - 주황색
+                    case 2:
+                      return '#4caf50'; // 정상 구간 - 초록색
+                    case 3:
+                      return '#ff9800'; // 경고 구간 (상한선과 위험 상한선 사이) - 주황색
+                    case 4:
+                      return '#f44336'; // 위험 구간 (상한선 이상) - 빨간색
+                    default:
+                      return '#ddd'; // 기본 색상
+                  }
+                })(),
+              }}
+            />
+          )}
+        />
+      </div>
+      {/* 현재 값 표시 영역 개선 */}
+      <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
         <div className="text-center">
-          <p>위험 수준 (하한)</p>
+          <div
+            className="w-4 h-4 mx-auto mb-1"
+            style={{ backgroundColor: '#f44336' }}
+          ></div>
+          <p>위험 (하한)</p>
           <p>{thresholds.heartRateDangerLow} bpm</p>
         </div>
         <div className="text-center">
-          <p>경고 수준 (하한)</p>
+          <div
+            className="w-4 h-4 mx-auto mb-1"
+            style={{ backgroundColor: '#ff9800' }}
+          ></div>
+          <p>경고 (하한)</p>
           <p>{thresholds.heartRateWarningLow} bpm</p>
         </div>
         <div className="text-center">
-          <p>경고 수준 (상한)</p>
+          <div
+            className="w-4 h-4 mx-auto mb-1"
+            style={{ backgroundColor: '#ff9800' }}
+          ></div>
+          <p>경고 (상한)</p>
           <p>{thresholds.heartRateWarningHigh} bpm</p>
         </div>
         <div className="text-center">
-          <p>위험 수준 (상한)</p>
+          <div
+            className="w-4 h-4 mx-auto mb-1"
+            style={{ backgroundColor: '#f44336' }}
+          ></div>
+          <p>위험 (상한)</p>
           <p>{thresholds.heartRateDangerHigh} bpm</p>
         </div>
       </div>
     </div>
-
     <div className="flex justify-end">
-    <button
-  onClick={() => {
-    // 임계값을 업데이트한 사용자 객체 생성
-    const updatedUser = {
-      ...user,
-      thresholds: { ...thresholds },
-    };
-    // 사용자 업데이트 함수 호출 (서버로 전송)
-    updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
-    setShowThresholdModal(false);
-  }}
-  className="px-4 py-2 bg-blue-500 text-white rounded-md"
->
-  저장
-</button>
+      <button
+        onClick={() => {
+          // 임계값을 업데이트한 사용자 객체 생성
+          const updatedUser = {
+            ...user,
+            thresholds: { ...thresholds },
+          };
+          // 사용자 업데이트 함수 호출 (서버로 전송)
+          updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
+          setShowThresholdModal(false);
+        }}
+        className="px-4 py-2 bg-blue-500 text-white rounded-md"
+      >
+        저장
+      </button>
     </div>
   </Modal>
 )}
+
 
       {/* Edit User Modal */}
       {showEditModal && (
