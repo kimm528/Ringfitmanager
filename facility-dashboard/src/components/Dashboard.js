@@ -70,8 +70,11 @@ const Dashboard = ({
       return;
     }
 
+    const gender = Number(newUser.gender);
+
     const userToAdd = {
       ...newUser,
+      gender: gender,
       profileImage:
         newUser.profileImage || 'https://default-image-url.com/default.jpg', // 기본 프로필 이미지 처리
     };
@@ -152,17 +155,17 @@ const Dashboard = ({
         <div>
           <label className="block">성별</label>
           <select
-            name="gender"
-            value={newUser.gender}
-            onChange={(e) =>
-              setNewUser({ ...newUser, gender: e.target.value })
-            }
-            className="p-2 border border-gray-300 rounded w-full"
-          >
-            <option value="">성별을 선택하세요</option>
-            <option value="남">남</option>
-            <option value="여">여</option>
-          </select>
+  name="gender"
+  value={newUser.gender !== '' ? newUser.gender : ''}
+  onChange={(e) =>
+    setNewUser({ ...newUser, gender: e.target.value })
+  }
+  className="p-2 border border-gray-300 rounded w-full"
+>
+  <option value="">성별을 선택하세요</option>
+  <option value="0">남성</option>
+  <option value="1">여성</option>
+</select>
         </div>
         <div>
           <label className="block">나이</label>

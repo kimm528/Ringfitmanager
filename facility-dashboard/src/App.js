@@ -191,7 +191,6 @@ function App() {
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
         const apiUrl = 'https://fitlife.dotories.com/api/user';
         const gender = newUser.gender === '남성' || newUser.gender === 0 ? 0 : 1;
-
         let newId = getNewId(users);
 
         // 새 사용자 데이터를 서버로 POST 요청
