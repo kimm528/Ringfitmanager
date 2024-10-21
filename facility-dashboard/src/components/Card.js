@@ -61,16 +61,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
   });
 
-  // 사용자 변경 시 임계값 상태 업데이트
-  useEffect(() => {
-    setThresholds({
-      heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
-      heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
-      heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
-      heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
-    });
-  }, [user]);
-
   // 수면 점수 계산 함수
   const calculateSleepScore = useCallback(
     (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
@@ -247,10 +237,16 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   const openThresholdModal = useCallback(
     (e) => {
       e.stopPropagation(); // 이벤트 전파 중단
+      setThresholds({
+        heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
+        heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
+        heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
+        heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
+      });
       setShowThresholdModal(true);
       setMenuOpen(false);
     },
-    []
+    [user]  
   );
 
   // Open Ring Management Modal
@@ -293,27 +289,23 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
   }, [menuRef, modalRef, showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
 
-  // Reset Edited Fields when User Changes
-  useEffect(() => {
-    setEditedName(user.name);
-    setEditedGender(user.gender);
-    setEditedAge(user.age);
-  }, [user]);
-
-  // Open Edit Modal
+   // Open Edit Modal
   const openEditModal = useCallback(
     (e) => {
       e.stopPropagation();
+      setEditedName(user.name);
+      setEditedGender(user.gender);
+      setEditedAge(user.age);
       setShowEditModal(true);
       setMenuOpen(false);
     },
-    []
+    [user]
   );
 
   // Delete Modal Handlers
@@ -478,10 +470,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
 
 {/* Threshold Setting Modal */}
 {showThresholdModal && (
-  <Modal onClose={() => setShowThresholdModal(false)}>
+  <Modal onClose={() => setShowThresholdModal(false)} ref={modalRef}>
     <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
     <div className="mb-6">
-      <h3 className="font-semibold mb-2">심박수 임계값</h3>
+      <h3 className="font-semibold mb-6">심박수 임계값</h3>
       
       {/* 다중 핸들 슬라이더 */}
       <ReactSlider
@@ -551,7 +543,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         )}
       />
       {/* 현재 값 표시 */}
-      <div className="flex justify-between mt-4 text-sm">
+      <div className="flex justify-between mt-6 text-sm">
         <div className="text-center">
           <p>위험 수준 (하한)</p>
           <p>{thresholds.heartRateDangerLow} bpm</p>
@@ -593,7 +585,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
 
       {/* Edit User Modal */}
       {showEditModal && (
-        <Modal onClose={() => setShowEditModal(false)}>
+        <Modal onClose={() => setShowEditModal(false)} ref={modalRef}>
           <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
 
           {/* Name Edit */}

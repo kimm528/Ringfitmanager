@@ -9,7 +9,6 @@ import Dashboard from './components/Dashboard';
 import UserDetail from './components/UserDetail';
 import Login from './components/Login';
 import Settings from './components/Settings'; // Settings 컴포넌트 추가
-import Modal from './components/Modal';
 
 // 기본 프로필 이미지 URL 설정
 const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';
