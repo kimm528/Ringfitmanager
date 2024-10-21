@@ -160,8 +160,8 @@ const Settings = ({ adminInfo, handleUpdateAdminInfo, users, deleteUser, siteId 
       if (typeof data === 'string') {
         data = JSON.parse(data);
       }
-
-      if (response.ok && data.Header && data.Header.Command === 9) {
+  
+      if (response.ok) {
         // 관리자 리스트 다시 가져오기
         fetchAdminList();
         alert('관리자가 성공적으로 삭제되었습니다.');

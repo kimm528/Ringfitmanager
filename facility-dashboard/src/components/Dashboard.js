@@ -131,91 +131,71 @@ const Dashboard = ({
       </div>
 
       {/* Add User Modal */}
-      {showModal && (
-        <Modal onClose={() => setShowModal(false)}>
-          <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
-            <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block">이름</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={newUser.name}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, name: e.target.value })
-                  }
-                  className="p-2 border border-gray-300 rounded w-full"
-                  placeholder="이름을 입력하세요"
-                />
-              </div>
-              <div>
-                <label className="block">성별</label>
-                <select
-                  name="gender"
-                  value={newUser.gender}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, gender: e.target.value })
-                  }
-                  className="p-2 border border-gray-300 rounded w-full"
-                >
-                  <option value="">성별을 선택하세요</option>
-                  <option value="남">남</option>
-                  <option value="여">여</option>
-                </select>
-              </div>
-              <div>
-                <label className="block">나이</label>
-                <input
-                  type="number"
-                  name="age"
-                  value={newUser.age}
-                  onChange={(e) =>
-                    setNewUser({ ...newUser, age: e.target.value })
-                  }
-                  className="p-2 border border-gray-300 rounded w-full"
-                  placeholder="나이를 입력하세요"
-                />
-              </div>
-              <div>
-                <label className="block">프로필 사진</label>
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    e.target.files &&
-                    setNewUser({
-                      ...newUser,
-                      profileImage: URL.createObjectURL(e.target.files[0]),
-                    })
-                  }
-                  className="p-2 border border-gray-300 rounded w-full"
-                />
-                {newUser.profileImage && (
-                  <img
-                    src={newUser.profileImage}
-                    alt="프로필 미리보기"
-                    className="mt-2 w-24 h-24 rounded-full object-cover"
-                  />
-                )}
-              </div>
-            </div>
-            <div className="mt-4 flex justify-between">
-              <button
-                onClick={handleSubmit}
-                className="bg-blue-500 text-white py-2 px-4 rounded"
-              >
-                사용자 추가
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="bg-gray-300 text-black py-2 px-4 rounded"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+{showModal && (
+  <Modal onClose={() => setShowModal(false)}>
+    <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
+      <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block">이름</label>
+          <input
+            type="text"
+            name="name"
+            value={newUser.name}
+            onChange={(e) =>
+              setNewUser({ ...newUser, name: e.target.value })
+            }
+            className="p-2 border border-gray-300 rounded w-full"
+            placeholder="이름을 입력하세요"
+          />
+        </div>
+        <div>
+          <label className="block">성별</label>
+          <select
+            name="gender"
+            value={newUser.gender}
+            onChange={(e) =>
+              setNewUser({ ...newUser, gender: e.target.value })
+            }
+            className="p-2 border border-gray-300 rounded w-full"
+          >
+            <option value="">성별을 선택하세요</option>
+            <option value="남">남</option>
+            <option value="여">여</option>
+          </select>
+        </div>
+        <div>
+          <label className="block">나이</label>
+          <input
+            type="number"
+            name="age"
+            value={newUser.age}
+            onChange={(e) =>
+              setNewUser({ ...newUser, age: e.target.value })
+            }
+            className="p-2 border border-gray-300 rounded w-full"
+            placeholder="나이를 입력하세요"
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex justify-between">
+        <button
+          onClick={handleSubmit}
+          className="bg-blue-500 text-white py-2 px-4 rounded"
+        >
+          사용자 추가
+        </button>
+        <button
+          onClick={() => setShowModal(false)}
+          className="bg-gray-300 text-black py-2 px-4 rounded"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
+
     </div>
   );
 };

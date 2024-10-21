@@ -496,12 +496,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       {/* User Profile Header */}
       <div className="profile-header flex justify-between items-center mb-6">
         <div className="flex items-center">
-          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300">
-            <img src={user?.profileImage || '/default-profile.png'} alt="Profile" className="w-full h-full object-cover" />
-          </div>
-          <div className="ml-4">
+                    <div className="ml-4">
             <h2 className="text-2xl font-bold">{user?.name || 'N/A'}</h2>
-            <p className="text-gray-600">{user?.age || 'N/A'}세</p>
+            <p className="text-gray-600"> &nbsp;&nbsp;&nbsp;{user?.age || 'N/A'}세</p>
           </div>
         </div>
         <div className="flex items-center">
