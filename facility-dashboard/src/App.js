@@ -13,8 +13,12 @@ import Settings from './components/Settings'; // Settings 컴포넌트 추가
 // 기본 프로필 이미지 URL 설정
 const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';
 
+
 // Helper functions for localStorage operations
 const loadFromLocalStorage = (key, defaultValue) => {
+  // 'users' 키에 대한 로컬 스토리지 접근을 차단
+  if (key === 'users') return defaultValue;
+
   const stored = localStorage.getItem(key);
   if (!stored) return defaultValue;
 
@@ -27,6 +31,9 @@ const loadFromLocalStorage = (key, defaultValue) => {
 };
 
 const saveToLocalStorage = (key, value) => {
+  // 'users' 키에 대한 로컬 스토리지 저장을 차단
+  if (key === 'users') return;
+
   localStorage.setItem(key, JSON.stringify(value));
 };
 
@@ -44,19 +51,15 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState(loadFromLocalStorage('users', []));
+  const [users, setUsers] = useState([]); // 빈 배열로 초기화
   const [sortOption, setSortOption] = useState('name');
   const [availableRings, setAvailableRings] = useState([]); // 링 데이터를 저장할 상태 추가
   const [successMessage, setSuccessMessage] = useState('');
 
+
   // 동적 siteId 상태 추가
   const [siteId, setSiteId] = useState(loadFromLocalStorage('siteId', ''));
 
-  // 관리자 정보 상태
-  const [adminInfo, setAdminInfo] = useState({
-    adminId: '',
-    password: '',
-  });
 
   // Fetch Users and Ring Data from API
   const fetchUsersAndRingData = useCallback(async () => {
@@ -64,7 +67,7 @@ function App() {
       console.warn('siteId가 설정되지 않았습니다.');
       return;
     }
-
+  
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
       const userResponse = await axios.get(
@@ -76,54 +79,73 @@ function App() {
           },
         }
       );
-
-      const userData = userResponse.data.Data;
-
+  
+      const userData = userResponse.data.Data || [];
+  
       // Fetch Ring Data
       const currentDate = getCurrentYYMMDD();
       const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=${siteId}&yearMonthDay=${currentDate}`;
-
-      const ringResponse = await axios.get(ringUrl, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${credentials}`,
-        },
-      });
-
-      const ringData = ringResponse.data.Data;
-      setAvailableRings(ringData); // 링 데이터를 상태로 저장
-
+  
+      let ringData = [];
+      try {
+        const ringResponse = await axios.get(ringUrl, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${credentials}`,
+          },
+        });
+  
+        ringData = ringResponse.data.Data || [];
+      } catch (ringError) {
+        console.warn('Failed to fetch ring data, proceeding without it:', ringError.message);
+        ringData = [];
+      }
+  
+      setAvailableRings(ringData);
+  
       const updatedUsers = userData.map((user) => {
-        const userRingData = ringData.find((ring) => ring.MacAddr === user.MacAddr);
+        const userRingData = ringData.find((ring) => ring.MacAddr === user.MacAddr) || null;
+  
+        // LifeLogs 처리 시 오류 방지
+        const lifeLogs = (user.LifeLogs || []).map((log, index) => {
+          const logDateTime = log.LogDateTime || '';
+          const dateTimeParts = logDateTime.split('T');
+          const date = dateTimeParts[0] || '';
+          const timePart = dateTimeParts[1] || '';
+          const time = timePart.substring(0, 5) || '';
+  
+          return {
+            id: index + 1,
+            medicine: log.LogContent,
+            date: date,
+            time: time,
+            dose: log.Description,
+            taken: log.IsChecked,
+          };
+        });
+  
         return {
           id: user.Id,
           name: user.Name,
           gender: user.Gender,
           age: user.Age,
-          profileImage: user.TitleImagePath || defaultProfileImage, // 기본 이미지 사용
+          profileImage: user.TitleImagePath || defaultProfileImage,
           address: user.Address,
           stepTarget: user.StepTarget || 10000,
           kcalTarget: user.KcalTarget || 2000,
           kmTarget: user.KmTarget || 5,
           macAddr: user.MacAddr || '',
           albumPath: user.AlbumPath || [],
-          lifeLogs: (user.LifeLogs || []).map((log, index) => ({
-            id: index + 1,
-            medicine: log.LogContent,
-            date: log.LogDateTime.split('T')[0],
-            time: log.LogDateTime.split('T')[1].substring(0, 5),
-            dose: log.Description,
-            taken: log.IsChecked,
-          })),
-          ring: userRingData || null,
+          lifeLogs: lifeLogs,
+          ring: userRingData,
           data: {
-            bpm: user.BPM || 0,
-            oxygen: user.Oxygen || 0,
-            stress: user.Stress || 0,
-            sleep: user.Sleep || 0,
-            steps: user.Steps || 0,
-            calories: user.Calories || 0,
-            distance: user.Distance || 0,
+            bpm: userRingData?.BPM || 0,
+            oxygen: userRingData?.Oxygen || 0,
+            stress: userRingData?.Stress || 0,
+            sleep: userRingData?.Sleep || 0,
+            steps: userRingData?.Steps || 0,
+            calories: userRingData?.Calories || 0,
+            distance: userRingData?.Distance || 0,
             lineData: [],
             barData: [],
           },
@@ -136,10 +158,8 @@ function App() {
           isFavorite: user.Favorite || false,
         };
       });
-
-      // Update state and localStorage
+  
       setUsers(updatedUsers);
-      saveToLocalStorage('users', updatedUsers);
     } catch (error) {
       console.error('Failed to fetch user or ring data:', error.response || error.message);
     }
@@ -147,7 +167,7 @@ function App() {
 
   // 주기적인 데이터 업데이트
   useEffect(() => {
-    if (!siteId) return;
+    if (!isLoggedIn || !siteId ) return;
 
     const intervalId = setInterval(() => {
       console.log('Fetching users and ring data every 30 seconds');
@@ -155,14 +175,15 @@ function App() {
     }, 30000); // 30초
 
     return () => clearInterval(intervalId);
-  }, [fetchUsersAndRingData, siteId]);
+  }, [fetchUsersAndRingData, isLoggedIn, siteId]);
 
   // Initial Load
   useEffect(() => {
-    if (siteId) {
-      fetchUsersAndRingData();
+    if (isLoggedIn && siteId) {
+      setUsers([]); // 이전 사용자 데이터 초기화
+      fetchUsersAndRingData(); // 새로운 데이터 가져오기
     }
-  }, [fetchUsersAndRingData, siteId]);
+  }, [isLoggedIn, siteId, fetchUsersAndRingData]);
 
   const getNewId = (users) => {
     const existingIds = users.map((user) => user.id).sort((a, b) => a - b); // ID 정렬
@@ -263,7 +284,8 @@ function App() {
 
           setUsers((prevUsers) => {
             const updatedUsers = [...prevUsers, createdUser];
-            saveToLocalStorage('users', updatedUsers);
+            // 로컬 스토리지 저장 부분 제거
+            // saveToLocalStorage('users', updatedUsers);
             return updatedUsers;
           });
 
@@ -298,12 +320,7 @@ function App() {
         const updatedUsers = prevUsers.map((u) =>
           u.id === updatedUser.id ? { ...u, ...updatedUser } : u
         );
-        const isDifferent = JSON.stringify(prevUsers) !== JSON.stringify(updatedUsers);
-        if (isDifferent) {
-          saveToLocalStorage('users', updatedUsers);
-          return updatedUsers;
-        }
-        return prevUsers;
+        return updatedUsers;
       });
 
       // 서버로 POST 요청을 보낼지 여부를 결정
@@ -412,7 +429,6 @@ function App() {
           // 로컬 상태 업데이트
           setUsers((prevUsers) => {
             const updatedUsers = prevUsers.filter((user) => user && user.id !== userId);
-            saveToLocalStorage('users', updatedUsers);
             return updatedUsers;
           });
 
@@ -453,7 +469,8 @@ function App() {
           const updatedUsers = prevUsers.map((user) =>
             user.id === userId ? updatedUser : user
           );
-          saveToLocalStorage('users', updatedUsers);
+          // 로컬 스토리지 저장 부분 제거
+          // saveToLocalStorage('users', updatedUsers);
           return updatedUsers;
         });
       }
@@ -495,7 +512,6 @@ function App() {
 
         if (response.ok && responseData.status !== 'ExistsId') {
           console.log('Admin info updated successfully:', responseData);
-          setAdminInfo(updatedAdminInfo);
           saveToLocalStorage('adminInfo', updatedAdminInfo);
           setSuccessMessage('관리자 정보가 성공적으로 수정되었습니다.');
 
@@ -517,46 +533,6 @@ function App() {
     },
     [siteId]
   );
-
-  // 관리자 정보 초기화 (예시: 로그인 시 서버로부터 관리자 정보 받아오기)
-  useEffect(() => {
-    if (!isLoggedIn || !siteId) return;
-
-    const fetchAdminInfo = async () => {
-      try {
-        const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-        const apiUrl = `https://fitlife.dotories.com/api/admin?siteId=${siteId}&adminId=currentAdminId`; // 동적 siteId 추가
-
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Basic ${credentials}`,
-          },
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.Data && data.Data.length > 0) {
-          const admin = data.Data[0];
-          setAdminInfo({
-            adminId: admin.AdminId,
-            password: admin.Password, // 실제로는 비밀번호를 클라이언트에 저장하지 않는 것이 좋습니다.
-          });
-          saveToLocalStorage('adminInfo', {
-            adminId: admin.AdminId,
-            password: admin.Password,
-          });
-        } else {
-          console.error('Failed to fetch admin info:', data);
-        }
-      } catch (error) {
-        console.error('Error fetching admin info:', error);
-      }
-    };
-
-    fetchAdminInfo();
-  }, [isLoggedIn, siteId]);
 
   return (
     <Router>
@@ -616,7 +592,6 @@ function App() {
                   path="/settings"
                   element={
                     <Settings
-                      adminInfo={adminInfo}
                       handleUpdateAdminInfo={handleUpdateAdminInfo}
                       users={users}
                       deleteUser={deleteUser}

@@ -3,13 +3,12 @@ import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
-import { calculateUserStatus } from './calculateUserStatus'; // 함수 임포트
+import { calculateUserStatus } from './calculateUserStatus';
 
 const Dashboard = ({
   showModal,
   setShowModal,
   users,
-  setUsers,
   searchQuery,
   handleAddUser,
   updateUser,
@@ -30,7 +29,7 @@ const Dashboard = ({
   const sortedUsers = useMemo(() => {
     // 검색어로 필터링
     const filtered = users.filter((user) =>
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      (user.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     // 각 사용자에 대해 위험 상태 계산
@@ -41,11 +40,13 @@ const Dashboard = ({
 
     // 사용자 정렬
     usersWithStatus.sort((a, b) => {
-      // 먼저 위험 상태로 정렬 ('danger' 상태만 상단으로)
-      if (a.status === 'danger' && b.status !== 'danger') {
-        return -1;
-      } else if (a.status !== 'danger' && b.status === 'danger') {
-        return 1;
+      // 위험 상태로 정렬
+      const statusOrder = ['danger', 'warning', 'normal', 'no-data'];
+      const aStatusIndex = statusOrder.indexOf(a.status);
+      const bStatusIndex = statusOrder.indexOf(b.status);
+
+      if (aStatusIndex !== bStatusIndex) {
+        return aStatusIndex - bStatusIndex;
       } else {
         // 위험 상태가 동일한 경우 선택한 정렬 옵션으로 정렬
         switch (sortOption) {
@@ -76,7 +77,7 @@ const Dashboard = ({
       ...newUser,
       gender: gender,
       profileImage:
-        newUser.profileImage || 'https://default-image-url.com/default.jpg', // 기본 프로필 이미지 처리
+        newUser.profileImage || 'https://default-image-url.com/default.jpg',
     };
 
     handleAddUser(userToAdd);
@@ -126,7 +127,7 @@ const Dashboard = ({
                 updateUser={updateUser}
                 deleteUser={deleteUser}
                 availableRings={availableRings}
-                users={users} // users 데이터를 전달
+                users={users}
               />
             </motion.div>
           ))}
@@ -134,71 +135,70 @@ const Dashboard = ({
       </div>
 
       {/* Add User Modal */}
-{showModal && (
-  <Modal onClose={() => setShowModal(false)}>
-    <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
-      <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block">이름</label>
-          <input
-            type="text"
-            name="name"
-            value={newUser.name}
-            onChange={(e) =>
-              setNewUser({ ...newUser, name: e.target.value })
-            }
-            className="p-2 border border-gray-300 rounded w-full"
-            placeholder="이름을 입력하세요"
-          />
-        </div>
-        <div>
-          <label className="block">성별</label>
-          <select
-  name="gender"
-  value={newUser.gender !== '' ? newUser.gender : ''}
-  onChange={(e) =>
-    setNewUser({ ...newUser, gender: e.target.value })
-  }
-  className="p-2 border border-gray-300 rounded w-full"
->
-  <option value="">성별을 선택하세요</option>
-  <option value="0">남성</option>
-  <option value="1">여성</option>
-</select>
-        </div>
-        <div>
-          <label className="block">나이</label>
-          <input
-            type="number"
-            name="age"
-            value={newUser.age}
-            onChange={(e) =>
-              setNewUser({ ...newUser, age: e.target.value })
-            }
-            className="p-2 border border-gray-300 rounded w-full"
-            placeholder="나이를 입력하세요"
-          />
-        </div>
-      </div>
-      <div className="mt-4 flex justify-between">
-        <button
-          onClick={handleSubmit}
-          className="bg-blue-500 text-white py-2 px-4 rounded"
-        >
-          사용자 추가
-        </button>
-        <button
-          onClick={() => setShowModal(false)}
-          className="bg-gray-300 text-black py-2 px-4 rounded"
-        >
-          닫기
-        </button>
-      </div>
-    </div>
-  </Modal>
-)}
-
+      {showModal && (
+        <Modal onClose={() => setShowModal(false)}>
+          <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
+            <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block">이름</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newUser.name}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, name: e.target.value })
+                  }
+                  className="p-2 border border-gray-300 rounded w-full"
+                  placeholder="이름을 입력하세요"
+                />
+              </div>
+              <div>
+                <label className="block">성별</label>
+                <select
+                  name="gender"
+                  value={newUser.gender !== '' ? newUser.gender : ''}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, gender: e.target.value })
+                  }
+                  className="p-2 border border-gray-300 rounded w-full"
+                >
+                  <option value="">성별을 선택하세요</option>
+                  <option value="0">남성</option>
+                  <option value="1">여성</option>
+                </select>
+              </div>
+              <div>
+                <label className="block">나이</label>
+                <input
+                  type="number"
+                  name="age"
+                  value={newUser.age}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, age: e.target.value })
+                  }
+                  className="p-2 border border-gray-300 rounded w-full"
+                  placeholder="나이를 입력하세요"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-between">
+              <button
+                onClick={handleSubmit}
+                className="bg-blue-500 text-white py-2 px-4 rounded"
+              >
+                사용자 추가
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="bg-gray-300 text-black py-2 px-4 rounded"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

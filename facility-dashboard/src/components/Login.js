@@ -81,6 +81,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
             if (admin.Password === password) { // 클라이언트 측 비밀번호 검증 (보안상 권장되지 않음)
               setIsLoggedIn(true);
               setSiteId(admin.SiteId || ""); // 서버 응답에서 siteId 추출
+              localStorage.setItem('adminId', username); // username은 로그인 시 입력한 관리자 ID
               localStorage.setItem('isLoggedIn', JSON.stringify(true));
               localStorage.setItem('siteId', JSON.stringify(admin.SiteId || ""));
               alert("로그인 성공");
