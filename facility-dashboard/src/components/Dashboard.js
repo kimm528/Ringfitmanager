@@ -1,9 +1,9 @@
 // Dashboard.js
 import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
-import { motion, AnimatePresence } from 'framer-motion';
 import Modal from './Modal';
 import { calculateUserStatus } from './calculateUserStatus';
+import { motion } from 'framer-motion'; // 혹은 완전히 제거
 
 const Dashboard = ({
   showModal,
@@ -40,20 +40,18 @@ const Dashboard = ({
 
     // 사용자 정렬
     usersWithStatus.sort((a, b) => {
-      // 위험 상태로 정렬
-      const statusOrder = ['danger', 'warning', 'normal', 'no-data'];
-      const aStatusIndex = statusOrder.indexOf(a.status);
-      const bStatusIndex = statusOrder.indexOf(b.status);
-
-      if (aStatusIndex !== bStatusIndex) {
-        return aStatusIndex - bStatusIndex;
+      // 'danger' 상태인 사용자만 상단으로 정렬
+      if (a.status === 'danger' && b.status !== 'danger') {
+        return -1;
+      } else if (b.status === 'danger' && a.status !== 'danger') {
+        return 1;
       } else {
-        // 위험 상태가 동일한 경우 선택한 정렬 옵션으로 정렬
+        // 그 외의 경우에는 선택한 정렬 옵션으로 정렬
         switch (sortOption) {
           case '심박수 순':
             return (b.data?.bpm || 0) - (a.data?.bpm || 0);
           case '즐겨찾기 순':
-            return (b.isFavorite === true) - (a.isFavorite === true);
+            return (b.isFavorite === true ? 1 : 0) - (a.isFavorite === true ? 1 : 0);
           case '이름 순':
           default:
             return (a.name || '').localeCompare(b.name || '', 'ko');
@@ -112,26 +110,19 @@ const Dashboard = ({
           justifyContent: 'flex-start',
         }}
       >
-        <AnimatePresence>
-          {sortedUsers.map((user) => (
-            <motion.div
-              key={user.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-            >
-              <Card
-                user={user}
-                toggleFavorite={toggleFavorite}
-                updateUser={updateUser}
-                deleteUser={deleteUser}
-                availableRings={availableRings}
-                users={users}
-              />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+       {sortedUsers.map((user) => (
+  <motion.div key={user.id} layout>
+    <Card
+      user={user}
+      toggleFavorite={toggleFavorite}
+      updateUser={updateUser}
+      deleteUser={deleteUser}
+      availableRings={availableRings}
+      users={users}
+    />
+  </motion.div>
+))}
+
       </div>
 
       {/* Add User Modal */}

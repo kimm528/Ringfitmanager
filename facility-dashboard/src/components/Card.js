@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+// Card.js
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaStar, FaEllipsisV } from 'react-icons/fa';
 import {
@@ -7,9 +8,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   ResponsiveContainer,
-  Cell,
   LabelList,
 } from 'recharts';
 import Modal from './Modal';
@@ -31,7 +30,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRingModal, setShowRingModal] = useState(false);
-
   const [editedName, setEditedName] = useState(user.name);
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
@@ -196,42 +194,117 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
 
   // 위험 수준에 따른 색상 설정 함수 (동적 임계값 사용)
-  const getHeartRateColor = (value) => {
+  const getHeartRateColor = useCallback((value) => {
     if (value === 0) return '#cccccc'; // 값이 0이면 회색
     if (value >= thresholds.heartRateDangerHigh || value <= thresholds.heartRateDangerLow)
       return '#f44336'; // 위험 (빨간색)
     if (value >= thresholds.heartRateWarningHigh || value <= thresholds.heartRateWarningLow)
       return '#ff9800'; // 주의 (주황색)
     return '#4caf50'; // 정상 (초록색)
-  };
+  }, [thresholds]);
 
-  const getOxygenColor = (value) => {
+  const getOxygenColor = useCallback((value) => {
     if (value === 0) return '#cccccc';
     if (value < OXYGEN_DANGER_THRESHOLD) return '#f44336'; // 위험
     if (value < OXYGEN_WARNING_THRESHOLD) return '#ff9800'; // 주의
     return '#4caf50'; // 정상
-  };
+  }, []);
 
-  const getStressColor = (value) => {
+  const getStressColor = useCallback((value) => {
     if (value === 0) return '#cccccc';
     if (value >= 66) return '#f44336'; // 높음
     if (value >= 33) return '#ff9800'; // 보통
     return '#4caf50'; // 낮음
-  };
+  }, []);
 
-  // 바 차트 데이터 준비
-  const barChartData = [
-    { name: '심박수', value: bpm, fill: getHeartRateColor(bpm) },
-    { name: '산소포화도', value: oxygen, fill: getOxygenColor(oxygen) },
-    { name: '스트레스', value: stress, fill: getStressColor(stress) },
-  ];
+  const COLORS = useMemo(() => ({
+    danger: '#f44336', // 빨간색
+    warning: '#ff9800', // 주황색
+    normal: '#4caf50', // 초록색
+  }), []);
+
+  // 심박수 구간 계산 함수 추가
+  const calculateHeartRateSegments = useCallback((value) => {
+    const segments = {
+      dangerLow: 0,
+      warningLow: 0,
+      normal: 0,
+      warningHigh: 0,
+      dangerHigh: 0,
+    };
+
+    if (value <= thresholds.heartRateDangerLow) {
+      segments.dangerLow = value;
+    } else if (value <= thresholds.heartRateWarningLow) {
+      segments.dangerLow = thresholds.heartRateDangerLow;
+      segments.warningLow = value - thresholds.heartRateDangerLow;
+    } else if (value <= thresholds.heartRateWarningHigh) {
+      segments.dangerLow = thresholds.heartRateDangerLow;
+      segments.warningLow = thresholds.heartRateWarningLow - thresholds.heartRateDangerLow;
+      segments.normal = value - thresholds.heartRateWarningLow;
+    } else if (value <= thresholds.heartRateDangerHigh) {
+      segments.dangerLow = thresholds.heartRateDangerLow;
+      segments.warningLow = thresholds.heartRateWarningLow - thresholds.heartRateDangerLow;
+      segments.normal = thresholds.heartRateWarningHigh - thresholds.heartRateWarningLow;
+      segments.warningHigh = value - thresholds.heartRateWarningHigh;
+    } else {
+      segments.dangerLow = thresholds.heartRateDangerLow;
+      segments.warningLow = thresholds.heartRateWarningLow - thresholds.heartRateDangerLow;
+      segments.normal = thresholds.heartRateWarningHigh - thresholds.heartRateWarningLow;
+      segments.warningHigh = thresholds.heartRateDangerHigh - thresholds.heartRateWarningHigh;
+      segments.dangerHigh = value - thresholds.heartRateDangerHigh;
+    }
+
+    return segments;
+  }, [thresholds]);
+
+  // 데이터 준비 (메모이제이션)
+  const heartRateSegments = useMemo(() => calculateHeartRateSegments(bpm), [bpm, calculateHeartRateSegments]);
+
+  const barChartData = useMemo(() => [
+    {
+      name: '심박수',
+      dangerLow: heartRateSegments.dangerLow,
+      warningLow: heartRateSegments.warningLow,
+      normal: heartRateSegments.normal,
+      warningHigh: heartRateSegments.warningHigh,
+      dangerHigh: heartRateSegments.dangerHigh,
+      bpmValue: bpm, // 심박수 값
+      oxygenValue: 0,
+      stressValue: 0,
+    },
+    {
+      name: '산소포화도',
+      dangerLow: 0,
+      warningLow: 0,
+      normal: 0,
+      warningHigh: 0,
+      dangerHigh: 0,
+      bpmValue: 0,
+      oxygenValue: oxygen,
+      stressValue: 0,
+    },
+    {
+      name: '스트레스',
+      dangerLow: 0,
+      warningLow: 0,
+      normal: 0,
+      warningHigh: 0,
+      dangerHigh: 0,
+      bpmValue: 0,
+      oxygenValue: 0,
+      stressValue: stress,
+    },
+  ], [heartRateSegments, bpm, oxygen, stress]);
 
   // 카드 상태 계산 (중복 제거)
-  const status = calculateUserStatus({
-    ...user,
-    data: { ...user.data, bpm, oxygen },
-    thresholds,
-  });
+  const status = useMemo(() => {
+    return calculateUserStatus({
+      ...user,
+      data: { ...user.data, bpm: processedData.bpm, oxygen: processedData.oxygen },
+      thresholds,
+    });
+  }, [user, processedData.bpm, processedData.oxygen, thresholds]);
 
   // Open Threshold Modal
   const openThresholdModal = useCallback(
@@ -347,14 +420,34 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     setShowEditModal(false);
   }, [user, editedName, editedGender, editedAge, updateUser]);
 
+  const renderCustomLabel = useCallback((props) => {
+    const { x, y, width, value } = props;
+    if (value !== 0 && value != null) {
+      return (
+        <text
+          x={x + width / 2}
+          y={y - 5}
+          fill="#000"
+          textAnchor="middle"
+          fontSize={16}
+          style={{ pointerEvents: 'none' }} // 마우스 이벤트 방지
+        >
+          {value}
+        </text>
+      );
+    }
+    return null;
+  }, []);
+
   return (
     <div
       className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
         status === 'warning' ? 'border-4 border-yellow-500' : ''
-      } ${status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''}`}
-      style={{ width: '350px', margin: '10px', fontFamily: 'Nanum Gothic, sans-serif' }}
+      } ${status === 'danger' ? 'border-4 border-red-500' : ''}`} // animate-blink 제거
+      style={{ width: '350px', margin: '10px', fontFamily: 'Nanum Gothic, sans-serif', minHeight: '400px' }} // minHeight 추가
       onClick={navigateToUserDetail}
     >
+      
       <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
         <button
           style={{
@@ -415,25 +508,35 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
             data={barChartData}
-            margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
-            barCategoryGap={30}
+            margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
+            barCategoryGap={20}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
             <YAxis domain={[0, 200]} ticks={[0, 50, 100, 150, 200]} />
-            <Tooltip />
-            <Bar dataKey="value">
-              {/* 각 막대 위에 수치 표시 */}
-              <LabelList dataKey="value" position="top" />
-              {barChartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.fill} />
-              ))}
+
+            {/* 심박수 */}
+            <Bar dataKey="dangerLow" stackId="a" fill={COLORS.danger} isAnimationActive={false} />
+            <Bar dataKey="warningLow" stackId="a" fill={COLORS.warning} isAnimationActive={false} />
+            <Bar dataKey="normal" stackId="a" fill={COLORS.normal} isAnimationActive={false} />
+            <Bar dataKey="warningHigh" stackId="a" fill={COLORS.warning} isAnimationActive={false} />
+            <Bar dataKey="dangerHigh" stackId="a" fill={COLORS.danger} isAnimationActive={false}>
+              <LabelList dataKey="bpmValue" content={renderCustomLabel} />
+            </Bar>
+
+            {/* 산소포화도 */}
+            <Bar dataKey="oxygenValue" fill={getOxygenColor(oxygen)} stackId="a" isAnimationActive={false}>
+              <LabelList dataKey="oxygenValue" content={renderCustomLabel} />
+            </Bar>
+
+            {/* 스트레스 */}
+            <Bar dataKey="stressValue" fill={getStressColor(stress)} stackId="a" isAnimationActive={false}>
+              <LabelList dataKey="stressValue" content={renderCustomLabel} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-     
+       
       {/* Footer with Steps, Calories, Distance, Sleep Score */}
       <div className="card-footer mt-4 grid grid-cols-4 gap-2 text-center text-sm p-2 bg-gray-100 rounded-md">
         {[
@@ -468,153 +571,152 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         ))}
       </div>
 
-{/* Threshold Setting Modal */}
-{showThresholdModal && (
-  <Modal onClose={() => setShowThresholdModal(false)} ref={modalRef}>
-    <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
-    <div className="mb-6">
-      <h3 className="font-semibold mb-8">심박수 임계값</h3>
-      
-      {/* 다중 핸들 슬라이더 */}
-      <div className="relative mb-6">
-        <ReactSlider
-          className="horizontal-slider"
-          min={30}
-          max={200}
-          value={[
-            thresholds.heartRateDangerLow,
-            thresholds.heartRateWarningLow,
-            thresholds.heartRateWarningHigh,
-            thresholds.heartRateDangerHigh,
-          ]}
-          onChange={(values) => {
-            setThresholds({
-              ...thresholds,
-              heartRateDangerLow: values[0],
-              heartRateWarningLow: values[1],
-              heartRateWarningHigh: values[2],
-              heartRateDangerHigh: values[3],
-            });
-          }}
-          withTracks={true}
-          pearling={true}
-          minDistance={1}
-          renderThumb={(props, state) => (
-            <div
-              {...props}
-              style={{
-                ...props.style,
-                height: '25px',
-                width: '25px',
-                backgroundColor:
-                  state.index === 0 || state.index === 3
-                    ? '#f44336' // 위험 수준 핸들 - 빨간색
-                    : '#ff9800', // 경고 수준 핸들 - 주황색
-                borderRadius: '50%',
-                cursor: 'pointer',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                position: 'absolute',
-              }}
-            >
-              {/* 핸들 레이블 추가 */}
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '-30px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  color: '#000',
-                  fontSize: '12px',
-                  whiteSpace: 'nowrap',
+      {/* Threshold Setting Modal */}
+      {showThresholdModal && (
+        <Modal onClose={() => setShowThresholdModal(false)} ref={modalRef}>
+          <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
+          <div className="mb-6">
+            <h3 className="font-semibold mb-8">심박수 임계값</h3>
+            
+            {/* 다중 핸들 슬라이더 */}
+            <div className="relative mb-6">
+              <ReactSlider
+                className="horizontal-slider"
+                min={30}
+                max={200}
+                value={[
+                  thresholds.heartRateDangerLow,
+                  thresholds.heartRateWarningLow,
+                  thresholds.heartRateWarningHigh,
+                  thresholds.heartRateDangerHigh,
+                ]}
+                onChange={(values) => {
+                  setThresholds({
+                    ...thresholds,
+                    heartRateDangerLow: values[0],
+                    heartRateWarningLow: values[1],
+                    heartRateWarningHigh: values[2],
+                    heartRateDangerHigh: values[3],
+                  });
                 }}
-              >
-              </span>
+                withTracks={true}
+                pearling={true}
+                minDistance={1}
+                renderThumb={(props, state) => (
+                  <div
+                    {...props}
+                    style={{
+                      ...props.style,
+                      height: '25px',
+                      width: '25px',
+                      backgroundColor:
+                        state.index === 0 || state.index === 3
+                          ? '#f44336' // 위험 수준 핸들 - 빨간색
+                          : '#ff9800', // 경고 수준 핸들 - 주황색
+                      borderRadius: '50%',
+                      cursor: 'pointer',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      position: 'absolute',
+                    }}
+                  >
+                    {/* 핸들 레이블 추가 */}
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-30px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        color: '#000',
+                        fontSize: '12px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                    </span>
+                  </div>
+                )}
+                renderTrack={(props, state) => (
+                  <div
+                    {...props}
+                    style={{
+                      ...props.style,
+                      height: '10px',
+                      backgroundColor: (() => {
+                        switch (state.index) {
+                          case 0:
+                            return '#f44336'; // 위험 구간 (하한선 이하) - 빨간색
+                          case 1:
+                            return '#ff9800'; // 경고 구간 (하한선과 상한선 사이) - 주황색
+                          case 2:
+                            return '#4caf50'; // 정상 구간 - 초록색
+                          case 3:
+                            return '#ff9800'; // 경고 구간 (상한선과 위험 상한선 사이) - 주황색
+                          case 4:
+                            return '#f44336'; // 위험 구간 (상한선 이상) - 빨간색
+                          default:
+                            return '#ddd'; // 기본 색상
+                        }
+                      })(),
+                    }}
+                  />
+                )}
+              />
             </div>
-          )}
-          renderTrack={(props, state) => (
-            <div
-              {...props}
-              style={{
-                ...props.style,
-                height: '10px',
-                backgroundColor: (() => {
-                  switch (state.index) {
-                    case 0:
-                      return '#f44336'; // 위험 구간 (하한선 이하) - 빨간색
-                    case 1:
-                      return '#ff9800'; // 경고 구간 (하한선과 상한선 사이) - 주황색
-                    case 2:
-                      return '#4caf50'; // 정상 구간 - 초록색
-                    case 3:
-                      return '#ff9800'; // 경고 구간 (상한선과 위험 상한선 사이) - 주황색
-                    case 4:
-                      return '#f44336'; // 위험 구간 (상한선 이상) - 빨간색
-                    default:
-                      return '#ddd'; // 기본 색상
-                  }
-                })(),
+            {/* 현재 값 표시 영역 개선 */}
+            <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
+              <div className="text-center">
+                <div
+                  className="w-4 h-4 mx-auto mb-1"
+                  style={{ backgroundColor: '#f44336' }}
+                ></div>
+                <p>위험 (하한)</p>
+                <p>{thresholds.heartRateDangerLow} bpm</p>
+              </div>
+              <div className="text-center">
+                <div
+                  className="w-4 h-4 mx-auto mb-1"
+                  style={{ backgroundColor: '#ff9800' }}
+                ></div>
+                <p>경고 (하한)</p>
+                <p>{thresholds.heartRateWarningLow} bpm</p>
+              </div>
+              <div className="text-center">
+                <div
+                  className="w-4 h-4 mx-auto mb-1"
+                  style={{ backgroundColor: '#ff9800' }}
+                ></div>
+                <p>경고 (상한)</p>
+                <p>{thresholds.heartRateWarningHigh} bpm</p>
+              </div>
+              <div className="text-center">
+                <div
+                  className="w-4 h-4 mx-auto mb-1"
+                  style={{ backgroundColor: '#f44336' }}
+                ></div>
+                <p>위험 (상한)</p>
+                <p>{thresholds.heartRateDangerHigh} bpm</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                // 임계값을 업데이트한 사용자 객체 생성
+                const updatedUser = {
+                  ...user,
+                  thresholds: { ...thresholds },
+                };
+                // 사용자 업데이트 함수 호출 (서버로 전송)
+                updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
+                setShowThresholdModal(false);
               }}
-            />
-          )}
-        />
-      </div>
-      {/* 현재 값 표시 영역 개선 */}
-      <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
-        <div className="text-center">
-          <div
-            className="w-4 h-4 mx-auto mb-1"
-            style={{ backgroundColor: '#f44336' }}
-          ></div>
-          <p>위험 (하한)</p>
-          <p>{thresholds.heartRateDangerLow} bpm</p>
-        </div>
-        <div className="text-center">
-          <div
-            className="w-4 h-4 mx-auto mb-1"
-            style={{ backgroundColor: '#ff9800' }}
-          ></div>
-          <p>경고 (하한)</p>
-          <p>{thresholds.heartRateWarningLow} bpm</p>
-        </div>
-        <div className="text-center">
-          <div
-            className="w-4 h-4 mx-auto mb-1"
-            style={{ backgroundColor: '#ff9800' }}
-          ></div>
-          <p>경고 (상한)</p>
-          <p>{thresholds.heartRateWarningHigh} bpm</p>
-        </div>
-        <div className="text-center">
-          <div
-            className="w-4 h-4 mx-auto mb-1"
-            style={{ backgroundColor: '#f44336' }}
-          ></div>
-          <p>위험 (상한)</p>
-          <p>{thresholds.heartRateDangerHigh} bpm</p>
-        </div>
-      </div>
-    </div>
-    <div className="flex justify-end">
-      <button
-        onClick={() => {
-          // 임계값을 업데이트한 사용자 객체 생성
-          const updatedUser = {
-            ...user,
-            thresholds: { ...thresholds },
-          };
-          // 사용자 업데이트 함수 호출 (서버로 전송)
-          updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
-          setShowThresholdModal(false);
-        }}
-        className="px-4 py-2 bg-blue-500 text-white rounded-md"
-      >
-        저장
-      </button>
-    </div>
-  </Modal>
-)}
-
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              저장
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Edit User Modal */}
       {showEditModal && (
@@ -674,8 +776,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         </Modal>
       )}
       
-            {/* Ring Connection Status */}
-            <div className="ring-status mt-4 flex items-center justify-center gap-4">
+      {/* Ring Connection Status */}
+      <div className="ring-status mt-4 flex items-center justify-center gap-4">
         {user.ring ? (
           <>
             <span className="text-green-500 font-semibold">링 연결됨</span>
@@ -726,53 +828,52 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
             <p>현재 연결된 링이 없습니다.</p>
           )}
 
-<div className="mt-4">
-  <h3 className="text-lg font-medium mb-2">링 목록</h3>
-  <ul>
-    {availableRings.length > 0 ? (
-      availableRings
-        // 이미 다른 사용자에게 할당된 링은 제외
-        .filter(
-          (ring) =>
-            !users.some((otherUser) => otherUser.macAddr === ring.MacAddr)
-        )
-        .map((ring) => (
-          <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
-            <span>{ring.Name || "Unknown Ring"}</span>
-            <button
-              onClick={() => {
-                // 링 연결
-                const updatedUser = {
-                  ...user,
-                  ring: ring,
-                  macAddr: ring.MacAddr, // 선택한 링의 MacAddr로 설정
-                  // 필요한 다른 필드들도 포함
-                  name: user.name,
-                  gender: user.gender,
-                  age: user.age,
-                  profileImage: user.profileImage,
-                  address: user.address,
-                  stepTarget: user.stepTarget,
-                  kcalTarget: user.kcalTarget,
-                  kmTarget: user.kmTarget,
-                  albumPath: user.albumPath,
-                  lifeLogs: user.lifeLogs,
-                };
-                updateUser(updatedUser, true); // 서버로 전송
-                setShowRingModal(false);
-              }}
-              className="px-2 py-1 bg-blue-500 text-white rounded-md"
-            >
-              연결
-            </button>
-          </li>
-        ))
-    ) : (
-      <p>사용 가능한 링이 없습니다.</p>
-    )}
-  </ul>
-</div>
-
+          <div className="mt-4">
+            <h3 className="text-lg font-medium mb-2">링 목록</h3>
+            <ul>
+              {availableRings.length > 0 ? (
+                availableRings
+                  // 이미 다른 사용자에게 할당된 링은 제외
+                  .filter(
+                    (ring) =>
+                      !users.some((otherUser) => otherUser.macAddr === ring.MacAddr)
+                  )
+                  .map((ring) => (
+                    <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
+                      <span>{ring.Name || "Unknown Ring"}</span>
+                      <button
+                        onClick={() => {
+                          // 링 연결
+                          const updatedUser = {
+                            ...user,
+                            ring: ring,
+                            macAddr: ring.MacAddr, // 선택한 링의 MacAddr로 설정
+                            // 필요한 다른 필드들도 포함
+                            name: user.name,
+                            gender: user.gender,
+                            age: user.age,
+                            profileImage: user.profileImage,
+                            address: user.address,
+                            stepTarget: user.stepTarget,
+                            kcalTarget: user.kcalTarget,
+                            kmTarget: user.kmTarget,
+                            albumPath: user.albumPath,
+                            lifeLogs: user.lifeLogs,
+                          };
+                          updateUser(updatedUser, true); // 서버로 전송
+                          setShowRingModal(false);
+                        }}
+                        className="px-2 py-1 bg-blue-500 text-white rounded-md"
+                      >
+                        연결
+                      </button>
+                    </li>
+                  ))
+              ) : (
+                <p>사용 가능한 링이 없습니다.</p>
+              )}
+            </ul>
+          </div>
 
           <div className="flex justify-end mt-4">
             <button
@@ -809,4 +910,5 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   );
 };
 
-export default Card;
+// 컴포넌트 최적화: React.memo로 감싸기
+export default React.memo(Card);
