@@ -1,3 +1,4 @@
+// calculateUserStatus.js
 export const calculateUserStatus = (user) => {
   // 산소포화도 임계값
   const OXYGEN_WARNING_THRESHOLD = 95;
@@ -14,10 +15,9 @@ export const calculateUserStatus = (user) => {
   // 데이터 접근
   const bpm = user.data?.bpm;
   const oxygen = user.data?.oxygen;
-  const stress = user.data?.stress;
 
   // 데이터 유효성 검사
-  if (bpm == null || oxygen == null || stress == null) {
+  if (bpm == null || oxygen == null) {
     return 'no data';
   }
 
@@ -50,24 +50,12 @@ export const calculateUserStatus = (user) => {
     }
   })();
 
-  // 스트레스 상태 계산 (0일 때 이미 정상으로 처리되므로 수정 불필요)
-  const stressStatus = (() => {
-    if (stress >= 66) {
-      return 'danger';
-    } else if (stress >= 33) {
-      return 'warning';
-    } else {
-      return 'normal';
-    }
-  })();
-
   // 전체 상태 결정 (가장 나쁜 상태로 설정)
-  if (bpmStatus === 'danger' || oxygenStatus === 'danger' || stressStatus === 'danger') {
+  if (bpmStatus === 'danger' || oxygenStatus === 'danger') {
     status = 'danger';
   } else if (
     bpmStatus === 'warning' ||
-    oxygenStatus === 'warning' ||
-    stressStatus === 'warning'
+    oxygenStatus === 'warning'
   ) {
     status = 'warning';
   } else {
