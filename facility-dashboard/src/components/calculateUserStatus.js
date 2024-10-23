@@ -1,8 +1,9 @@
-// calculateUserStatus.js
 export const calculateUserStatus = (user) => {
+  // 산소포화도 임계값
   const OXYGEN_WARNING_THRESHOLD = 95;
   const OXYGEN_DANGER_THRESHOLD = 90;
 
+  // 사용자 지정 심박수 임계값
   const thresholds = user.thresholds || {
     heartRateWarningLow: 80,
     heartRateWarningHigh: 120,
@@ -10,29 +11,67 @@ export const calculateUserStatus = (user) => {
     heartRateDangerHigh: 140,
   };
 
-  // 옵셔널 체이닝을 사용하여 안전하게 접근
+  // 데이터 접근
   const bpm = user.data?.bpm;
   const oxygen = user.data?.oxygen;
+  const stress = user.data?.stress;
 
-  // bpm 또는 oxygen 값이 null 또는 undefined인 경우 'no data' 상태로 간주
-  if (bpm == null || oxygen == null) {
+  // 데이터 유효성 검사
+  if (bpm == null || oxygen == null || stress == null) {
     return 'no data';
   }
-  if (!bpm || !oxygen) {
-    return 'no data';
-  }
+
+  // 초기 상태
   let status = 'normal';
 
-  if (
-    (bpm > thresholds.heartRateDangerHigh || bpm < thresholds.heartRateDangerLow) ||
-    oxygen < OXYGEN_DANGER_THRESHOLD
-  ) {
+  // 심박수 상태 계산
+  const bpmStatus = (() => {
+    if (bpm === 0) {
+      return 'normal';
+    } else if (bpm <= thresholds.heartRateDangerLow || bpm >= thresholds.heartRateDangerHigh) {
+      return 'danger';
+    } else if (bpm <= thresholds.heartRateWarningLow || bpm >= thresholds.heartRateWarningHigh) {
+      return 'warning';
+    } else {
+      return 'normal';
+    }
+  })();
+
+  // 산소포화도 상태 계산
+  const oxygenStatus = (() => {
+    if (oxygen === 0) {
+      return 'normal';
+    } else if (oxygen < OXYGEN_DANGER_THRESHOLD) {
+      return 'danger';
+    } else if (oxygen < OXYGEN_WARNING_THRESHOLD) {
+      return 'warning';
+    } else {
+      return 'normal';
+    }
+  })();
+
+  // 스트레스 상태 계산 (0일 때 이미 정상으로 처리되므로 수정 불필요)
+  const stressStatus = (() => {
+    if (stress >= 66) {
+      return 'danger';
+    } else if (stress >= 33) {
+      return 'warning';
+    } else {
+      return 'normal';
+    }
+  })();
+
+  // 전체 상태 결정 (가장 나쁜 상태로 설정)
+  if (bpmStatus === 'danger' || oxygenStatus === 'danger' || stressStatus === 'danger') {
     status = 'danger';
   } else if (
-    (bpm > thresholds.heartRateWarningHigh || bpm < thresholds.heartRateWarningLow) ||
-    oxygen < OXYGEN_WARNING_THRESHOLD
+    bpmStatus === 'warning' ||
+    oxygenStatus === 'warning' ||
+    stressStatus === 'warning'
   ) {
     status = 'warning';
+  } else {
+    status = 'normal';
   }
 
   return status;
