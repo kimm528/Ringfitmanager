@@ -56,6 +56,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     sleep = 0,
   } = user?.data || {};
 
+  const processedSleep = typeof sleep === 'object' ? sleep.score || 0 : sleep;
+
   const lifeLogs = user?.lifeLogs || [];
 
 
@@ -531,7 +533,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             <InfoCard icon={<FaHeartbeat className="text-red-500" />} title="심박수" value={`${processedRingData.latestBpm} BPM`} />
             <InfoCard icon={<FaTint className="text-blue-500" />} title="혈중 산소" value={`${processedRingData.averageOxygen}%`} />
             <InfoCard icon={<FaSmile className="text-yellow-500" />} title="스트레스" value={`${processedRingData.stress}점`} />            
-            <InfoCard icon={<FaBed className="text-gray-500" />} title="수면 점수" value={`${sleep}점`} />
+            <InfoCard icon={<FaBed className="text-gray-500" />} title="수면 점수" value={`${processedSleep}점`} />
           </div>
 
           {/* 일별 데이터 선그래프 */}
