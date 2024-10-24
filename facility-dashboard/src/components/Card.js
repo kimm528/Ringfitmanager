@@ -62,29 +62,28 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   // 수면 점수 계산 함수
   const calculateSleepScore = useCallback(
     (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
-      if (
-        totalSleepDuration !== 0 &&
-        deepSleepDuration !== 0 &&
-        awakeDuration !== 0 &&
-        shallowSleepDuration !== 0
-      ) {
-        const totalSleepScore = (totalSleepDuration / 480.0) * 50;
-        const deepSleepScore = (deepSleepDuration / totalSleepDuration) * 30;
-        const awakePenalty = (awakeDuration / totalSleepDuration) * -20;
-        const shallowSleepPenalty = (shallowSleepDuration / totalSleepDuration) * -10;
-
-        let sleepScore = totalSleepScore + deepSleepScore + awakePenalty + shallowSleepPenalty;
-
-        sleepScore = Math.max(0, Math.min(100, sleepScore));
-
-        return Math.round(sleepScore);
-      } else {
+      if (totalSleepDuration === 0) {
         return 0;
       }
+  
+      // 각 기간이 0인 경우 기본값 설정
+      deepSleepDuration = deepSleepDuration || 0;
+      awakeDuration = awakeDuration || 0;
+      shallowSleepDuration = shallowSleepDuration || 0;
+  
+      const totalSleepScore = (totalSleepDuration / 480.0) * 50;
+      const deepSleepScore = (deepSleepDuration / totalSleepDuration) * 30;
+      const awakePenalty = (awakeDuration / totalSleepDuration) * -20;
+      const shallowSleepPenalty = (shallowSleepDuration / totalSleepDuration) * -10;
+  
+      let sleepScore = totalSleepScore + deepSleepScore + awakePenalty + shallowSleepPenalty;
+  
+      sleepScore = Math.max(0, Math.min(100, sleepScore));
+  
+      return Math.round(sleepScore);
     },
     []
   );
-
   // Get Last Non-Zero Value
   const getLastNonZero = useCallback((arr) => {
     if (!arr || !Array.isArray(arr)) return 0;
