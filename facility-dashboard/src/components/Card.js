@@ -65,25 +65,26 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       if (totalSleepDuration === 0) {
         return 0;
       }
-  
+
       // 각 기간이 0인 경우 기본값 설정
       deepSleepDuration = deepSleepDuration || 0;
       awakeDuration = awakeDuration || 0;
       shallowSleepDuration = shallowSleepDuration || 0;
-  
+
       const totalSleepScore = (totalSleepDuration / 480.0) * 50;
       const deepSleepScore = (deepSleepDuration / totalSleepDuration) * 30;
       const awakePenalty = (awakeDuration / totalSleepDuration) * -20;
       const shallowSleepPenalty = (shallowSleepDuration / totalSleepDuration) * -10;
-  
+
       let sleepScore = totalSleepScore + deepSleepScore + awakePenalty + shallowSleepPenalty;
-  
+
       sleepScore = Math.max(0, Math.min(100, sleepScore));
-  
+
       return Math.round(sleepScore);
     },
     []
   );
+
   // Get Last Non-Zero Value
   const getLastNonZero = useCallback((arr) => {
     if (!arr || !Array.isArray(arr)) return 0;
@@ -442,8 +443,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     <div
       className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
         status === 'warning' ? 'border-4 border-yellow-500' : ''
-      } ${status === 'danger' ? 'border-4 border-red-500' : ''}`} // animate-blink 제거
-      style={{ width: '350px', margin: '10px', fontFamily: 'Nanum Gothic, sans-serif', minHeight: '400px' }} // minHeight 추가
+      } ${
+        status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''
+      }`}
+      style={{ width: '350px', margin: '10px', fontFamily: 'Nanum Gothic, sans-serif', minHeight: '400px' }}
       onClick={navigateToUserDetail}
     >
       
