@@ -13,7 +13,6 @@ import Settings from './components/Settings'; // Settings 컴포넌트 추가
 // 기본 프로필 이미지 URL 설정
 const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';
 
-
 // Helper functions for localStorage operations
 const loadFromLocalStorage = (key, defaultValue) => {
   // 'users' 키에 대한 로컬 스토리지 접근을 차단
