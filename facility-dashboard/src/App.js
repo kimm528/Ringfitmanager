@@ -54,6 +54,7 @@ function App() {
   const [sortOption, setSortOption] = useState('name');
   const [availableRings, setAvailableRings] = useState([]); // 링 데이터를 저장할 상태 추가
   const [successMessage, setSuccessMessage] = useState('');
+  const [disconnectInterval, setDisconnectInterval] = useState(5);
 
 
   // 동적 siteId 상태 추가
@@ -578,6 +579,8 @@ function App() {
                           setSortOption={setSortOption}
                           toggleFavorite={toggleFavorite}
                           availableRings={availableRings}
+                          disconnectInterval={disconnectInterval} 
+
                         />
                       </main>
                     </>
@@ -595,6 +598,8 @@ function App() {
                       users={users}
                       deleteUser={deleteUser}
                       siteId={siteId} // 동적 siteId 전달
+                      disconnectInterval={disconnectInterval} 
+                    setDisconnectInterval={setDisconnectInterval} 
                     />
                   }
                 />

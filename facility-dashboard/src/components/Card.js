@@ -22,7 +22,7 @@ import '../App.css'; // 경로 수정: '../App.css'로 변경
 import ReactSlider from 'react-slider';
 import { calculateUserStatus } from './calculateUserStatus'; // 함수 임포트
 
-const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users }) => {
+const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users, disconnectInterval }) => {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -33,6 +33,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   const [editedName, setEditedName] = useState(user.name);
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
+  const [isRingConnected, setIsRingConnected] = useState(true);
 
   const [processedData, setProcessedData] = useState({
     bpm: 0,
@@ -96,6 +97,35 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     return 0;
   }, []);
 
+  useEffect(() => {
+    const checkRingConnection = () => {
+      if (user.ring && user.ring.ConnectedTime) {
+        const connectedTime = new Date(user.ring.ConnectedTime).getTime();
+        const currentTime = Date.now();
+        const timeDiff = currentTime - connectedTime;
+        if (timeDiff > disconnectInterval * 60 * 1000) { // disconnectInterval 분
+          setIsRingConnected(false);
+        } else {
+          setIsRingConnected(true);
+        }
+      } else {
+        setIsRingConnected(false);
+      }
+    };
+  
+    // 컴포넌트가 마운트될 때 한 번 체크
+    checkRingConnection();
+  
+     // 체크 주기 계산 (예: disconnectInterval의 1/5)
+     const checkInterval = Math.max(disconnectInterval * 60 * 1000 / 5, 300 * 1000); // 최소 30초
+
+     const intervalId = setInterval(checkRingConnection, checkInterval);
+ 
+     return () => {
+       clearInterval(intervalId);
+     };
+   }, [user.ring, disconnectInterval]);
+
   // Process Ring Data
   useEffect(() => {
     if (user.ring) {
@@ -150,6 +180,18 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         distance: latestDistance || 0,
       });
 
+      const newProcessedData = {
+        bpm: latestHeartRate || 0,
+        oxygen: avgOxygen || 0,
+        stress: latestStress || 0,
+        sleep: sleepScore || 0,
+        steps: latestSteps || 0,
+        calories: latestCalories || 0,
+        distance: latestDistance || 0,
+      };
+  
+      setProcessedData(newProcessedData);
+
       // 사용자 데이터 업데이트 (필요한 경우)
       const shouldUpdateUser =
         latestHeartRate !== user.data?.bpm ||
@@ -160,35 +202,31 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         latestStress !== user.data?.stress ||
         sleepScore !== user.data?.sleep;
 
-      if (shouldUpdateUser) {
-        const updatedUser = {
-          ...user,
-          data: {
-            ...(user.data || {}),
-            bpm: Number(latestHeartRate),
-            oxygen: Number(avgOxygen),
-            steps: latestSteps,
-            calories: latestCalories,
-            distance: latestDistance,
-            stress: latestStress,
-            sleep: sleepScore,
-          },
-        };
-        updateUser(updatedUser, false);
+        if (shouldUpdateUser) {
+          const updatedUser = {
+            ...user,
+            data: {
+              ...(user.data || {}),
+              ...newProcessedData,
+            },
+            lastReceivedTime: Date.now(), // 마지막 수신 시간 갱신
+          };
+          console.log('Updating lastReceivedTime:', new Date(updatedUser.lastReceivedTime).toLocaleTimeString());
+          updateUser(updatedUser, false);
+        }
+      } else {
+        // 링 데이터가 없을 경우 기본값 사용
+        setProcessedData({
+          bpm: user.data?.bpm || 0,
+          oxygen: user.data?.oxygen || 0,
+          stress: user.data?.stress || 0,
+          sleep: user.data?.sleep || 0,
+          steps: user.data?.steps || 0,
+          calories: user.data?.calories || 0,
+          distance: user.data?.distance || 0,
+        });
       }
-    } else {
-      // 링 데이터가 없을 경우 기본값 사용
-      setProcessedData({
-        bpm: user.data?.bpm || 0,
-        oxygen: user.data?.oxygen || 0,
-        stress: user.data?.stress || 0,
-        sleep: user.data?.sleep || 0,
-        steps: user.data?.steps || 0,
-        calories: user.data?.calories || 0,
-        distance: user.data?.distance || 0,
-      });
-    }
-  }, [user, getLastNonZero, updateUser, calculateSleepScore]);
+    }, [user.ring, getLastNonZero, updateUser, calculateSleepScore]);
 
   // Extract Variables from Processed Data
   const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
@@ -780,17 +818,21 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       
       {/* Ring Connection Status */}
       <div className="ring-status mt-4 flex items-center justify-center gap-4">
-        {user.ring ? (
-          <>
-            <span className="text-green-500 font-semibold">링 연결됨</span>
-            <span className="text-gray-700 font-medium">
-              배터리: {user.ring.BatteryLevel}%
-            </span>
-          </>
-        ) : (
-          <span className="text-red-500 font-semibold">링 미연결</span>
-        )}
-      </div>
+  {user.ring ? (
+    isRingConnected ? (
+      <>
+        <span className="text-green-500 font-semibold">링 연결됨</span>
+        <span className="text-gray-700 font-medium">
+          배터리: {user.ring.BatteryLevel}%
+        </span>
+      </>
+    ) : (
+      <span className="text-red-500 font-semibold blink">링 확인요망</span>
+    )
+  ) : (
+    <span className="text-red-500 font-semibold">링 미연결</span>
+  )}
+</div>
 
        {/* Ring Management Modal */}
        {showRingModal && (

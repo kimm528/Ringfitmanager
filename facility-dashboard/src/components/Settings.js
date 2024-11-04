@@ -1,6 +1,4 @@
-// src/components/Settings.js
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // 간단한 Modal 컴포넌트 구현
 const Modal = ({ children, onClose }) => {
@@ -19,11 +17,20 @@ const Modal = ({ children, onClose }) => {
   );
 };
 
-const Settings = ({ adminInfo, handleUpdateAdminInfo, users, deleteUser, siteId }) => {
+const Settings = ({
+  adminInfo,
+  handleUpdateAdminInfo,
+  users,
+  deleteUser,
+  siteId,
+  disconnectInterval,
+  setDisconnectInterval,
+}) => {
   // 관리자 관리 상태
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [sitePassword, setSitePassword] = useState(''); // 사이트 비밀번호 상태 추가
   const [adminList, setAdminList] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -32,6 +39,13 @@ const Settings = ({ adminInfo, handleUpdateAdminInfo, users, deleteUser, siteId 
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
+
+  // **탭 상태 추가**
+  const [activeTab, setActiveTab] = useState('admin'); // 기본값은 'admin' 탭
+
+  // **disconnectInterval 상태 추가**
+  const [newDisconnectInterval, setNewDisconnectInterval] = useState(disconnectInterval);
+
 
   // 관리자 명단을 서버로부터 가져오는 함수
   const fetchAdminList = async () => {
@@ -110,6 +124,7 @@ const Settings = ({ adminInfo, handleUpdateAdminInfo, users, deleteUser, siteId 
           setIsAuthenticated(true);
           setErrorMessage('');
           fetchAdminList(); // 로그인 성공 시 관리자 리스트 가져오기
+          setSitePassword(loginPassword); // 로그인 비밀번호를 sitePassword에 저장
         } else {
           setErrorMessage('아이디나 비밀번호가 올바르지 않습니다.');
         }
@@ -175,6 +190,56 @@ const Settings = ({ adminInfo, handleUpdateAdminInfo, users, deleteUser, siteId 
     }
   };
 
+    // **disconnectInterval 업데이트 함수**
+    const handleUpdateDisconnectInterval = async (e) => {
+      e.preventDefault();
+  
+      if (!siteId) {
+        alert('사이트 ID가 설정되지 않았습니다.');
+        return;
+      }
+  
+      try {
+        const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
+        const response = await fetch(`https://fitlife.dotories.com/api/site?siteId=${siteId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${credentials}`,
+          },
+          body: JSON.stringify({
+            header: {
+              command: 4, // 사이트 정보 수정을 위한 명령 코드
+              
+            },
+            data: {
+              disconnectInterval: newDisconnectInterval,
+              'siteId': siteId,
+              'sitePassword': sitePassword
+            },
+          }),
+        });
+  
+        let data = await response.json();
+  
+        // 응답 데이터가 문자열인 경우 다시 파싱
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+        }
+  
+        if (response.ok) {
+          alert('연결 시간 간격이 성공적으로 업데이트되었습니다.');
+          setDisconnectInterval(newDisconnectInterval); // 애플리케이션 상태 업데이트
+        } else {
+          console.error('disconnectInterval 업데이트 실패:', data);
+          alert('연결 시간 간격 업데이트에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('disconnectInterval 업데이트 오류:', error);
+        alert('연결 시간 간격 업데이트 중 오류가 발생했습니다.');
+      }
+    };
+  
   // 관리자 수정 함수
   const handleEditAdmin = async (e) => {
     e.preventDefault();
@@ -240,138 +305,197 @@ const Settings = ({ adminInfo, handleUpdateAdminInfo, users, deleteUser, siteId 
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
+      <h1 className="text-2xl font-bold mb-4">설정</h1>
 
-      {/* 관리 페이지 */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">관리 페이지</h2>
-
-        {!isAuthenticated ? (
-          <form onSubmit={handleAdminLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">관리자 아이디</label>
-              <input
-                type="text"
-                value={loginId}
-                onChange={(e) => setLoginId(e.target.value)}
-                required
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">비밀번호</label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                required
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-              />
-            </div>
-            {errorMessage && (
-              <div className="text-red-500 text-sm">
-                {errorMessage}
-              </div>
-            )}
-            <div>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              >
-                로그인
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">관리자 명단</h3>
-              {/* 관리자 추가 버튼 (필요 시 추가) */}
-            </div>
-            {adminList.length === 0 ? (
-              <p>등록된 관리자가 없습니다.</p>
-            ) : (
-              <table className="min-w-full bg-white rounded-lg overflow-hidden">
-                <thead>
-                  <tr>
-                    <th className="py-2 px-4 border-b">관리자 아이디</th>
-                    <th className="py-2 px-4 border-b">이름</th>
-                    <th className="py-2 px-4 border-b">액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminList.map((admin) => (
-                    <tr key={admin.AdminId} className="hover:bg-gray-100">
-                      <td className="py-2 px-4 border-b">{admin.AdminId}</td>
-                      <td className="py-2 px-4 border-b">{admin.Name}</td>
-                      <td className="py-2 px-4 border-b flex space-x-2">
-                        {/* 수정 버튼 추가 */}
-                        <button
-                          onClick={() => openEditModal(admin)}
-                          className="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-                        >
-                          수정
-                        </button>
-                        {/* 삭제 버튼 */}
-                        <button
-                          onClick={() => handleDeleteAdmin(admin.AdminId)}
-                          className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
-                        >
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {/* 관리자 수정 모달 */}
-            {showEditModal && selectedAdmin && (
-              <Modal onClose={() => setShowEditModal(false)}>
-                <h2 className="text-xl font-semibold mb-4">관리자 정보 수정</h2>
-                <form onSubmit={handleEditAdmin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">관리자 이름</label>
-                    <input
-                      type="text"
-                      value={newAdminName}
-                      onChange={(e) => setNewAdminName(e.target.value)}
-                      required
-                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">새 비밀번호</label>
-                    <input
-                      type="password"
-                      value={newAdminPassword}
-                      onChange={(e) => setNewAdminPassword(e.target.value)}
-                      required
-                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowEditModal(false)}
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                    >
-                      수정 완료
-                    </button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-          </div>
-        )}
+      {/* 탭 메뉴 */}
+      <div className="mb-6">
+        <button
+          onClick={() => setActiveTab('admin')}
+          className={`px-4 py-2 mr-2 ${
+            activeTab === 'admin' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+          } rounded-md`}
+        >
+          관리 페이지
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`px-4 py-2 ${
+            activeTab === 'settings' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+          } rounded-md`}
+        >
+          기본 설정
+        </button>
       </div>
+
+      {/* 탭 내용 */}
+      {activeTab === 'admin' && (
+        <div>
+          {/* 관리 페이지 내용 */}
+          <h2 className="text-xl font-semibold mb-4">관리 페이지</h2>
+
+          {!isAuthenticated ? (
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              {/* 로그인 폼 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">관리자 아이디</label>
+                <input
+                  type="text"
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
+                  required
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">비밀번호</label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              {errorMessage && (
+                <div className="text-red-500 text-sm">
+                  {errorMessage}
+                </div>
+              )}
+              <div>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  로그인
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">관리자 명단</h3>
+                {/* 관리자 추가 버튼 (필요 시 추가) */}
+              </div>
+              {adminList.length === 0 ? (
+                <p>등록된 관리자가 없습니다.</p>
+              ) : (
+                <table className="min-w-full bg-white rounded-lg overflow-hidden">
+                  <thead>
+                    <tr>
+                      <th className="py-2 px-4 border-b">관리자 아이디</th>
+                      <th className="py-2 px-4 border-b">이름</th>
+                      <th className="py-2 px-4 border-b">액션</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminList.map((admin) => (
+                      <tr key={admin.AdminId} className="hover:bg-gray-100">
+                        <td className="py-2 px-4 border-b">{admin.AdminId}</td>
+                        <td className="py-2 px-4 border-b">{admin.Name}</td>
+                        <td className="py-2 px-4 border-b flex space-x-2">
+                          {/* 수정 버튼 추가 */}
+                          <button
+                            onClick={() => openEditModal(admin)}
+                            className="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+                          >
+                            수정
+                          </button>
+                          {/* 삭제 버튼 */}
+                          <button
+                            onClick={() => handleDeleteAdmin(admin.AdminId)}
+                            className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
+                          >
+                            삭제
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* 관리자 수정 모달 */}
+              {showEditModal && selectedAdmin && (
+                <Modal onClose={() => setShowEditModal(false)}>
+                  <h2 className="text-xl font-semibold mb-4">관리자 정보 수정</h2>
+                  <form onSubmit={handleEditAdmin} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">관리자 이름</label>
+                      <input
+                        type="text"
+                        value={newAdminName}
+                        onChange={(e) => setNewAdminName(e.target.value)}
+                        required
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">새 비밀번호</label>
+                      <input
+                        type="password"
+                        value={newAdminPassword}
+                        onChange={(e) => setNewAdminPassword(e.target.value)}
+                        required
+                        className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowEditModal(false)}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                      >
+                        수정 완료
+                      </button>
+                    </div>
+                  </form>
+                </Modal>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div>
+          {/* 기본 설정 내용 */}
+          <h2 className="text-xl font-semibold mb-4">기본 설정</h2>
+
+          {isAuthenticated ? (
+            <form onSubmit={handleUpdateDisconnectInterval} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  링 해제 알림간격 (분)
+                </label>
+                <input
+                  type="number"
+                  value={newDisconnectInterval}
+                  onChange={(e) => setNewDisconnectInterval(Number(e.target.value))}
+                  required
+                  min={1}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  저장
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p>기본 설정을 변경하려면 먼저 로그인해 주세요.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };

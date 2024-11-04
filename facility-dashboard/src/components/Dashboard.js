@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import Modal from './Modal';
 import { calculateUserStatus } from './calculateUserStatus';
-import { motion } from 'framer-motion'; // 혹은 완전히 제거
+import { motion } from 'framer-motion';
 
 const Dashboard = ({
   showModal,
@@ -15,6 +15,7 @@ const Dashboard = ({
   deleteUser,
   availableRings,
   toggleFavorite,
+  disconnectInterval, // 추가
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -110,19 +111,19 @@ const Dashboard = ({
           justifyContent: 'flex-start',
         }}
       >
-       {sortedUsers.map((user) => (
-  <motion.div key={user.id} layout>
-    <Card
-      user={user}
-      toggleFavorite={toggleFavorite}
-      updateUser={updateUser}
-      deleteUser={deleteUser}
-      availableRings={availableRings}
-      users={users}
-    />
-  </motion.div>
-))}
-
+        {sortedUsers.map((user) => (
+          <motion.div key={user.id} layout>
+            <Card
+              user={user}
+              toggleFavorite={toggleFavorite}
+              updateUser={updateUser}
+              deleteUser={deleteUser}
+              availableRings={availableRings}
+              users={users}
+              disconnectInterval={disconnectInterval} // 추가
+            />
+          </motion.div>
+        ))}
       </div>
 
       {/* Add User Modal */}
