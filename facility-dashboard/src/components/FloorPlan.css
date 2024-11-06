@@ -1,0 +1,35 @@
+/* src/index.css 또는 Tailwind 설정 파일에 추가 */
+
+.floorplan-container {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.canvas-container {
+  width: 800px; /* 원하는 크기로 설정 */
+  height: 600px; /* 원하는 크기로 설정 */
+  position: relative;
+}
+
+.smartphone-palette {
+  display: flex;
+  gap: 10px;
+}
+
+.upload-section input[type="file"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.smartphone-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.smartphone-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+

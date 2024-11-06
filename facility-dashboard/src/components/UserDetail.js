@@ -1,4 +1,4 @@
-// UserDetail.js
+// src/components/UserDetail.js
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
@@ -46,20 +46,24 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const foundUser = users.find((u) => u.id === parseInt(userId));
-    setUser(foundUser);
+    if (users && Array.isArray(users)) {
+      const foundUser = users.find((u) => u.id === parseInt(userId));
+      setUser(foundUser);
+      console.log('Found user:', foundUser);
+    } else {
+      console.warn('users prop is not an array');
+      setUser(null);
+    }
   }, [users, userId]);
 
-  
   // 사용자 데이터 구조 분해 (기본값 설정)
   const {
     sleep = 0,
-  } = user?.data || {};
+  } = user || {};
 
   const processedSleep = typeof sleep === 'object' ? sleep.score || 0 : sleep;
 
   const lifeLogs = user?.lifeLogs || [];
-
 
   // State variables
   const [logItems, setLogItems] = useState(lifeLogs);
@@ -92,8 +96,16 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const [showDistance, setShowDistance] = useState(true);
   const [selectedRingData, setSelectedRingData] = useState(null); // State to hold fetched ring data
 
-  // 추가된 캐시 상태
-  const [ringDataCache, setRingDataCache] = useState({});
+  // 캐시를 useRef로 관리
+  const ringDataCacheRef = React.useRef({});
+
+  // Helper to check if a date is today
+  const isToday = (date) => {
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear() &&
+           date.getMonth() === today.getMonth() &&
+           date.getDate() === today.getDate();
+  };
 
   // Fetch ring data by date with caching
   const fetchRingDataByDate = useCallback(async (date, userMacAddr) => { 
@@ -102,8 +114,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       const cacheKey = `${dateKey}_${userMacAddr}`; // 캐시 키에 사용자 MAC 주소 포함
 
       // 캐시에 데이터가 있는지 확인
-      if (ringDataCache[cacheKey]) {
-        return ringDataCache[cacheKey];
+      if (ringDataCacheRef.current[cacheKey]) {
+        console.log(`Using cached data for ${cacheKey}`);
+        return ringDataCacheRef.current[cacheKey];
       }
 
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
@@ -129,18 +142,20 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       if (response.status !== 200) {
         throw new Error(`API response error: ${response.status}`);
       }
-      
-      const dataIndex = response.data.Data.findIndex(
+    
+      const jsonDataIndex = JSON.parse(response.data); 
+      const dataIndex = jsonDataIndex.Data.findIndex(
         (item) => item.MacAddr === userMacAddr
       );
 
-      const fetchedData = response.data.Data[dataIndex];
+      if (dataIndex === -1) {
+        throw new Error('MAC 주소에 해당하는 데이터가 없습니다.');
+      }
+
+      const fetchedData = jsonDataIndex.Data[dataIndex];
 
       // 캐시에 저장
-      setRingDataCache((prevCache) => ({
-        ...prevCache,
-        [cacheKey]: fetchedData,
-      }));
+      ringDataCacheRef.current[cacheKey] = fetchedData;
 
       return fetchedData;
       
@@ -148,7 +163,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       console.error('Failed to fetch data:', error);
       return null;
     }
-  }, [ringDataCache, siteId]);
+  }, [siteId]);
 
   // 날짜 변경 핸들러
   const handleDateChange = useCallback((e) => {
@@ -160,7 +175,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   // 선택된 날짜 또는 사용자가 변경될 때 링 데이터 가져오기
   useEffect(() => {
     if (user && selectedDate) {
-      const userMacAddr = user?.ring?.MacAddr;
+      const userMacAddr = user.macAddr;
 
       if (!userMacAddr) {
         console.error('User MAC address not found.');
@@ -168,13 +183,21 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
         return;
       }
 
-      fetchRingDataByDate(selectedDate, userMacAddr).then((data) => {
-        if (data) {
-          setSelectedRingData(data);
+      const fetchData = async () => {
+        if (isToday(selectedDate) && user.ring) {
+          console.log('Using user.ring data for today');
+          setSelectedRingData(user.ring);
         } else {
-          setSelectedRingData(null);
+          const data = await fetchRingDataByDate(selectedDate, userMacAddr);
+          if (data) {
+            setSelectedRingData(data);
+          } else {
+            setSelectedRingData(null);
+          }
         }
-      });
+      };
+
+      fetchData();
     } else {
       setSelectedRingData(null);
     }
@@ -201,13 +224,13 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       // BPM 및 산소 데이터 처리
       const aggregatedBpmArr = HeartRateArr.filter((_, index) => index % 2 === 0);
 
-      const timePoints = Array.from({ length: 24 * 6 }, (_, i) => {
-        const hour = Math.floor(i / 6);
-        const minute = (i % 6) * 10;
+      const timePoints = Array.from({ length: 24 * 12 }, (_, i) => {
+        const hour = Math.floor(i / 12);
+        const minute = (i % 12) * 5;
         return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       });
 
-      const bpmData = aggregatedBpmArr.map((bpm, index) => ({
+      const bpmData = HeartRateArr.map((bpm, index) => ({
         time: timePoints[index],
         bpm: bpm || null,
       }));
@@ -217,7 +240,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           ? ((minOxy + MaxBloodOxygenArr[index]) / 2).toFixed(1)
           : minOxy;
         return {
-          time: timePoints[index * 6],
+          time: timePoints[index * 12], // 시간별 인덱스에 매핑
           oxygen: avgOxy || null,
         };
       });
@@ -281,7 +304,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           calories = CalorieArr[index] / 1000; // kcal
         }
         if (WalkDistanceArr[index] !== undefined) {
-          distance = WalkDistanceArr[index] / 1000; // km
+          distance = WalkDistanceArr[index]; // km
         }
   
         lastKnownData = { steps, calories, distance };
@@ -348,8 +371,6 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const openEditModal = useCallback((item) => {
     setEditItem({
       ...item,
-      // 'dose' 필드는 이제 '세부 사항'을 의미하므로 '정'을 제거할 필요가 없습니다.
-      // dose: item.dose.endsWith('정') ? item.dose.slice(0, -1) : item.dose, // 제거
       dose: item.dose, // '세부 사항'을 그대로 사용
     });
     setIsEditModalOpen(true);
@@ -434,10 +455,6 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
       setIsEditModalOpen(false);
       setEditItem(null);
-
-      // 성공 메시지 설정
-      // 이 부분은 App.js에서 관리되는 'successMessage' 상태에 의존합니다.
-      // 따라서 'updateUserLifeLog'에서 성공 시 메시지를 설정하도록 구현해야 합니다.
     }
   }, [editItem, logItems, user, updateUserLifeLog]);
 
@@ -487,7 +504,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const activityLegend = useMemo(() => [
     { dataKey: 'steps', value: '걸음수', color: '#82ca9d', show: showSteps, setShow: setShowSteps },
     { dataKey: 'calories', value: '소모 칼로리 (kcal)', color: '#ff9800', show: showCalories, setShow: setShowCalories },
-    { dataKey: 'distance', value: '이동거리 (m)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: m
+    { dataKey: 'distance', value: '이동거리 (m)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: km
   ], [showSteps, showCalories, showDistance]);
 
   return (
@@ -495,7 +512,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       {/* User Profile Header */}
       <div className="profile-header flex justify-between items-center mb-6">
         <div className="flex items-center">
-                    <div className="ml-4">
+          <div className="ml-4">
             <h2 className="text-2xl font-bold">{user?.name || 'N/A'}</h2>
             <p className="text-gray-600"> &nbsp;&nbsp;&nbsp;{user?.age || 'N/A'}세</p>
           </div>
@@ -522,8 +539,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
               <h3 className="text-xl font-bold mb-4">링 정보</h3>
               <div className="flex space-x-8 items-center">
                 <p><strong>이름:</strong> {user.ring.Name}</p>
-                <p><strong>연결 시간:</strong> {new Date(user.ring.ConnectedTime).toLocaleString()}</p>
-                <p><strong>배터리 수준:</strong> {user.ring.BatteryLevel}%</p>
+                <p><strong>연결 시간:</strong> {user.ring.ConnectedTime ? new Date(user.ring.ConnectedTime).toLocaleString() : 'N/A'}</p>
+                <p><strong>배터리 수준:</strong> {user.ring.BatteryLevel !== undefined ? `${user.ring.BatteryLevel}%` : 'N/A'}</p>
               </div>
             </div>
           )}

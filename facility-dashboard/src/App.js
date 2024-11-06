@@ -3,19 +3,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+
+// 필요한 컴포넌트 임포트
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import UserDetail from './components/UserDetail';
 import Login from './components/Login';
-import Settings from './components/Settings'; // Settings 컴포넌트 추가
+import Settings from './components/Settings';
+import FloorPlan from './components/FloorPlan';
 
 // 기본 프로필 이미지 URL 설정
 const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';
 
-// Helper functions for localStorage operations
+// 로컬 스토리지 관련 헬퍼 함수
 const loadFromLocalStorage = (key, defaultValue) => {
-  // 'users' 키에 대한 로컬 스토리지 접근을 차단
   if (key === 'users') return defaultValue;
 
   const stored = localStorage.getItem(key);
@@ -30,7 +32,6 @@ const loadFromLocalStorage = (key, defaultValue) => {
 };
 
 const saveToLocalStorage = (key, value) => {
-  // 'users' 키에 대한 로컬 스토리지 저장을 차단
   if (key === 'users') return;
 
   localStorage.setItem(key, JSON.stringify(value));
@@ -46,6 +47,7 @@ const getCurrentYYMMDD = () => {
 };
 
 function App() {
+  // 상태 변수들
   const [isLoggedIn, setIsLoggedIn] = useState(loadFromLocalStorage('isLoggedIn', false));
   const [showModal, setShowModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -56,18 +58,16 @@ function App() {
   const [successMessage, setSuccessMessage] = useState('');
   const [disconnectInterval, setDisconnectInterval] = useState(5);
 
-
   // 동적 siteId 상태 추가
   const [siteId, setSiteId] = useState(loadFromLocalStorage('siteId', ''));
 
-
-  // Fetch Users and Ring Data from API
+  // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
     if (!siteId) {
       console.warn('siteId가 설정되지 않았습니다.');
       return;
     }
-  
+
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
       const userResponse = await axios.get(
@@ -79,13 +79,14 @@ function App() {
           },
         }
       );
-  
-      const userData = userResponse.data.Data || [];
-  
-      // Fetch Ring Data
+
+      const jsonData = JSON.parse(userResponse.data);
+      const userData = jsonData.Data || [];
+
+      // 링 데이터 가져오기
       const currentDate = getCurrentYYMMDD();
       const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=${siteId}&yearMonthDay=${currentDate}`;
-  
+
       let ringData = [];
       try {
         const ringResponse = await axios.get(ringUrl, {
@@ -94,26 +95,27 @@ function App() {
             Authorization: `Basic ${credentials}`,
           },
         });
-  
-        ringData = ringResponse.data.Data || [];
+
+        const jsonRing = JSON.parse(ringResponse.data);
+        ringData = jsonRing.Data || [];
       } catch (ringError) {
-        console.warn('Failed to fetch ring data, proceeding without it:', ringError.message);
+        console.warn('링 데이터 가져오기 실패:', ringError.message);
         ringData = [];
       }
-  
+
       setAvailableRings(ringData);
-  
+
       const updatedUsers = userData.map((user) => {
         const userRingData = ringData.find((ring) => ring.MacAddr === user.MacAddr) || null;
-  
-        // LifeLogs 처리 시 오류 방지
+
+        // LifeLogs 처리
         const lifeLogs = (user.LifeLogs || []).map((log, index) => {
           const logDateTime = log.LogDateTime || '';
           const dateTimeParts = logDateTime.split('T');
           const date = dateTimeParts[0] || '';
           const timePart = dateTimeParts[1] || '';
           const time = timePart.substring(0, 5) || '';
-  
+
           return {
             id: index + 1,
             medicine: log.LogContent,
@@ -123,7 +125,7 @@ function App() {
             taken: log.IsChecked,
           };
         });
-  
+
         return {
           id: user.Id,
           name: user.Name,
@@ -158,26 +160,26 @@ function App() {
           isFavorite: user.Favorite || false,
         };
       });
-  
+
       setUsers(updatedUsers);
     } catch (error) {
-      console.error('Failed to fetch user or ring data:', error.response || error.message);
+      console.error('사용자 또는 링 데이터 가져오기 실패:', error.response || error.message);
     }
   }, [siteId]);
 
   // 주기적인 데이터 업데이트
   useEffect(() => {
-    if (!isLoggedIn || !siteId ) return;
+    if (!isLoggedIn || !siteId) return;
 
     const intervalId = setInterval(() => {
-      console.log('Fetching users and ring data every 30 seconds');
+      console.log('30초마다 사용자 및 링 데이터 가져오기');
       fetchUsersAndRingData();
     }, 30000); // 30초
 
     return () => clearInterval(intervalId);
   }, [fetchUsersAndRingData, isLoggedIn, siteId]);
 
-  // Initial Load
+  // 초기 데이터 로드
   useEffect(() => {
     if (isLoggedIn && siteId) {
       setUsers([]); // 이전 사용자 데이터 초기화
@@ -185,14 +187,13 @@ function App() {
     }
   }, [isLoggedIn, siteId, fetchUsersAndRingData]);
 
+  // 새로운 ID 생성 함수
   const getNewId = (users) => {
-    const existingIds = users.map((user) => user.id).sort((a, b) => a - b); // ID 정렬
+    const existingIds = users.map((user) => user.id).sort((a, b) => a - b);
     let newId = 1;
 
-    // 비어있는 ID 확인
     for (let i = 0; i < existingIds.length; i++) {
       if (existingIds[i] !== newId) {
-        // 비어있는 ID 발견 시 즉시 할당
         break;
       }
       newId++;
@@ -200,7 +201,7 @@ function App() {
     return newId;
   };
 
-  // Add User Handler (서버로 POST 요청 추가)
+  // 사용자 추가 함수
   const handleAddUser = useCallback(
     async (newUser) => {
       if (!siteId) {
@@ -214,7 +215,7 @@ function App() {
         const gender = newUser.gender === '남성' || newUser.gender === 0 ? 0 : 1;
         let newId = getNewId(users);
 
-        // 새 사용자 데이터를 서버로 POST 요청
+        // 서버에 사용자 추가 요청
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
@@ -223,11 +224,11 @@ function App() {
           },
           body: JSON.stringify({
             header: {
-              command: 6, // 사용자 추가를 위한 명령 코드
-              siteId: siteId, // 동적 siteId 추가
+              command: 6, // 사용자 추가 명령 코드
+              siteId: siteId,
             },
             data: {
-              Id: newId, // 새로운 ID 할당
+              Id: newId,
               TitleImagePath: newUser.profileImage || '',
               Gender: gender,
               Name: newUser.name,
@@ -246,7 +247,7 @@ function App() {
         const responseText = await response.text();
 
         if (response.ok && responseText.includes('User Insert success')) {
-          console.log('User added successfully:', responseText);
+          console.log('사용자 추가 성공:', responseText);
 
           const createdUser = {
             id: newId,
@@ -284,36 +285,34 @@ function App() {
 
           setUsers((prevUsers) => {
             const updatedUsers = [...prevUsers, createdUser];
-            // 로컬 스토리지 저장 부분 제거
-            // saveToLocalStorage('users', updatedUsers);
             return updatedUsers;
           });
 
           setShowModal(false);
 
-          // 사용자 추가 성공 메시지 설정
+          // 성공 메시지 설정
           setSuccessMessage('사용자가 추가되었습니다.');
 
-          // 일정 시간 후 메시지를 자동으로 사라지게 설정 (3초 후)
+          // 3초 후 메시지 자동 제거
           setTimeout(() => {
             setSuccessMessage('');
           }, 3000);
         } else {
-          console.error('Failed to add user on server:', responseText);
+          console.error('서버에 사용자 추가 실패:', responseText);
           alert('서버에 사용자를 추가하는 데 실패했습니다.');
         }
       } catch (error) {
-        console.error('Error adding user:', error);
+        console.error('사용자 추가 오류:', error);
         alert('사용자 추가 중 오류가 발생했습니다.');
       }
     },
     [users, siteId]
   );
 
-  // Update User Handler (서버로 POST 요청 추가)
+  // 사용자 업데이트 함수
   const updateUser = useCallback(
     async (updatedUser, sendToServer = false) => {
-      console.log('Updating user:', updatedUser);
+      console.log('사용자 업데이트:', updatedUser);
 
       // 로컬 상태 업데이트
       setUsers((prevUsers) => {
@@ -323,14 +322,14 @@ function App() {
         return updatedUsers;
       });
 
-      // 서버로 POST 요청을 보낼지 여부를 결정
+      // 서버에 업데이트 요청
       if (sendToServer && siteId) {
         try {
           const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
           const apiUrl = 'https://fitlife.dotories.com/api/user';
           const gender = updatedUser.gender === 0 ? 0 : 1;
 
-          // 수정된 사용자 데이터를 서버로 POST 요청
+          // 서버에 사용자 업데이트 요청
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -339,11 +338,11 @@ function App() {
             },
             body: JSON.stringify({
               header: {
-                command: 6, // 사용자 업데이트를 위한 명령 코드
-                siteId: siteId, // 동적 siteId 추가
+                command: 6, // 사용자 업데이트 명령 코드
+                siteId: siteId,
               },
               data: {
-                Id: updatedUser.id, // 업데이트할 사용자 ID
+                Id: updatedUser.id,
                 TitleImagePath: updatedUser.profileImage || '',
                 Gender: gender,
                 Name: updatedUser.name,
@@ -376,19 +375,19 @@ function App() {
           const responseText = await response.text();
 
           if (response.ok && responseText.includes('User update success')) {
-            console.log('User updated successfully on server.');
+            console.log('서버에서 사용자 업데이트 성공.');
             setSuccessMessage('수정이 완료되었습니다.');
 
-            // 일정 시간 후 성공 메시지 제거
+            // 3초 후 성공 메시지 제거
             setTimeout(() => {
               setSuccessMessage('');
-            }, 3000); // 3초 후 메시지 사라짐
+            }, 3000);
           } else {
-            console.error('Failed to update user on server:', responseText);
+            console.error('서버에서 사용자 업데이트 실패:', responseText);
             alert('서버에 사용자 정보를 업데이트하는 데 실패했습니다.');
           }
         } catch (error) {
-          console.error('Error updating user:', error);
+          console.error('사용자 업데이트 오류:', error);
           alert('사용자 정보 업데이트 중 오류가 발생했습니다.');
         }
       }
@@ -396,10 +395,10 @@ function App() {
     [siteId]
   );
 
-  // Delete User Handler
+  // 사용자 삭제 함수
   const deleteUser = useCallback(
     async (userId) => {
-      console.log('Deleting user with ID:', userId);
+      console.log('사용자 삭제 ID:', userId);
 
       try {
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
@@ -413,8 +412,8 @@ function App() {
           },
           body: JSON.stringify({
             header: {
-              command: 8, // 사용자 삭제를 위한 명령 코드
-              siteId: siteId, // 동적 siteId 추가
+              command: 8, // 사용자 삭제 명령 코드
+              siteId: siteId,
             },
             data: {
               Id: userId,
@@ -422,9 +421,8 @@ function App() {
           }),
         });
 
-        // HTTP 상태 코드가 성공 범위에 있는지 확인
         if (response.ok) {
-          console.log('User deleted successfully on server.');
+          console.log('서버에서 사용자 삭제 성공.');
 
           // 로컬 상태 업데이트
           setUsers((prevUsers) => {
@@ -435,42 +433,37 @@ function App() {
           // 성공 메시지 설정
           setSuccessMessage('사용자가 성공적으로 삭제되었습니다.');
 
-          // 3초 후 성공 메시지 제거
+          // 3초 후 메시지 제거
           setTimeout(() => {
             setSuccessMessage('');
           }, 3000);
         } else {
-          // 서버에서 성공적으로 처리되지 않은 경우
-          console.error('Failed to delete user on server.');
+          console.error('서버에서 사용자 삭제 실패.');
           alert('서버에서 사용자 삭제에 실패했습니다.');
         }
       } catch (error) {
-        console.error('Error deleting user:', error);
+        console.error('사용자 삭제 오류:', error);
         alert('사용자 삭제 중 오류가 발생했습니다.');
       }
     },
     [siteId]
   );
 
-  // Toggle Favorite
+  // 즐겨찾기 토글 함수
   const toggleFavorite = useCallback(
     (userId) => {
-      // 업데이트할 사용자 찾기
       const userToUpdate = users.find((user) => user.id === userId);
       if (userToUpdate) {
-        // 즐겨찾기 상태 토글
         const updatedUser = { ...userToUpdate, isFavorite: !userToUpdate.isFavorite };
 
-        // 서버로 업데이트
-        updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
+        // 서버에 업데이트
+        updateUser(updatedUser, true);
 
         // 로컬 상태 업데이트
         setUsers((prevUsers) => {
           const updatedUsers = prevUsers.map((user) =>
             user.id === userId ? updatedUser : user
           );
-          // 로컬 스토리지 저장 부분 제거
-          // saveToLocalStorage('users', updatedUsers);
           return updatedUsers;
         });
       }
@@ -491,15 +484,15 @@ function App() {
         const apiUrl = 'https://fitlife.dotories.com/api/admin'; // 관리자 정보 수정 API 엔드포인트
 
         const response = await fetch(apiUrl, {
-          method: 'POST', // 관리자 정보 수정을 위한 명령 코드는 POST
+          method: 'POST', // 관리자 정보 수정을 위한 POST 메서드
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Basic ${credentials}`,
           },
           body: JSON.stringify({
             header: {
-              command: 7, // 관리자 정보 수정을 위한 명령 코드
-              siteId: siteId, // 동적 siteId 추가
+              command: 7, // 관리자 정보 수정 명령 코드
+              siteId: siteId,
             },
             data: {
               AdminId: updatedAdminInfo.adminId,
@@ -511,7 +504,7 @@ function App() {
         const responseData = await response.json();
 
         if (response.ok && responseData.status !== 'ExistsId') {
-          console.log('Admin info updated successfully:', responseData);
+          console.log('관리자 정보 수정 성공:', responseData);
           saveToLocalStorage('adminInfo', updatedAdminInfo);
           setSuccessMessage('관리자 정보가 성공적으로 수정되었습니다.');
 
@@ -520,14 +513,13 @@ function App() {
             setSuccessMessage('');
           }, 3000);
         } else if (responseData.status === 'ExistsId') {
-          // 아이디 중복 오류 처리
           alert('아이디가 이미 존재합니다. 다른 아이디를 사용해주세요.');
         } else {
-          console.error('Failed to update admin info:', responseData);
+          console.error('관리자 정보 수정 실패:', responseData);
           alert('관리자 정보 수정에 실패했습니다.');
         }
       } catch (error) {
-        console.error('Error updating admin info:', error);
+        console.error('관리자 정보 수정 오류:', error);
         alert('관리자 정보 수정 중 오류가 발생했습니다.');
       }
     },
@@ -548,67 +540,78 @@ function App() {
               )}
             </div>
 
-            <Sidebar
-              isSidebarOpen={isSidebarOpen}
-              setIsSidebarOpen={setIsSidebarOpen}
-              users={users}
-              setIsLoggedIn={setIsLoggedIn}
-              sortOption={sortOption}
-              setSortOption={setSortOption}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-            />
-            <div className="flex-1 overflow-y-auto">
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <>
-                      <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
-                      <main className="p-4">
-                        <Dashboard
-                          showModal={showModal}
-                          setShowModal={setShowModal}
-                          users={users}
-                          setUsers={setUsers}
-                          searchQuery={searchQuery}
-                          handleAddUser={handleAddUser}
-                          updateUser={updateUser}
-                          deleteUser={deleteUser}
-                          sortOption={sortOption}
-                          setSortOption={setSortOption}
-                          toggleFavorite={toggleFavorite}
-                          availableRings={availableRings}
-                          disconnectInterval={disconnectInterval} 
-
-                        />
-                      </main>
-                    </>
-                  }
-                />
-                <Route
-                  path="/users/:userId"
-                  element={<UserDetail users={users} updateUserLifeLog={updateUser} siteId={siteId}/>}
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <Settings
-                      handleUpdateAdminInfo={handleUpdateAdminInfo}
-                      users={users}
-                      deleteUser={deleteUser}
-                      siteId={siteId} // 동적 siteId 전달
-                      disconnectInterval={disconnectInterval} 
-                    setDisconnectInterval={setDisconnectInterval} 
-                    />
-                  }
-                />
-                {/* 기타 라우트 추가 */}
-              </Routes>
+            {/* 레이아웃 조정: 사이드바와 메인 콘텐츠 */}
+            <div className="flex flex-1">
+              <Sidebar
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+                users={users}
+                setIsLoggedIn={setIsLoggedIn}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+              />
+              <div className="flex-1 overflow-y-auto flex flex-col">
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      <>
+                        <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
+                        <main className="p-4 flex-1">
+                          <Dashboard
+                            showModal={showModal}
+                            setShowModal={setShowModal}
+                            users={users}
+                            setUsers={setUsers}
+                            searchQuery={searchQuery}
+                            handleAddUser={handleAddUser}
+                            updateUser={updateUser}
+                            deleteUser={deleteUser}
+                            sortOption={sortOption}
+                            setSortOption={setSortOption}
+                            toggleFavorite={toggleFavorite}
+                            availableRings={availableRings}
+                            disconnectInterval={disconnectInterval}
+                          />
+                        </main>
+                      </>
+                    }
+                  />
+                  <Route
+                    path="/users/:userId"
+                    element={
+                      <UserDetail
+                        users={users}
+                        updateUserLifeLog={updateUser}
+                        siteId={siteId}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <Settings
+                        handleUpdateAdminInfo={handleUpdateAdminInfo}
+                        users={users}
+                        deleteUser={deleteUser}
+                        siteId={siteId}
+                        disconnectInterval={disconnectInterval}
+                        setDisconnectInterval={setDisconnectInterval}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/floorplan"
+                    element={<FloorPlan />}
+                  />
+                </Routes>
+              </div>
             </div>
           </>
         ) : (
-          <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} /> 
+          <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
         )}
       </div>
     </Router>
