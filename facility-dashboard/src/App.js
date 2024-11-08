@@ -1,8 +1,8 @@
 // src/App.js
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 // 필요한 컴포넌트 임포트
 import Header from './components/Header';
@@ -19,10 +19,8 @@ const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';
 // 로컬 스토리지 관련 헬퍼 함수
 const loadFromLocalStorage = (key, defaultValue) => {
   if (key === 'users') return defaultValue;
-
   const stored = localStorage.getItem(key);
   if (!stored) return defaultValue;
-
   try {
     return JSON.parse(stored);
   } catch (error) {
@@ -33,7 +31,6 @@ const loadFromLocalStorage = (key, defaultValue) => {
 
 const saveToLocalStorage = (key, value) => {
   if (key === 'users') return;
-
   localStorage.setItem(key, JSON.stringify(value));
 };
 
@@ -44,6 +41,27 @@ const getCurrentYYMMDD = () => {
   const month = (today.getMonth() + 1).toString().padStart(2, '0');
   const day = today.getDate().toString().padStart(2, '0');
   return `${year}${month}${day}`;
+};
+
+// Sidebar 상태를 경로에 따라 제어하는 컴포넌트
+const SidebarController = ({
+  isSidebarOpen,
+  setIsSidebarOpen,
+  children,
+  // 기타 필요한 props 추가
+}) => {
+  const location = useLocation();
+
+  useEffect(() => {
+    console.log('현재 경로:', location.pathname);
+    if (location.pathname === '/floorplan') {
+      setIsSidebarOpen(false);
+      console.log('Sidebar 닫힘');
+    }
+    // /floorplan 외의 경로에서는 Sidebar 상태를 변경하지 않음
+  }, [location.pathname, setIsSidebarOpen]);
+
+  return children;
 };
 
 function App() {
@@ -67,7 +85,6 @@ function App() {
       console.warn('siteId가 설정되지 않았습니다.');
       return;
     }
-
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
       const userResponse = await axios.get(
@@ -225,7 +242,7 @@ function App() {
           body: JSON.stringify({
             header: {
               command: 6, // 사용자 추가 명령 코드
-              siteId: siteId,
+              'siteId': siteId,
             },
             data: {
               Id: newId,
@@ -528,9 +545,12 @@ function App() {
 
   return (
     <Router>
-      <div className="flex h-screen bg-gray-100">
-        {isLoggedIn ? (
-          <>
+      {isLoggedIn ? (
+        <SidebarController
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+        >
+          <div className="flex h-screen bg-gray-100">
             {/* 성공 메시지 모달 */}
             <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col space-y-2 z-50">
               {successMessage && (
@@ -540,7 +560,7 @@ function App() {
               )}
             </div>
 
-            {/* 레이아웃 조정: 사이드바와 메인 콘텐츠 */}
+            {/* 사이드바와 메인 콘텐츠 */}
             <div className="flex flex-1">
               <Sidebar
                 isSidebarOpen={isSidebarOpen}
@@ -604,16 +624,16 @@ function App() {
                   />
                   <Route
                     path="/floorplan"
-                    element={<FloorPlan />}
-                  />
+                    element={<FloorPlan ringData={availableRings} users={users} />}
+                    />
                 </Routes>
               </div>
             </div>
-          </>
-        ) : (
-          <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
-        )}
-      </div>
+          </div>
+        </SidebarController>
+      ) : (
+        <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
+      )}
     </Router>
   );
 }

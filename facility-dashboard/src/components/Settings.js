@@ -120,7 +120,7 @@ const Settings = ({
         console.log('로그인 응답 데이터:', data);
 
         // 데이터 구조에 따라 접근 방식 수정
-        if (data.data.siteId === loginId && data.data.sitePassword === loginPassword) {
+        if (data.Data.SiteId === loginId && data.Data.SitePassword === loginPassword) {
           setIsAuthenticated(true);
           setErrorMessage('');
           fetchAdminList(); // 로그인 성공 시 관리자 리스트 가져오기

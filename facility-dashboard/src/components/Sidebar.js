@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
   Cog6ToothIcon,
@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import './Sidebar.css';
 import Modal from './Modal';
+import { openDB } from 'idb'; // IndexedDB를 위한 idb 라이브러리
 
 const Sidebar = ({
   isSidebarOpen,
@@ -18,12 +19,33 @@ const Sidebar = ({
   sortOption,
   setSortOption,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  siteId, // siteId 추가
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // 캐시 삭제 함수
+  const clearFloorPlanCache = async (siteId) => {
+    if (!siteId) {
+      console.error('siteId가 제공되지 않았습니다. 캐시를 삭제할 수 없습니다.');
+      return;
+    }
+  
+    const db = await openDB('FloorPlanDB', 1);
+    await db.delete('floorPlans', siteId); // 특정 siteId의 배치도 삭제
+    console.log('캐시가 성공적으로 삭제되었습니다.');
+  };
+  
+  // 로그아웃 처리 함수
+  const handleLogout = useCallback(async () => {
+    localStorage.removeItem('isLoggedIn');
+    await clearFloorPlanCache(siteId); // 로그아웃 시 siteId를 전달하여 캐시 삭제
+    setIsLoggedIn(false);
+    navigate('/');
+  }, [setIsLoggedIn, navigate, siteId]);
   // 정렬된 사용자 리스트
   const sortedUsers = useMemo(() => {
     let sorted = [...users].filter(user => user && user.name);
@@ -55,29 +77,21 @@ const Sidebar = ({
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
     };
-
     window.addEventListener("resize", handleResize);
-    handleResize(); // 초기 확인
+    handleResize();
 
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 사용자 상세 페이지로 이동
   const handleUserClick = useCallback((userId) => {
     navigate(`/users/${userId}`);
   }, [navigate]);
 
-  // 로그아웃 처리
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('isLoggedIn');
-    setIsLoggedIn(false);
-    navigate('/');
-  }, [setIsLoggedIn, navigate]);
-
-  // 모바일에서는 사이드바를 렌더링하지 않음
   if (isMobile) {
     return null;
   }
+
+  const isFloorPlan = location.pathname === '/floorplan';
 
   return (
     <>
@@ -112,7 +126,13 @@ const Sidebar = ({
           <span className={`text-xl font-bold ${isSidebarOpen ? 'block' : 'hidden'}`}>
             MENU
           </span>
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          <button
+            onClick={() => {
+              if (true) {
+                setIsSidebarOpen(!isSidebarOpen);
+              }
+            }}
+          >
             {isSidebarOpen ? (
               <ChevronDoubleLeftIcon className="w-8 h-8" />
             ) : (
@@ -169,8 +189,6 @@ const Sidebar = ({
                 onClick={() => handleUserClick(user.id)}
                 className="flex items-center p-2 cursor-pointer hover:bg-gray-700 rounded-lg"
               >
-                {/* 프로필 이미지 제거 */}
-                {/* 사용자 정보 표시 */}
                 <div className="block">
                   <p className="text-sm">{user.name}</p>
                   {isSidebarOpen && (
