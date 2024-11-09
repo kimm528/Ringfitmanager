@@ -1,4 +1,5 @@
-// calculateUserStatus.js
+// src/utils/calculateUserStatus.js
+
 export const calculateUserStatus = (user) => {
   // 산소포화도 임계값
   const OXYGEN_WARNING_THRESHOLD = 95;
@@ -12,9 +13,26 @@ export const calculateUserStatus = (user) => {
     heartRateDangerHigh: 140,
   };
 
-  // 데이터 접근
-  const bpm = user.data?.bpm;
-  const oxygen = user.data?.oxygen;
+  // getLastNonZero 함수 (0을 제외하고 가장 최근의 값을 가져오기 위한 함수)
+  const getLastNonZero = (arr) => {
+    if (!arr || !Array.isArray(arr)) return 0;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i] !== 0) {
+        return arr[i];
+      }
+    }
+    return 0;
+  };
+
+  // HeartRateArr와 MinBloodOxygenArr, MaxBloodOxygenArr에서 최신 값 가져오기
+  const latestHeartRate = getLastNonZero(user.ring?.HeartRateArr || []);
+  const bpm = latestHeartRate !== 0 ? latestHeartRate : user.data?.bpm || 0;
+
+  const latestMinOxygen = getLastNonZero(user.ring?.MinBloodOxygenArr || []);
+  const latestMaxOxygen = getLastNonZero(user.ring?.MaxBloodOxygenArr || []);
+  const oxygen = (latestMinOxygen && latestMaxOxygen)
+    ? Math.round((latestMinOxygen + latestMaxOxygen) / 2)
+    : user.data?.oxygen || 0;
 
   // 데이터 유효성 검사
   if (bpm == null || oxygen == null) {

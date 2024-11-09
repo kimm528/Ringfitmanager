@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import Modal from './Modal';
 import CustomLegend from './CustomLegend';
+// import { calculateUserStatus } from './calculateUserStatus'; // 필요 시 임포트
 
 // Helper Function to get the last non-zero value
 const getLastNonZero = (arr = []) => {
@@ -504,7 +505,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const activityLegend = useMemo(() => [
     { dataKey: 'steps', value: '걸음수', color: '#82ca9d', show: showSteps, setShow: setShowSteps },
     { dataKey: 'calories', value: '소모 칼로리 (kcal)', color: '#ff9800', show: showCalories, setShow: setShowCalories },
-    { dataKey: 'distance', value: '이동거리 (m)', color: '#4caf50', show: showDistance, setShow: setShowDistance }, // 단위 변경: km
+    { dataKey: 'distance', value: '이동거리 (km)', color: '#4caf50', show: showDistance, setShow: setShowDistance },
   ], [showSteps, showCalories, showDistance]);
 
   return (
@@ -524,6 +525,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             onChange={handleDateChange}
             className="p-2 border border-gray-300 rounded-lg"
             max={new Date().toISOString().split('T')[0]}
+            aria-label="날짜 선택"
           />
         </div>
       </div>
@@ -674,7 +676,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                     stroke="#4caf50"
                     strokeWidth={2}
                     connectNulls={true}
-                    name="이동 거리 (m)"
+                    name="이동 거리 (km)"
                     dot={false} // 점 숨기기
                   />
                 )}
@@ -690,6 +692,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                 value={sortOption}
                 onChange={(e) => handleSort(e.target.value)}
                 className="border border-gray-300 p-2 rounded-lg"
+                aria-label="로그 정렬 옵션 선택"
               >
                 <option value="all">전체</option>
                 <option value="미복용">미복용</option>
@@ -700,6 +703,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                 className="text-blue-500 text-2xl cursor-pointer" 
                 onClick={toggleAddModal} 
                 title="로그 추가"
+                aria-label="로그 추가 버튼"
               />
             </div>
             <div className="overflow-y-auto" style={{ maxHeight: '300px' }}>
@@ -738,7 +742,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                           <button
                             onClick={() => openEditModal(item)}
                             className="text-blue-500 hover:text-blue-700"
-                            aria-label="수정"
+                            aria-label="수정 버튼"
                           >
                             <FaEdit size={20} />
                           </button>
@@ -765,6 +769,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   placeholder="복용약 입력"
                   value={newItem.medicine}
                   onChange={(e) => setNewItem({ ...newItem, medicine: e.target.value })}
+                  aria-label="복용약 입력 필드"
                 />
 
                 {/* 처방일 입력 */}
@@ -774,6 +779,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={newItem.date}
                   onChange={(e) => setNewItem({ ...newItem, date: e.target.value })}
+                  aria-label="처방일 입력 필드"
                 />
 
                 {/* 세부 사항 입력 */}
@@ -784,6 +790,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   placeholder="세부 사항 입력"
                   value={newItem.dose}
                   onChange={(e) => setNewItem({ ...newItem, dose: e.target.value })}
+                  aria-label="세부 사항 입력 필드"
                 />
 
                 {/* 복용 시간 선택 */}
@@ -792,6 +799,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={newItem.time}
                   onChange={(e) => setNewItem({ ...newItem, time: e.target.value })}
+                  aria-label="복용 시간 선택 필드"
                 >
                   {Array.from({ length: 24 }, (_, i) =>
                     ['00', '30'].map((minute) => (
@@ -807,12 +815,14 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   <button
                     className="bg-blue-500 text-white py-2 px-4 rounded-lg"
                     onClick={handleAddItem}
+                    aria-label="Life 로그 추가 버튼"
                   >
                     추가
                   </button>
                   <button
                     onClick={() => setIsAddModalOpen(false)}
                     className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+                    aria-label="모달 닫기 버튼"
                   >
                     닫기
                   </button>
@@ -834,6 +844,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={editItem.medicine}
                   onChange={(e) => setEditItem({ ...editItem, medicine: e.target.value })}
+                  aria-label="복용약 수정 필드"
                 />
 
                 {/* 처방일 입력 */}
@@ -843,6 +854,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={editItem.date}
                   onChange={(e) => setEditItem({ ...editItem, date: e.target.value })}
+                  aria-label="처방일 수정 필드"
                 />
 
                 {/* 세부 사항 입력 */}
@@ -852,6 +864,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={editItem.dose}
                   onChange={(e) => setEditItem({ ...editItem, dose: e.target.value })}
+                  aria-label="세부 사항 수정 필드"
                 />
 
                 {/* 복용 시간 선택 */}
@@ -860,6 +873,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={editItem.time}
                   onChange={(e) => setEditItem({ ...editItem, time: e.target.value })}
+                  aria-label="복용 시간 수정 필드"
                 >
                   {Array.from({ length: 24 }, (_, i) =>
                     ['00', '30'].map((minute) => (
@@ -876,18 +890,21 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   <button
                     className="bg-red-500 text-white py-2 px-4 rounded-lg"
                     onClick={handleDeleteItem}
+                    aria-label="Life 로그 삭제 버튼"
                   >
                     삭제
                   </button>
                   <button
                     className="bg-blue-500 text-white py-2 px-4 rounded-lg"
                     onClick={handleSaveEditItem}
+                    aria-label="Life 로그 저장 버튼"
                   >
                     저장
                   </button>
                   <button
                     onClick={() => setIsEditModalOpen(false)}
                     className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+                    aria-label="모달 닫기 버튼"
                   >
                     닫기
                   </button>

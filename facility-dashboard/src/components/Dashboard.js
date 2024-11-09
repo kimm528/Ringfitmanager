@@ -1,4 +1,5 @@
 // src/components/Dashboard.js
+
 import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import Modal from './Modal';
@@ -18,6 +19,7 @@ const Dashboard = ({
   availableRings,
   toggleFavorite,
   disconnectInterval, // 추가
+  updateKey, // 추가
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -133,8 +135,9 @@ const Dashboard = ({
         }}
       >
         {sortedUsers.map((user) => (
-          <motion.div key={user.id} layout>
+          <motion.div key={`motion-${user.id}-${updateKey}`} layout> {/* key에 updateKey 추가 */}
             <Card
+              key={`card-${user.id}-${updateKey}`} // key에 updateKey 추가
               user={user}
               toggleFavorite={toggleFavorite}
               updateUser={updateUser}
@@ -142,6 +145,7 @@ const Dashboard = ({
               availableRings={availableRings}
               users={users}
               disconnectInterval={disconnectInterval} // 추가
+              updateKey={updateKey} // 필요 시 전달
             />
           </motion.div>
         ))}

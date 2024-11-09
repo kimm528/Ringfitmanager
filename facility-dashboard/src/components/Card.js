@@ -1,4 +1,5 @@
-// Card.js
+// src/components/Card.js
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaStar, FaEllipsisV } from 'react-icons/fa';
@@ -22,7 +23,7 @@ import '../App.css'; // 경로 수정: '../App.css'로 변경
 import ReactSlider from 'react-slider';
 import { calculateUserStatus } from './calculateUserStatus'; // 함수 임포트
 
-const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users, disconnectInterval }) => {
+const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users, disconnectInterval, updateKey }) => { // updateKey 추가
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -59,6 +60,16 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
     heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
   });
+
+  // user props가 변경될 때 thresholds 상태를 업데이트
+  useEffect(() => {
+    setThresholds({
+      heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
+      heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
+      heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
+      heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
+    });
+  }, [user.thresholds]);
 
   // 수면 점수 계산 함수
   const calculateSleepScore = useCallback(
@@ -116,15 +127,15 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     // 컴포넌트가 마운트될 때 한 번 체크
     checkRingConnection();
   
-     // 체크 주기 계산 (예: disconnectInterval의 1/5)
-     const checkInterval = Math.max(disconnectInterval * 60 * 1000 / 5, 300 * 1000); // 최소 30초
+    // 체크 주기 계산 (예: disconnectInterval의 1/5)
+    const checkInterval = Math.max(disconnectInterval * 60 * 1000 / 5, 300 * 1000); // 최소 30초
 
-     const intervalId = setInterval(checkRingConnection, checkInterval);
- 
-     return () => {
-       clearInterval(intervalId);
-     };
-   }, [user.ring, disconnectInterval]);
+    const intervalId = setInterval(checkRingConnection, checkInterval);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [user.ring, disconnectInterval]);
 
   // Process Ring Data
   useEffect(() => {
@@ -170,16 +181,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         shallowSleepMinutes
       );
 
-      setProcessedData({
-        bpm: latestHeartRate || 0,
-        oxygen: avgOxygen || 0,
-        stress: latestStress || 0,
-        sleep: sleepScore || 0,
-        steps: latestSteps || 0,
-        calories: latestCalories || 0,
-        distance: latestDistance || 0,
-      });
-
       const newProcessedData = {
         bpm: latestHeartRate || 0,
         oxygen: avgOxygen || 0,
@@ -202,31 +203,31 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         latestStress !== user.data?.stress ||
         sleepScore !== user.data?.sleep;
 
-        if (shouldUpdateUser) {
-          const updatedUser = {
-            ...user,
-            data: {
-              ...(user.data || {}),
-              ...newProcessedData,
-            },
-            lastReceivedTime: Date.now(), // 마지막 수신 시간 갱신
-          };
-          console.log('Updating lastReceivedTime:', new Date(updatedUser.lastReceivedTime).toLocaleTimeString());
-          updateUser(updatedUser, false);
-        }
-      } else {
-        // 링 데이터가 없을 경우 기본값 사용
-        setProcessedData({
-          bpm: user.data?.bpm || 0,
-          oxygen: user.data?.oxygen || 0,
-          stress: user.data?.stress || 0,
-          sleep: user.data?.sleep || 0,
-          steps: user.data?.steps || 0,
-          calories: user.data?.calories || 0,
-          distance: user.data?.distance || 0,
-        });
+      if (shouldUpdateUser) {
+        const updatedUser = {
+          ...user,
+          data: {
+            ...(user.data || {}),
+            ...newProcessedData,
+          },
+          lastReceivedTime: Date.now(), // 마지막 수신 시간 갱신
+        };
+        console.log('Updating lastReceivedTime:', new Date(updatedUser.lastReceivedTime).toLocaleTimeString());
+        updateUser(updatedUser, false);
       }
-    }, [user.ring, getLastNonZero, updateUser, calculateSleepScore]);
+    } else {
+      // 링 데이터가 없을 경우 기본값 사용
+      setProcessedData({
+        bpm: user.data?.bpm || 0,
+        oxygen: user.data?.oxygen || 0,
+        stress: user.data?.stress || 0,
+        sleep: user.data?.sleep || 0,
+        steps: user.data?.steps || 0,
+        calories: user.data?.calories || 0,
+        distance: user.data?.distance || 0,
+      });
+    }
+  }, [user.ring, getLastNonZero, updateUser, calculateSleepScore, user.data]); // user.data 추가
 
   // Extract Variables from Processed Data
   const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
@@ -765,7 +766,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
 
           {/* Name Edit */}
           <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">이름</label>
+            <label className="block">이름</label>
             <input
               type="text"
               value={editedName}
@@ -776,7 +777,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
 
           {/* Gender Edit */}
           <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">성별</label>
+            <label className="block">성별</label>
             <select
               value={editedGender}
               onChange={(e) => setEditedGender(Number(e.target.value))}
@@ -789,7 +790,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
 
           {/* Age Edit */}
           <div className="mb-4">
-            <label className="block mb-2 text-sm font-medium text-gray-700">나이</label>
+            <label className="block">나이</label>
             <input
               type="number"
               value={editedAge}
@@ -818,21 +819,21 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       
       {/* Ring Connection Status */}
       <div className="ring-status mt-4 flex items-center justify-center gap-4">
-  {user.ring ? (
-    isRingConnected ? (
-      <>
-        <span className="text-green-500 font-semibold">링 연결됨</span>
-        <span className="text-gray-700 font-medium">
-          배터리: {user.ring.BatteryLevel}%
-        </span>
-      </>
-    ) : (
-      <span className="text-red-500 font-semibold blink">링 확인요망</span>
-    )
-  ) : (
-    <span className="text-red-500 font-semibold">링 미연결</span>
-  )}
-</div>
+        {user.ring ? (
+          isRingConnected ? (
+            <>
+              <span className="text-green-500 font-semibold">링 연결됨</span>
+              <span className="text-gray-700 font-medium">
+                배터리: {user.ring.BatteryLevel}%
+              </span>
+            </>
+          ) : (
+            <span className="text-red-500 font-semibold blink">링 확인요망</span>
+          )
+        ) : (
+          <span className="text-red-500 font-semibold">링 미연결</span>
+        )}
+      </div>
 
        {/* Ring Management Modal */}
        {showRingModal && (
@@ -954,5 +955,5 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   );
 };
 
-// 컴포넌트 최적화: React.memo로 감싸기
-export default React.memo(Card);
+// React.memo 제거: Card.js는 이제 React.memo 없이 내보냅니다.
+export default Card;

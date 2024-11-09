@@ -1,6 +1,6 @@
 // src/App.js
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -45,7 +45,6 @@ const getCurrentYYMMDD = () => {
 
 // Sidebar 상태를 경로에 따라 제어하는 컴포넌트
 const SidebarController = ({
-  isSidebarOpen,
   setIsSidebarOpen,
   children,
   // 기타 필요한 props 추가
@@ -79,6 +78,14 @@ function App() {
   // 동적 siteId 상태 추가
   const [siteId, setSiteId] = useState(loadFromLocalStorage('siteId', ''));
 
+  // 추가된 상태 변수들
+  const [floorPlanImage, setFloorPlanImage] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [isLoading, setIsLoading] = useState(false); // isLoading 상태 추가
+
+  // updateKey 상태 추가
+  const [updateKey, setUpdateKey] = useState(0);
+
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
     if (!siteId) {
@@ -97,7 +104,7 @@ function App() {
         }
       );
 
-      const jsonData = JSON.parse(userResponse.data);
+      const jsonData = typeof userResponse.data === 'string' ? JSON.parse(userResponse.data) : userResponse.data;
       const userData = jsonData.Data || [];
 
       // 링 데이터 가져오기
@@ -113,7 +120,7 @@ function App() {
           },
         });
 
-        const jsonRing = JSON.parse(ringResponse.data);
+        const jsonRing = typeof ringResponse.data === 'string' ? JSON.parse(ringResponse.data) : ringResponse.data;
         ringData = jsonRing.Data || [];
       } catch (ringError) {
         console.warn('링 데이터 가져오기 실패:', ringError.message);
@@ -184,25 +191,103 @@ function App() {
     }
   }, [siteId]);
 
-  // 주기적인 데이터 업데이트
+  // 배치도 이미지 및 디바이스 데이터 가져오기 함수
+  const handleLoadFloorPlan = useCallback(async () => {
+    if (!siteId) {
+      console.warn('siteId가 설정되지 않았습니다.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // 배치도 이미지 세션 스토리지에서 로드 시도
+      const cachedImageData = sessionStorage.getItem(`floorPlanImage_${siteId}`);
+      if (cachedImageData) {
+        const img = new Image();
+        img.onload = () => {
+          setFloorPlanImage(img);
+          // 캔버스 크기 조정은 FloorPlan 컴포넌트에서 처리합니다.
+        };
+        img.src = cachedImageData;
+        console.log('배치도 이미지 로드 성공 (세션에서 불러옴)');
+      } else {
+        // 서버에서 배치도 이미지 가져오기
+        const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
+        const imageResponse = await axios.get(`https://fitlife.dotories.com/api/site/image?siteId=${siteId}`, {
+          headers: {
+            'Authorization': `Basic ${credentials}`,
+          },
+          responseType: 'blob', // 이미지 데이터 타입 설정
+        });
+
+        if (imageResponse.status === 200) {
+          const blob = imageResponse.data;
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = reader.result;
+            sessionStorage.setItem(`floorPlanImage_${siteId}`, base64data);
+            const img = new Image();
+            img.onload = () => {
+              setFloorPlanImage(img);
+              // 캔버스 크기 조정은 FloorPlan 컴포넌트에서 처리합니다.
+            };
+            img.src = base64data;
+          };
+          reader.readAsDataURL(blob);
+          console.log('배치도 이미지 로드 성공 (서버에서 불러옴)');
+        } else {
+          console.error('배치도 이미지 로드 실패:', imageResponse.statusText);
+        }
+      }
+
+      // 스마트폰 위치 데이터 불러오기
+      const credentialsDevice = btoa('Dotories:DotoriesAuthorization0312983335');
+      const deviceResponse = await axios.get(`https://fitlife.dotories.com/api/device?siteId=${siteId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${credentialsDevice}`,
+        },
+      });
+
+      if (deviceResponse.status === 200) {
+        const parsedDeviceData = typeof deviceResponse.data === 'string' ? JSON.parse(deviceResponse.data) : deviceResponse.data;
+        setDevices(parsedDeviceData.Data || []);
+        console.log('스마트폰 위치 데이터 불러오기 성공:', parsedDeviceData.Data);
+      } else {
+        console.error('스마트폰 위치 데이터 불러오기 실패:', deviceResponse.statusText);
+      }
+    } catch (error) {
+      console.error('배치도 이미지 로드 오류:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [siteId]);
+
+  // 주기적인 데이터 업데이트 (30초마다)
   useEffect(() => {
     if (!isLoggedIn || !siteId) return;
+
+    // 초기 데이터 로드
+    fetchUsersAndRingData();
+    handleLoadFloorPlan();
 
     const intervalId = setInterval(() => {
       console.log('30초마다 사용자 및 링 데이터 가져오기');
       fetchUsersAndRingData();
+      handleLoadFloorPlan();
+      setUpdateKey(prevKey => prevKey + 1); // updateKey 증가
     }, 30000); // 30초
 
     return () => clearInterval(intervalId);
-  }, [fetchUsersAndRingData, isLoggedIn, siteId]);
+  }, [fetchUsersAndRingData, handleLoadFloorPlan, isLoggedIn, siteId]);
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 (컴포넌트 마운트 시)
   useEffect(() => {
     if (isLoggedIn && siteId) {
       setUsers([]); // 이전 사용자 데이터 초기화
       fetchUsersAndRingData(); // 새로운 데이터 가져오기
+      handleLoadFloorPlan(); // 배치도 및 디바이스 데이터 가져오기
     }
-  }, [isLoggedIn, siteId, fetchUsersAndRingData]);
+  }, [isLoggedIn, siteId, fetchUsersAndRingData, handleLoadFloorPlan]);
 
   // 새로운 ID 생성 함수
   const getNewId = (users) => {
@@ -242,7 +327,7 @@ function App() {
           body: JSON.stringify({
             header: {
               command: 6, // 사용자 추가 명령 코드
-              'siteId': siteId,
+              siteId: siteId,
             },
             data: {
               Id: newId,
@@ -547,7 +632,6 @@ function App() {
     <Router>
       {isLoggedIn ? (
         <SidebarController
-          isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
         >
           <div className="flex h-screen bg-gray-100">
@@ -581,6 +665,7 @@ function App() {
                         <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
                         <main className="p-4 flex-1">
                           <Dashboard
+                            key={`dashboard-${updateKey}`} // 키 추가
                             showModal={showModal}
                             setShowModal={setShowModal}
                             users={users}
@@ -594,6 +679,7 @@ function App() {
                             toggleFavorite={toggleFavorite}
                             availableRings={availableRings}
                             disconnectInterval={disconnectInterval}
+                            updateKey={updateKey} // Dashboard에 updateKey 전달
                           />
                         </main>
                       </>
@@ -624,8 +710,20 @@ function App() {
                   />
                   <Route
                     path="/floorplan"
-                    element={<FloorPlan ringData={availableRings} users={users} />}
-                    />
+                    element={
+                      <FloorPlan
+                        key={`floorplan-${updateKey}`} // 키 추가
+                        ringData={availableRings}
+                        users={users}
+                        floorPlanImage={floorPlanImage} // 배치도 이미지 전달
+                        devices={devices} // 디바이스 데이터 전달
+                        setDevices={setDevices} // setDevices 전달
+                        setFloorPlanImage={setFloorPlanImage} // setFloorPlanImage 전달
+                        siteId={siteId} // siteId 전달
+                        updateKey={updateKey} // FloorPlan에 updateKey 전달
+                      />
+                    }
+                  />
                 </Routes>
               </div>
             </div>
