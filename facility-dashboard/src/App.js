@@ -634,9 +634,7 @@ function App() {
   return (
     <Router>
       {isLoggedIn ? (
-        <SidebarController
-          setIsSidebarOpen={setIsSidebarOpen}
-        >
+        <SidebarController setIsSidebarOpen={setIsSidebarOpen}>
           <div className="flex h-screen bg-gray-100">
             {/* 성공 메시지 모달 */}
             <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col space-y-2 z-50">
@@ -668,7 +666,6 @@ function App() {
                         <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
                         <main className="p-4 flex-1">
                           <Dashboard
-                            key={`dashboard-${updateKey}`} // 키 추가
                             showModal={showModal}
                             setShowModal={setShowModal}
                             users={users}
@@ -682,7 +679,7 @@ function App() {
                             toggleFavorite={toggleFavorite}
                             availableRings={availableRings}
                             disconnectInterval={disconnectInterval}
-                            updateKey={updateKey} // Dashboard에 updateKey 전달
+                            updateKey={updateKey} // 필요 시 props로 전달
                           />
                         </main>
                       </>
@@ -715,7 +712,6 @@ function App() {
                     path="/floorplan"
                     element={
                       <FloorPlan
-                        key={`floorplan-${updateKey}`} // 키 추가
                         ringData={availableRings}
                         users={users}
                         floorPlanImage={floorPlanImage} // 배치도 이미지 전달
@@ -723,7 +719,7 @@ function App() {
                         setDevices={setDevices} // setDevices 전달
                         setFloorPlanImage={setFloorPlanImage} // setFloorPlanImage 전달
                         siteId={siteId} // siteId 전달
-                        updateKey={updateKey} // FloorPlan에 updateKey 전달
+                        updateKey={updateKey} // FloorPlan에 updateKey 전달 필요 시
                         isLocked={isLocked} // isLocked 상태 전달
                         setIsLocked={setIsLocked} // setIsLocked 함수 전달
                       />
