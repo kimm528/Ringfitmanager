@@ -19,7 +19,7 @@ const Dashboard = ({
   availableRings,
   toggleFavorite,
   disconnectInterval, // 추가
-  updateKey, // 추가
+  updateKey, // 추가 (필요한지 검토)
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -135,17 +135,17 @@ const Dashboard = ({
         }}
       >
         {sortedUsers.map((user) => (
-          <motion.div key={`motion-${user.id}-${updateKey}`} layout> {/* key에 updateKey 추가 */}
+          <motion.div key={`motion-${user.id}`} layout> {/* key에서 updateKey 제거 */}
             <Card
-              key={`card-${user.id}-${updateKey}`} // key에 updateKey 추가
+              key={`card-${user.id}`} // key에서 updateKey 제거
               user={user}
               toggleFavorite={toggleFavorite}
               updateUser={updateUser}
               deleteUser={deleteUser}
               availableRings={availableRings}
               users={users}
-              disconnectInterval={disconnectInterval} // 추가
-              updateKey={updateKey} // 필요 시 전달
+              disconnectInterval={disconnectInterval}
+              // updateKey는 이제 필요하지 않다면 제거
             />
           </motion.div>
         ))}

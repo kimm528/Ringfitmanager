@@ -227,7 +227,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         distance: user.data?.distance || 0,
       });
     }
-  }, [user.ring, getLastNonZero, updateUser, calculateSleepScore, user.data]); // user.data 추가
+  }, [user.ring, getLastNonZero, updateUser, calculateSleepScore, user.data]);
 
   // Extract Variables from Processed Data
   const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
@@ -407,7 +407,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     };
   }, [menuRef, modalRef, showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
 
-   // Open Edit Modal
+  // Open Edit Modal
   const openEditModal = useCallback(
     (e) => {
       e.stopPropagation();
