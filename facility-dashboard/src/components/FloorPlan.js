@@ -351,55 +351,67 @@ const FloorPlan = ({
       {/* 스마트폰 리스트 및 버튼 */}
       <div
         ref={smartphoneListRef}
-        className="smartphone-list bg-white p-4 rounded shadow-lg overflow-y-auto transition-all duration-300 mb-4 flex items-center justify-between"
+        className="smartphone-list bg-white p-4 rounded shadow-lg overflow-y-visible transition-all duration-300 mb-4 flex items-center justify-between"
       >
         <div className="flex items-center">
           <h3 className="text-lg font-bold mr-4">배치된 스마트폰:</h3>
           <div className="flex space-x-2">
             {devicesWithUserDetails.map((device, index) => (
               <Tooltip
-              title={
-                device.connectedUsers.length > 0 ? (
-                  <div>
-                    <p><strong>연결된 이용자:</strong></p>
-                    {device.connectedUsers.map((user, i) => (
-                      <div key={i} className="flex items-center">
-                        <Link
-                          to={`/users/${user.id}`}
-                          className={`interactive-link ${user.status === 'danger' ? 'text-red-500' : 'text-white'}`} // interactive-link 클래스 추가
-                          aria-label={`사용자 ${user.name} 상세 페이지 링크`}
-                        >
-                          {user.name}
-                        </Link>
-                        {user.status === 'danger' && (
-                          <span className="ml-1 text-red-500" aria-label="위험 상태 표시">⚠️</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p>연결된 이용자가 없습니다.</p>
-                )
-              }
-              placement="right"
-              arrow
-              componentsProps={{
-                tooltip: {
-                  sx: {
-                    fontSize: '15px',
-                    padding: '15px',
-                    maxWidth: '400px',
-                    bgcolor: 'grey.700',
-                    color: 'white'
-                  },
-                },
-                arrow: {
-                  sx: { color: 'grey.700' },
-                },
-              }}
-            >
+                key={`tooltip-${device.DeviceId}`} // Tooltip에 고유 key 추가
+                title={
+                  device.connectedUsers.length > 0 ? (
+                    <div>
+                      <p><strong>연결된 이용자:</strong></p>
+                      {device.connectedUsers.map((user, i) => (
+                        <div key={i} className="flex items-center">
+                          <Link
+                            to={`/users/${user.id}`}
+                            className={`interactive-link ${user.status === 'danger' ? 'text-red-500' : 'text-white'}`}
+                            aria-label={`사용자 ${user.name} 상세 페이지 링크`}
+                          >
+                            {user.name}
+                          </Link>
+                          {user.status === 'danger' && (
+                            <span className="ml-1 text-red-500" aria-label="위험 상태 표시">⚠️</span>
+                          )}
+                        </div>
+                      ))}
+                      <hr className="my-2 border-gray-600" />
+                      <p><strong>Device 정보:</strong></p>
+                      <p>DeviceModel: {device.DeviceModel}</p>
+                      <p>DeviceId: {device.DeviceId}</p>
+                      <p>DeviceName: {device.DeviceName}</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p>연결된 이용자가 없습니다.</p>
+                      <hr className="my-2 border-gray-600" />
+                      <p><strong>Device 정보:</strong></p>
+                      <p>DeviceModel: {device.DeviceModel}</p>
+                      <p>DeviceId: {device.DeviceId}</p>
+                      <p>DeviceName: {device.DeviceName}</p>
+                    </div>
+                  )
+                }
+                placement="bottom"
+                arrow
+                PopperProps={{
+                  modifiers: [
+                    {
+                      name: 'zIndex',
+                      options: {
+                        zIndex: 1500, // 필요에 따라 값 조정
+                      },
+                    },
+                  ],
+                }}
+              >
                 <button
-                  onClick={() => handleChangeName(device)}
+                  onClick={(e) => {
+                    e.stopPropagation(); // 이벤트 전파 중단
+                    handleChangeName(device);
+                  }}
                   className="focus:outline-none"
                   aria-label={`디바이스 ${device.DeviceName} 이름 변경 버튼`}
                 >
