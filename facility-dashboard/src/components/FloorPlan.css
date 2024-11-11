@@ -9,7 +9,6 @@
   padding: 0;
 }
 
-
 /* 스마트폰 리스트를 화면 너비에 맞춤 */
 .smartphone-list {
   width: 100%;
@@ -82,4 +81,52 @@
   color: white !important; /* 모든 텍스트를 하얀색으로 설정 */
   font-size: 15px !important; /* 텍스트 크기 조정 */
   background-color: rgba(0, 0, 0, 0.75) !important; /* 배경색 조정 */
+}
+
+/* 디바이스 아이콘에 위험 신호 적용 */
+.device-icon.danger-border {
+  /* 이미 danger-border 클래스에서 스타일 적용됨 */
+}
+
+/* 잠금 버튼 스타일 */
+.lock-button {
+  background-color: rgba(0, 0, 0, 0.6); /* 반투명 배경 */
+  color: white;
+  padding: 8px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2; /* 캔버스 위에 표시되도록 설정 */
+}
+
+.lock-button:hover {
+  background-color: rgba(0, 0, 0, 0.8); /* 호버 시 배경색 변경 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+  .canvas-container {
+    width: 90%;
+    height: auto;
+  }
+
+  .smartphone-list {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .smartphone-palette {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .canvas-container {
+    width: 100%;
+    height: auto;
+  }
+
+  .smartphone-list {
+    padding: 8px;
+  }
 }

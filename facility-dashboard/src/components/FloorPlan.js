@@ -1,8 +1,7 @@
 // src/components/FloorPlan.js
 
 import React, { useRef, useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
-import Draggable from 'react-draggable';
-import { FaMobileAlt, FaSave, FaUpload } from 'react-icons/fa';
+import { FaMobileAlt, FaSave, FaUpload, FaLock, FaLockOpen } from 'react-icons/fa'; // FaLock, FaLockOpen 추가
 import Modal from './Modal'; // 모달 컴포넌트
 import axios from 'axios'; // axios 임포트
 import Tooltip from '@mui/material/Tooltip'; 
@@ -12,8 +11,30 @@ import { calculateUserStatus } from './calculateUserStatus'; // calculateUserSta
 import './FloorPlan.css'; // CSS 파일 임포트 (대소문자 정확히 일치)
 import DeviceIcon from './DeviceIcon'; // 새로 만든 컴포넌트
 
-const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFloorPlanImage, siteId, updateKey }) => { // updateKey 추가
+const FloorPlan = ({
+  ringData,
+  users,
+  floorPlanImage,
+  devices,
+  setDevices,
+  setFloorPlanImage,
+  siteId,
+  updateKey,
+  isLocked,      // isLocked 상태 전달
+  setIsLocked,   // setIsLocked 함수 전달
+}) => { // updateKey 추가
 
+  const colors = [
+    "#FFEB3B", // 밝은 노란색
+    "#03A9F4", // 밝은 파란색
+    "#4CAF50", // 밝은 녹색
+    "#FF5722", // 밝은 주황색
+    "#9C27B0", // 밝은 보라색
+    "#E91E63", // 밝은 핑크색
+    "#FFC107", // 밝은 황금색
+    "#00BCD4", // 밝은 청록색
+    "#FF4081"  // 밝은 자홍색
+  ];
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const smartphoneListRef = useRef(null); // 스마트폰 리스트의 높이를 측정하기 위한 ref
@@ -29,22 +50,8 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
   const UPLOAD_API_URL = `https://fitlife.dotories.com/api/site/image`; // 배치도 업로드 API 엔드포인트
   const UPLOADING_DEVICE_API_URL = `https://fitlife.dotories.com/api/device/floorplan`; // 디바이스 데이터 업로드 API 엔드포인트
 
-  // 아이콘 색상 배열
-  const colors = [
-    "#FF5733", // 밝은 주황색
-    "#3375FF", // 밝은 파란색
-    "#28A745", // 진한 녹색
-    "#FF8C00", // 어두운 주황색
-    "#6F42C1", // 보라색
-    "#E74C3C", // 빨간색
-    "#FFC300", // 황금색
-    "#17A2B8", // 청록색
-    "#FF33CC"  // 분홍색
-  ];
-
-  // 로딩 상태 및 메시지 상태
+  // 로딩 상태
   const [isLoading, setIsLoading] = useState(false);
-  // 메시지 상태와 관련된 상태는 제거했습니다.
 
   // 업로드할 파일 상태
   const [selectedFile, setSelectedFile] = useState(null); // 파일 선택 상태
@@ -269,6 +276,9 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
       if (response.status === 200) {
         // 메시지 설정 부분 제거
         console.log('디바이스 데이터 저장 성공:', response.data);
+        
+        // **잠금 상태를 활성화하도록 추가**
+        setIsLocked(true);
       } else {
         console.error('디바이스 데이터 저장 실패:', response.statusText);
         // 메시지 설정 부분 제거
@@ -280,7 +290,7 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
     } finally {
       setIsLoading(false);
     }
-  }, [devices, siteId]);
+  }, [devices, siteId, setIsLocked]);
 
   // 매칭된 사용자 이름과 상태를 포함한 장치 데이터
   const devicesWithUserDetails = useMemo(() => {
@@ -306,10 +316,27 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
       return { ...device, connectedUsers, overallStatus };
     });
   }, [devices, ringData, users, updateKey]);
+
+  // **페이지 새로고침 방지**
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    if (isNameModalOpen || isUploadModalOpen) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    } else {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isNameModalOpen, isUploadModalOpen]);
+
   return (
     <div className="floorplan-container flex flex-col p-4 overflow-auto max-h-screen overflow-x-hidden">
-      {/* 메시지 표시 부분 제거 */}
-
       {/* 로딩 표시 */}
       {isLoading && (
         <div className="mb-4 p-4 rounded bg-blue-100 text-blue-700 flex items-center" role="status" aria-live="polite">
@@ -331,54 +358,46 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
           <div className="flex space-x-2">
             {devicesWithUserDetails.map((device, index) => (
               <Tooltip
-                key={device.DeviceId}
-                title={
+              title={
+                device.connectedUsers.length > 0 ? (
                   <div>
-                    <p><strong>Device ID :</strong> {device.DeviceId}</p>
-                    <p><strong>Model :</strong> {device.DeviceModel}</p>
-                    <p><strong>Name :</strong> {device.DeviceName}</p>
-                    {device.connectedUsers.length > 0 && (
-                      <>
-                        <p><strong>연결된 사용자:</strong></p>
-                        {device.connectedUsers.map((user, i) => (
-                          <div key={i} className="flex items-center">
-                            <Link
-                              to={`/users/${user.id}`}
-                              className={`${
-                                user.status === 'danger' ? 'user-danger' : 'text-white'
-                              }`}
-                              aria-label={`사용자 ${user.name} 상세 페이지 링크`}
-                            >
-                              {user.name}
-                            </Link>
-                            {user.status === 'danger' && (
-                              <span className="ml-1 text-red-500" aria-label="위험 상태 표시">⚠️</span>
-                            )}
-                          </div>
-                        ))}
-                      </>
-                    )}
+                    <p><strong>연결된 이용자:</strong></p>
+                    {device.connectedUsers.map((user, i) => (
+                      <div key={i} className="flex items-center">
+                        <Link
+                          to={`/users/${user.id}`}
+                          className={`interactive-link ${user.status === 'danger' ? 'text-red-500' : 'text-white'}`} // interactive-link 클래스 추가
+                          aria-label={`사용자 ${user.name} 상세 페이지 링크`}
+                        >
+                          {user.name}
+                        </Link>
+                        {user.status === 'danger' && (
+                          <span className="ml-1 text-red-500" aria-label="위험 상태 표시">⚠️</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                }
-                placement="top"
-                arrow
-                componentsProps={{
-                  tooltip: {
-                    sx: {
-                      fontSize: '15px',   // 툴팁 텍스트 크기
-                      padding: '15px',     // 툴팁 내부 여백
-                      maxWidth: '400px',  // 툴팁 최대 너비
-                      bgcolor: 'grey.700', // 배경색 (MUI 색상 또는 커스텀 컬러)
-                      color: 'white'      // 텍스트 색상
-                    },
+                ) : (
+                  <p>연결된 이용자가 없습니다.</p>
+                )
+              }
+              placement="right"
+              arrow
+              componentsProps={{
+                tooltip: {
+                  sx: {
+                    fontSize: '15px',
+                    padding: '15px',
+                    maxWidth: '400px',
+                    bgcolor: 'grey.700',
+                    color: 'white'
                   },
-                  arrow: {
-                    sx: {
-                      color: 'grey.700', // 화살표 색상 (배경색과 맞춤)
-                    },
-                  },
-                }}
-              >
+                },
+                arrow: {
+                  sx: { color: 'grey.700' },
+                },
+              }}
+            >
                 <button
                   onClick={() => handleChangeName(device)}
                   className="focus:outline-none"
@@ -390,15 +409,8 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
             ))}
           </div>
         </div>
+        {/* 기존의 저장 버튼 제거 */}
         <div className="flex space-x-4">
-          <button
-            onClick={() => saveDevicesToServer()} // saveDevicesToServer 함수 호출
-            className="bg-blue-500 text-white px-4 py-2 rounded flex items-center justify-center"
-            aria-label="디바이스 위치 저장 버튼"
-          >
-            <FaSave className="mr-2" />
-            저장
-          </button>
           <button
             onClick={() => setIsUploadModalOpen(true)}
             className="bg-green-500 text-white px-4 py-2 rounded flex items-center justify-center"
@@ -411,7 +423,7 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
       </div>
 
       {/* 캔버스 및 디바이스 아이콘 */}
-      <div className="flex flex-1 w-full justify-center">
+      <div className="flex flex-1 w-full justify-center relative">
         <div
           ref={containerRef}
           className="canvas-container relative border border-gray-300 rounded shadow-lg overflow-hidden"
@@ -422,6 +434,30 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
             margin: '0 auto',
           }}
         >
+          {/* 저장 버튼을 잠금 버튼의 왼쪽에 배치 */}
+          <Tooltip title="디바이스 위치 저장" placement="bottom" arrow>
+            <button
+              onClick={() => saveDevicesToServer()} // saveDevicesToServer 함수 호출
+              className="absolute top-2 right-12 bg-white bg-opacity-75 rounded-full p-2 shadow-md flex items-center justify-center"
+              style={{ zIndex: 100 }} // zIndex 추가 및 높임
+              aria-label="디바이스 위치 저장 버튼"
+            >
+              <FaSave size={25} color="#000000" /> {/* 아이콘 색상 설정 */}
+            </button>
+          </Tooltip>
+
+          {/* 캔버스 내 잠금 아이콘 버튼 */}
+          <Tooltip title={isLocked ? "잠금 해제" : "잠금 설정"} placement="bottom" arrow>
+            <button
+              onClick={() => setIsLocked(!isLocked)} // setIsLocked를 사용하여 상태 토글
+              className="absolute top-2 right-2 bg-white bg-opacity-75 rounded-full p-2 shadow-md flex items-center justify-center"
+              style={{ zIndex: 100 }} // zIndex 추가 및 높임
+              aria-label={isLocked ? "잠금 해제" : "잠금 설정"}
+            >
+              {isLocked ? <FaLock size={25} color="#000000" /> : <FaLockOpen size={25} color="#000000" />}
+            </button>
+          </Tooltip>
+
           {floorPlanImage ? (
             <canvas
               ref={canvasRef}
@@ -448,14 +484,15 @@ const FloorPlan = ({ ringData, users, floorPlanImage, devices, setDevices, setFl
           {floorPlanImage &&
             devicesWithUserDetails.map((device, index) => (
               <DeviceIcon
-                key={`device-${device.DeviceId}-${updateKey}`} // key에 updateKey 추가
+                key={`device-${device.DeviceId}-${updateKey}`}
                 device={device}
                 colors={colors}
                 adjustCanvasSize={adjustCanvasSize}
                 canvasSize={canvasSize}
                 updateDevicePosition={updateDevicePosition}
                 index={index}
-                updateKey={updateKey} // 필요 시 전달
+                updateKey={updateKey}
+                isLocked={isLocked} // 잠금 상태 전달
               />
             ))
           }

@@ -86,6 +86,9 @@ function App() {
   // updateKey 상태 추가
   const [updateKey, setUpdateKey] = useState(0);
 
+  // **잠금 상태를 App.js에서 관리하도록 추가**
+  const [isLocked, setIsLocked] = useState(true); // 잠금 상태 추가
+
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
     if (!siteId) {
@@ -264,7 +267,7 @@ function App() {
 
   // 주기적인 데이터 업데이트 (30초마다)
   useEffect(() => {
-    if (!isLoggedIn || !siteId) return;
+    if (!isLoggedIn || !siteId || !isLocked) return; // isLocked가 false이면 새로고침 중지
 
     // 초기 데이터 로드
     fetchUsersAndRingData();
@@ -278,7 +281,7 @@ function App() {
     }, 30000); // 30초
 
     return () => clearInterval(intervalId);
-  }, [fetchUsersAndRingData, handleLoadFloorPlan, isLoggedIn, siteId]);
+  }, [fetchUsersAndRingData, handleLoadFloorPlan, isLoggedIn, siteId, isLocked]);
 
   // 초기 데이터 로드 (컴포넌트 마운트 시)
   useEffect(() => {
@@ -721,6 +724,8 @@ function App() {
                         setFloorPlanImage={setFloorPlanImage} // setFloorPlanImage 전달
                         siteId={siteId} // siteId 전달
                         updateKey={updateKey} // FloorPlan에 updateKey 전달
+                        isLocked={isLocked} // isLocked 상태 전달
+                        setIsLocked={setIsLocked} // setIsLocked 함수 전달
                       />
                     }
                   />
