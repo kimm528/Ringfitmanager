@@ -250,16 +250,18 @@ function App() {
           'Authorization': `Basic ${credentialsDevice}`,
         },
       });
-
+  
       if (deviceResponse.status === 200) {
         const parsedDeviceData = typeof deviceResponse.data === 'string' ? JSON.parse(deviceResponse.data) : deviceResponse.data;
         setDevices(parsedDeviceData.Data || []);
         console.log('스마트폰 위치 데이터 불러오기 성공:', parsedDeviceData.Data);
       } else {
         console.error('스마트폰 위치 데이터 불러오기 실패:', deviceResponse.statusText);
+        setDevices([]); // 오류 발생 시 devices 상태를 빈 배열로 설정
       }
     } catch (error) {
-      console.error('배치도 이미지 로드 오류:', error);
+      console.error('스마트폰 위치 데이터 불러오기 오류:', error);
+      setDevices([]); // 오류 발생 시 devices 상태를 빈 배열로 설정
     } finally {
       setIsLoading(false);
     }
@@ -656,6 +658,7 @@ function App() {
                 setSortOption={setSortOption}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                siteId={siteId}
               />
               <div className="flex-1 overflow-y-auto flex flex-col">
                 <Routes>

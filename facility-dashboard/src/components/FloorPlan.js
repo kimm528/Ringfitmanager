@@ -15,14 +15,13 @@ const FloorPlan = ({
   ringData,
   users,
   floorPlanImage,
+  setFloorPlanImage,
   devices,
   setDevices,
-  setFloorPlanImage,
   siteId,
-  updateKey,
   isLocked,      // isLocked 상태 전달
   setIsLocked,   // setIsLocked 함수 전달
-}) => { // updateKey 추가
+}) => { // updateKey 제거
 
   const colors = [
     "#FFEB3B", // 밝은 노란색
@@ -35,6 +34,7 @@ const FloorPlan = ({
     "#00BCD4", // 밝은 청록색
     "#FF4081"  // 밝은 자홍색
   ];
+
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const smartphoneListRef = useRef(null); // 스마트폰 리스트의 높이를 측정하기 위한 ref
@@ -254,6 +254,7 @@ const FloorPlan = ({
   const saveDevicesToServer = useCallback(async () => {
     setIsLoading(true);
     // 메시지 초기화 관련 코드는 제거했습니다.
+
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
       const response = await axios.post(UPLOADING_DEVICE_API_URL, { // UPLOADING_DEVICE_API_URL 변수가 실제 주소로 사용됨
@@ -315,7 +316,7 @@ const FloorPlan = ({
   
       return { ...device, connectedUsers, overallStatus };
     });
-  }, [devices, ringData, users, updateKey]);
+  }, [devices, ringData, users]);
 
   // **페이지 새로고침 방지**
   useEffect(() => {
@@ -334,6 +335,20 @@ const FloorPlan = ({
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isNameModalOpen, isUploadModalOpen]);
+
+  // **컴포넌트 마운트 시 세션 스토리지에서 배치도 이미지 로드**
+  useEffect(() => {
+    const storedImage = sessionStorage.getItem(`floorPlanImage_${siteId}`);
+    if (storedImage && !floorPlanImage) {
+      const img = new Image();
+      img.onload = () => {
+        setFloorPlanImage(img);
+        adjustCanvasSize(img);
+      };
+      img.src = storedImage;
+      console.log('SessionStorage에서 배치도 이미지 로드');
+    }
+  }, [siteId, floorPlanImage, setFloorPlanImage, adjustCanvasSize]);
 
   return (
     <div className="floorplan-container flex flex-col p-4 overflow-auto max-h-screen overflow-x-hidden">
@@ -363,8 +378,8 @@ const FloorPlan = ({
                   device.connectedUsers.length > 0 ? (
                     <div>
                       <p><strong>연결된 이용자:</strong></p>
-                      {device.connectedUsers.map((user, i) => (
-                        <div key={i} className="flex items-center">
+                      {device.connectedUsers.map((user) => (
+                        <div key={user.id} className="flex items-center">
                           <Link
                             to={`/users/${user.id}`}
                             className={`interactive-link ${user.status === 'danger' ? 'text-red-500' : 'text-white'}`}
@@ -496,14 +511,12 @@ const FloorPlan = ({
           {floorPlanImage &&
             devicesWithUserDetails.map((device, index) => (
               <DeviceIcon
-                key={`device-${device.DeviceId}-${updateKey}`}
+                key={`device-${device.DeviceId}`} // 고유한 key 사용
                 device={device}
                 colors={colors}
-                adjustCanvasSize={adjustCanvasSize}
                 canvasSize={canvasSize}
                 updateDevicePosition={updateDevicePosition}
                 index={index}
-                updateKey={updateKey}
                 isLocked={isLocked} // 잠금 상태 전달
               />
             ))

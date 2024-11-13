@@ -83,10 +83,6 @@
   background-color: rgba(0, 0, 0, 0.75) !important; /* 배경색 조정 */
 }
 
-/* 디바이스 아이콘에 위험 신호 적용 */
-.device-icon.danger-border {
-  /* 이미 danger-border 클래스에서 스타일 적용됨 */
-}
 
 /* 잠금 버튼 스타일 */
 .lock-button {
@@ -129,4 +125,26 @@
   .smartphone-list {
     padding: 8px;
   }
+}
+
+/* interactive-link 기본 스타일 */
+.interactive-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.3s ease, text-decoration 0.3s ease;
+}
+
+/* 이용자 상태에 따른 색상 */
+.interactive-link.text-white {
+  color: white; /* Tooltip 배경이 어두우므로 문제 없음 */
+}
+
+.interactive-link.text-red-500 {
+  color: #f44336; /* 위험 상태일 때는 빨간색 */
+}
+
+/* 호버 효과 추가 */
+.interactive-link:hover {
+  color: #3b82f6; /* 파란색으로 변경 */
+  text-decoration: underline;
 }

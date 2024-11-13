@@ -1,3 +1,5 @@
+// src/components/Sidebar.js
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -10,6 +12,7 @@ import {
 import './Sidebar.css';
 import Modal from './Modal';
 import { openDB } from 'idb'; // IndexedDB를 위한 idb 라이브러리
+import PropTypes from 'prop-types'; // PropTypes 추가
 
 const Sidebar = ({
   isSidebarOpen,
@@ -20,7 +23,7 @@ const Sidebar = ({
   setSortOption,
   searchQuery,
   setSearchQuery,
-  siteId, // siteId 추가
+  siteId, // siteId prop
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,24 +31,35 @@ const Sidebar = ({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // 캐시 삭제 함수
-  const clearFloorPlanCache = async (siteId) => {
+  const clearFloorPlanCache = useCallback(async () => {
     if (!siteId) {
       console.error('siteId가 제공되지 않았습니다. 캐시를 삭제할 수 없습니다.');
       return;
     }
-  
-    const db = await openDB('FloorPlanDB', 1);
-    await db.delete('floorPlans', siteId); // 특정 siteId의 배치도 삭제
-    console.log('캐시가 성공적으로 삭제되었습니다.');
-  };
-  
+
+    try {
+      const db = await openDB('FloorPlanDB', 1, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains('floorPlans')) {
+            db.createObjectStore('floorPlans');
+          }
+        },
+      });
+      await db.delete('floorPlans', siteId); // 특정 siteId의 배치도 삭제
+      console.log('캐시가 성공적으로 삭제되었습니다.');
+    } catch (error) {
+      console.error('캐시 삭제 오류:', error);
+    }
+  }, [siteId]);
+
   // 로그아웃 처리 함수
   const handleLogout = useCallback(async () => {
     localStorage.removeItem('isLoggedIn');
-    await clearFloorPlanCache(siteId); // 로그아웃 시 siteId를 전달하여 캐시 삭제
+    await clearFloorPlanCache(); // 로그아웃 시 siteId를 이미 함수에 포함했으므로 인자 전달 필요 없음
     setIsLoggedIn(false);
     navigate('/');
-  }, [setIsLoggedIn, navigate, siteId]);
+  }, [setIsLoggedIn, navigate, clearFloorPlanCache]);
+
   // 정렬된 사용자 리스트
   const sortedUsers = useMemo(() => {
     let sorted = [...users].filter(user => user && user.name);
@@ -103,12 +117,14 @@ const Sidebar = ({
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-500 text-white rounded-md mr-2"
+              aria-label="로그아웃 확인 버튼"
             >
               로그아웃
             </button>
             <button
               onClick={() => setShowLogoutModal(false)}
               className="px-4 py-2 bg-gray-300 rounded-md"
+              aria-label="로그아웃 취소 버튼"
             >
               취소
             </button>
@@ -128,10 +144,9 @@ const Sidebar = ({
           </span>
           <button
             onClick={() => {
-              if (true) {
-                setIsSidebarOpen(!isSidebarOpen);
-              }
+              setIsSidebarOpen(!isSidebarOpen);
             }}
+            aria-label={isSidebarOpen ? "사이드바 축소 버튼" : "사이드바 확장 버튼"}
           >
             {isSidebarOpen ? (
               <ChevronDoubleLeftIcon className="w-8 h-8" />
@@ -188,6 +203,7 @@ const Sidebar = ({
                 key={user.id}
                 onClick={() => handleUserClick(user.id)}
                 className="flex items-center p-2 cursor-pointer hover:bg-gray-700 rounded-lg"
+                aria-label={`사용자 ${user.name} 프로필 보기`}
               >
                 <div className="block">
                   <p className="text-sm">{user.name}</p>
@@ -215,6 +231,7 @@ const Sidebar = ({
               <button
                 onClick={() => setShowLogoutModal(true)}
                 className="flex items-center space-x-2"
+                aria-label="로그아웃 버튼"
               >
                 <ArrowRightOnRectangleIcon className="w-12 h-8" />
                 <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>Logout</span>

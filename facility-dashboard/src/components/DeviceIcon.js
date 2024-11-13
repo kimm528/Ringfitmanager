@@ -94,8 +94,8 @@ const DeviceIcon = ({ device, canvasSize,colors, updateDevicePosition, index, up
           {/* 원 전체를 감싸는 div */}
           <div
             style={{
-              width: '50px', // 호버 영역의 가로 크기 줄임
-              height: '50px', // 호버 영역의 세로 크기 줄임
+              width: '30px', // 호버 영역의 가로 크기 줄임
+              height: '30px', // 호버 영역의 세로 크기 줄임
               backgroundColor: 'rgba(255, 255, 255, 0.2)', // 원의 배경색 및 투명도 조절
               borderRadius: '50%',
               display: 'flex',
