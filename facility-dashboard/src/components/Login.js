@@ -74,7 +74,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
       console.log("Header 내용:", data.Header);
 
       if (response.ok) {
-        if (data.Header && data.Header.Command === 3) { // Command 3 indicates success
+         { 
           if (Array.isArray(data.Data) && data.Data.length > 0) {
             const admin = data.Data[0];
             // 서버 측에서 비밀번호 검증을 처리하도록 변경
@@ -94,9 +94,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           } else {
             setLoginErrorMessage("로그인 실패. 관리자 정보를 찾을 수 없습니다.");
           }
-        } else {
-          setLoginErrorMessage("로그인 실패. 다시 시도하세요.");
-        }
+        } 
       } else {
         setLoginErrorMessage("로그인 실패. 다시 시도하세요.");
       }

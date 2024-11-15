@@ -19,7 +19,6 @@ const Dashboard = ({
   availableRings,
   toggleFavorite,
   disconnectInterval, // 추가
-  updateKey, // 추가 (필요한지 검토)
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
