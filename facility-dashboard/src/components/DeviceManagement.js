@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import axios from 'axios';
 import { XMarkIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { FaGem } from 'react-icons/fa'; // FaGem 아이콘 임포트
-import Header from './Header';
+import Header from './Header.js';
 import Modal from './Modal';
 
 const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveComponent, devices, availableRings }) => {
