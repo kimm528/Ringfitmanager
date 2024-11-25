@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import Modal from './Modal';
 import CustomLegend from './CustomLegend';
-import { calculateSleepScore } from './CalculateUserStatus';
+import { calculateSleepScore } from './CalculateUserStatus_2';
 import axios from 'axios';
 
 // Helper Function to get the last non-zero value
