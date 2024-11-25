@@ -24,8 +24,8 @@ const MemoizedFloorPlan = memo(FloorPlan);
 const MemoizedDeviceManagement = memo(DeviceManagement);
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
-const url = 'http://14.47.20.111:7201'
-//const url = 'https://fitlife.dotories.com'
+//const url = 'http://14.47.20.111:7201'
+const url = 'https://fitlife.dotories.com'
 
 // 세션 스토리지 관련 헬퍼 함수
 const loadFromSessionStorage = (key, defaultValue) => {
