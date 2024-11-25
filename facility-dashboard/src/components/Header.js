@@ -17,6 +17,7 @@ const Header = ({ setShowModal, setSearchQuery }) => {
     },
     [setSearchQuery]
   );
+
   // 검색 입력 디바운싱
   useEffect(() => {
     const handler = setTimeout(() => {
