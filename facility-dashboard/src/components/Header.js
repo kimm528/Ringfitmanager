@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaPlus } from 'react-icons/fa';
 import fitLogo from '../assets/Fitmon_logo.svg';
-import { Link } from 'react-router-dom'; // Link 컴포넌트 임포트
+import { VscGraph } from "react-icons/vsc";  // VscGraph 아이콘 임포트
+import { CiBoxList } from "react-icons/ci";  // CiBoxList 아이콘 임포트
+import { RiUserAddFill } from "react-icons/ri";
+import { useNavigate, useLocation } from 'react-router-dom'; // useNavigate 훅
 import { motion } from 'framer-motion'; // framer-motion 임포트
 
 const Header = ({ setShowModal, setSearchQuery }) => {
   const [localSearch, setLocalSearch] = useState('');
+  const navigate = useNavigate(); // useNavigate 훅
+  const location = useLocation(); // useLocation 훅
 
   const handleSearchChange = useCallback(
     (event) => {
@@ -26,13 +30,22 @@ const Header = ({ setShowModal, setSearchQuery }) => {
     };
   }, [localSearch, setSearchQuery]);
 
+  // DataGridView 버튼 클릭 시 토글 애니메이션
+  const handleDataGridViewClick = () => {
+    if (location.pathname === '/datagridview') {
+      navigate('/'); // 홈 화면으로 이동
+    } else {
+      navigate('/datagridview'); // DataGridView로 이동
+    }
+  };
+
   return (
-    <header className="header flex justify-between items-center p-4 bg-white shadow-md">
+    <header className="header flex justify-between items-center p-4 bg-white shadow-md fixed top-0 z-50 right-0 w-full">
       <div className="flex items-center">
         {/* 로고 이미지 */}
-        <Link to="/">
-          <img src={fitLogo} alt="Home Icon" className="w-12 h-12 mr-4" />
-        </Link>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <img src={fitLogo} alt="Home Icon" className="w-12 h-12 mr-4" onClick={() => navigate('/')} />
+        </motion.div>
       </div>
       <div className="flex items-center">
         {/* 검색 입력창 */}
@@ -45,27 +58,44 @@ const Header = ({ setShowModal, setSearchQuery }) => {
           style={{ backgroundColor: '#f4f4f4', color: '#333', width: '200px' }}
           aria-label="이름 검색"
         />
-        {/* 사용자 추가 버튼 */}
-        <motion.button
+        {/* 화면에 맞는 버튼만 표시 */}
+        {location.pathname === '/' ? (
+          // 홈 화면일 때는 리스트 보기 버튼만 표시
+          <motion.button
+            onClick={handleDataGridViewClick}
+            className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
+            aria-label="리스트 보기"
+            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+            title="리스트 보기" // 툴팁 추가
+          >
+  <CiBoxList className="text-2xl mr-2" />
+  </motion.button>
+        ) : (
+          // 그리드 화면일 때는 홈 화면 보기 버튼만 표시
+          <motion.button
+            onClick={handleDataGridViewClick}
+            className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
+            aria-label="홈 화면 보기"
+            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+            title="카드 보기" // 툴팁 추가
+          >
+            <VscGraph className="text-2xl mr-2" />
+          </motion.button>
+        )}
+
+                {/* 사용자 추가 버튼 */}
+                <motion.button
           onClick={() => setShowModal(true)}
-          className="add-user-btn bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg flex items-center mr-4"
+          className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center ml-3"
           aria-label="사용자 추가"
           whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
           whileTap={{ scale: 0.95 }}
+          title="사용자 추가" // 툴팁 추가
         >
-          <FaPlus className="mr-2" /> 사용자 추가
+          <RiUserAddFill className="text-2xl mr-2" /> 
         </motion.button>
-        {/* DataGridView로 이동하는 버튼 */}
-        <Link to="/datagridview">
-          <motion.button
-            className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
-            aria-label="Data Grid View"
-            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Data Grid View
-          </motion.button>
-        </Link>
       </div>
     </header>
   );

@@ -25,6 +25,7 @@ import '../App.css';
 import ReactSlider from 'react-slider';
 import { calculateUserStatus, calculateSleepScore } from './CalculateUserStatus_2';
 
+
 const Card = ({
   user,
   toggleFavorite,

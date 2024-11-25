@@ -24,8 +24,8 @@ const MemoizedFloorPlan = memo(FloorPlan);
 const MemoizedDeviceManagement = memo(DeviceManagement);
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
-//const url = 'http://14.47.20.111:7201'
-const url = 'https://fitlife.dotories.com'
+const url = 'http://14.47.20.111:7201'
+//const url = 'https://fitlife.dotories.com'
 
 // 세션 스토리지 관련 헬퍼 함수
 const loadFromSessionStorage = (key, defaultValue) => {
@@ -899,22 +899,22 @@ function App() {
                     element={
                       <>
                         <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
-                        <main className="p-4 flex-1">
-                          <MemoizedDashboard
-                            showModal={showModal}
-                            setShowModal={setShowModal}
-                            users={users}
-                            setUsers={setUsers}
-                            searchQuery={searchQuery}
-                            handleAddUser={handleAddUser}
-                            updateUser={updateUser}
-                            deleteUser={deleteUser}
-                            sortOption={sortOption}
-                            setSortOption={setSortOption}
-                            toggleFavorite={toggleFavorite}
-                            availableRings={availableRings}
-                            disconnectInterval={disconnectInterval}
-                            devices={devices} // props로 전달
+                      <main className="p-4 flex-1">
+                        <MemoizedDashboard
+                          showModal={showModal}
+                          setShowModal={setShowModal}
+                          users={users}
+                          setUsers={setUsers}
+                          searchQuery={searchQuery}
+                          handleAddUser={handleAddUser}
+                          updateUser={updateUser}
+                          deleteUser={deleteUser}
+                          sortOption={sortOption}
+                          setSortOption={setSortOption}
+                          toggleFavorite={toggleFavorite}
+                          availableRings={availableRings}
+                          disconnectInterval={disconnectInterval}
+                          devices={devices} // props로 전달
                           />
                         </main>
                       </>
@@ -976,9 +976,14 @@ function App() {
                     }
                   />
                   <Route
-                    path="/datagridview"
-                    element={<DataGridView />}
-                  />
+                  path="/datagridview"
+                  element={
+                    <>
+                      <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
+                      <DataGridView users={users} />
+                    </>
+                  }
+                />
                 </Routes>
               </div>
             </div>

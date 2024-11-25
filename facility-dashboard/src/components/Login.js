@@ -1,6 +1,6 @@
 // src/components/Login.js
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 export default function Login({ setIsLoggedIn, setSiteId }) {
   // State for login
@@ -32,6 +32,15 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
       return defaultValue;
     }
   };
+  useEffect(() => {
+    // 처음 진입 시 한 번만 새로 고침을 하도록 sessionStorage에 값을 저장
+    const isFirstLogin = sessionStorage.getItem('isFirstLogin');
+    
+    if (!isFirstLogin) {
+      sessionStorage.setItem('isFirstLogin', 'true'); // 로그인 후 처음 진입으로 설정
+      window.location.reload(); // 새로 고침
+    }
+  }, []); // 의존성 배열에 빈 배열을 넣어 컴포넌트가 처음 렌더링될 때만 실행
   const formattedTime = (date) => {
     const pad = (n) => n.toString().padStart(2, '0');
   
@@ -108,10 +117,6 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
     }
   }, [username, password, credentials, setIsLoggedIn, setSiteId]);
   
-  
-  
-  
-
   // Handle sign-up
   const handleSignUp = useCallback(async (e) => {
     e.preventDefault(); // Prevent form submission default behavior

@@ -7,6 +7,7 @@ import { calculateUserStatus } from './CalculateUserStatus_2';
 import { motion } from 'framer-motion'; // framer-motion 임포트
 import { FaMap } from 'react-icons/fa'; // FaMap 아이콘 임포트
 import { Link } from 'react-router-dom'; // Link 컴포넌트 임포트
+import { Grid, AutoSizer } from 'react-virtualized';  // react-virtualized에서 List 및 AutoSizer 임포트
 
 const Dashboard = ({
   showModal,
@@ -66,6 +67,39 @@ const Dashboard = ({
     return usersWithStatus;
   }, [users, searchQuery, sortOption]);
 
+  // 그리드의 컬럼 수 설정
+  const margin = 10; // 각 셀의 마진 (px 단위)
+  const columnCount = 4; // 원하는 컬럼 수
+  const columnWidth = 350 + margin * 2; // Card 너비 + 좌우 마진
+  const rowHeight = 500 + margin * 2; // Card 높이 + 상하 마진
+
+  // 그리드의 행 수 계산
+  const rowCount = useMemo(() => Math.ceil(sortedUsers.length / columnCount), [sortedUsers.length, columnCount]);
+
+  // react-virtualized의 Cell 렌더러 함수
+  const cellRenderer = useCallback(({ columnIndex, key, rowIndex, style }) => {
+    const index = rowIndex * columnCount + columnIndex;
+    if (index >= sortedUsers.length) {
+      return null; // 빈 셀 처리
+    }
+    const user = sortedUsers[index];
+    return (
+      <div key={key} style={{ ...style, padding: margin }}>
+        <motion.div layout>
+          <Card
+            user={user}
+            toggleFavorite={toggleFavorite}
+            updateUser={updateUser}
+            deleteUser={deleteUser}
+            availableRings={availableRings}
+            users={users}
+            disconnectInterval={disconnectInterval}
+          />
+        </motion.div>
+      </div>
+    );
+  }, [sortedUsers, toggleFavorite, updateUser, deleteUser, availableRings, users, disconnectInterval, margin, columnCount]);
+
   // Handle User Addition
   const handleSubmit = useCallback(() => {
     if (!newUser.name || !newUser.gender || !newUser.age) {
@@ -88,9 +122,9 @@ const Dashboard = ({
   }, [newUser, handleAddUser, setShowModal]);
 
   return (
-    <div>
-      {/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
-      <div className="flex justify-between items-center mb-4">
+<div className="min-h-screen">
+{/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
+      <div className="flex justify-between items-center pt-20">
         {/* 좌측 상단: 센터 현황 버튼 with framer-motion */}
         <Link to="/floorplan">
           <motion.button
@@ -123,32 +157,27 @@ const Dashboard = ({
         </div>
       </div>
 
-      {/* User Cards */}
+      {/* 카드 리스트 - Wrap Panel with Virtualization */}
       <div
         className="dashboard-container"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '10px',
-          justifyContent: 'flex-start',
-        }}
+        style={{ width: '100%', height: '1200px', overflow: 'auto' }} // 컨테이너의 높이 늘리고 스크롤 추가
       >
-        {sortedUsers.map((user) => (
-          <motion.div key={`motion-${user.id}`} layout> {/* key에서 updateKey 제거 */}
-            <Card
-              key={`card-${user.id}`} // key에서 updateKey 제거
-              user={user}
-              toggleFavorite={toggleFavorite}
-              updateUser={updateUser}
-              deleteUser={deleteUser}
-              availableRings={availableRings}
-              users={users}
-              disconnectInterval={disconnectInterval}
-              // updateKey는 이제 필요하지 않다면 제거
+        <AutoSizer>
+          {({ height, width }) => (
+            <Grid
+              cellRenderer={cellRenderer}
+              columnCount={columnCount}
+              columnWidth={columnWidth}
+              height={height}
+              rowCount={rowCount}
+              rowHeight={rowHeight}
+              width={width}
+              overscanRowCount={2} // 부드러운 스크롤을 위한 추가 행 렌더링
             />
-          </motion.div>
-        ))}
+          )}
+        </AutoSizer>
       </div>
+
 
       {/* Add User Modal */}
       {showModal && (
@@ -217,6 +246,8 @@ const Dashboard = ({
       )}
     </div>
   );
+
+
 };
 
 export default Dashboard;

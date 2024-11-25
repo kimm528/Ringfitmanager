@@ -266,7 +266,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
   }, [availableRings, users, classifyDevices]);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen pt-20">
       <Header setShowModal={() => {}} setSearchQuery={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden">
