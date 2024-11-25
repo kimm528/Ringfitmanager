@@ -123,7 +123,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
     distance = 0,
     heartRateArr = [],
     oxygenArr = [],
-    stressArr = [],
+    pressureArr = [],
     hourlyData = {},
   } = userData;
 
@@ -440,12 +440,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
 
   // Prepare data for 일별 데이터 선그래프
   const dailyLineChartData = useMemo(() => {
-    // Assuming heartRateArr is 288 elements (5-minute intervals)
-    // oxygenArr is 24 elements (hourly)
-    // stressArr is 48 elements (30-minute intervals)
 
     // Create time points based on the maximum length
-    const maxLength = Math.max(heartRateArr.length, oxygenArr.length * 12, stressArr.length * 6); // 288 vs 288 vs 288
+    const maxLength = Math.max(heartRateArr.length, oxygenArr.length * 12, pressureArr.length * 6); // 288 vs 288 vs 288
     const data = [];
 
     for (let i = 0; i < 288; i++) { // 24 hours * 12 intervals per hour (5 minutes)
@@ -457,12 +454,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
         time,
         bpm: heartRateArr[i] !== undefined && heartRateArr[i] !== 0 ? heartRateArr[i] : null,
         oxygen: Math.floor(i / 12) < oxygenArr.length ? (oxygenArr[Math.floor(i / 12)] !== 0 ? oxygenArr[Math.floor(i / 12)] : null) : null,
-        stress: Math.floor(i / 6) < stressArr.length ? (stressArr[Math.floor(i / 6)] !== 0 ? stressArr[Math.floor(i / 6)] : null) : null,
+        stress: Math.floor(i / 6) < pressureArr.length ? (pressureArr[Math.floor(i / 6)] !== 0 ? pressureArr[Math.floor(i / 6)] : null) : null,
       });
     }
 
     return data;
-  }, [heartRateArr, oxygenArr, stressArr]);
+  }, [heartRateArr, oxygenArr, pressureArr]);
 
   // Prepare data for 활동 데이터 그래프
   const activityLineChartData = useMemo(() => {
