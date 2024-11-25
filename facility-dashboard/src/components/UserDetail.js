@@ -170,27 +170,30 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
 
   // 건강 데이터 가져오기 함수 정의
   const fetchHealthData = useCallback(async (userId, date) => {
-    if (!siteId) {
-      console.warn('siteId가 설정되지 않았습니다.');
+    if (!siteId || !userId) {
+      setError('사이트 ID 또는 사용자 ID가 설정되지 않았습니다.');
       return;
     }
-
+  
     setIsLoading(true);
     setError(null);
-
+  
     try {
       const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
       const key = `${userId}_${formattedDate}`;
-
+  
       // 세션 스토리지에서 데이터 확인
       const cachedHealthData = loadFromSessionStorage('healthData', {});
       if (cachedHealthData[key]) {
-        setHealthData(cachedHealthData);
+        setHealthData((prevData) => ({
+          ...prevData,
+          [key]: cachedHealthData[key],
+        }));
         console.log(`세션 스토리지에서 사용자 ${userId}의 건강 데이터 로드:`, cachedHealthData[key]);
       } else {
         const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
-        //const url = 'http://14.47.20.111:7201'
-        const url = 'https://fitlife.dotories.com'
+        const url = 'https://fitlife.dotories.com';
+  
         // API 요청
         const healthResponse = await axios.get(
           `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
@@ -201,48 +204,44 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
             },
           }
         );
-
+  
         const healthJson = typeof healthResponse.data === 'string' ? JSON.parse(healthResponse.data) : healthResponse.data;
         const healthDataArray = healthJson.Data || [];
-
+  
         // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
         const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
-
+  
         // healthData 상태 업데이트
-        setHealthData(prevData => ({
+        setHealthData((prevData) => ({
           ...prevData,
-          [key]: latestHealthData
+          [key]: latestHealthData,
         }));
-
-        // 세션 스토리지에 저장
-        saveToSessionStorage('healthData', {
-          ...cachedHealthData,
-          [key]: latestHealthData
-        });
-
+  
+   
+  
         console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
       }
-
     } catch (healthError) {
       console.warn(`사용자 ${userId}의 건강 데이터 가져오기 실패:`, healthError.message);
       setError('건강 데이터 가져오기 실패');
-      // 실패 시, healthData에 빈 객체 설정
-      setHealthData(prevData => ({
+      setHealthData((prevData) => ({
         ...prevData,
-        [`${userId}_${formatDateYYMMDD(date)}`]: {}
+        [`${userId}_${formatDateYYMMDD(date)}`]: {},
       }));
     } finally {
       setIsLoading(false);
     }
-  }, [siteId, API_URL, CREDENTIALS, formatDateYYMMDD]);
+  }, [siteId, formatDateYYMMDD]);
+  
+  
 
   // 건강 데이터 가져오기
   useEffect(() => {
-    if (user) {
+    if (user && selectedDate) {
       fetchHealthData(user.id, selectedDate);
     }
   }, [user, selectedDate, fetchHealthData]);
-
+  
   // 현재 선택한 사용자와 날짜에 해당하는 건강 데이터 가져오기
   const currentHealthData = useMemo(() => {
     if (user) {
