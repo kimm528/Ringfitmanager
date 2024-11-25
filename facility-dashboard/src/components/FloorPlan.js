@@ -1,5 +1,3 @@
-// src/components/FloorPlan.js
-
 import React, { useRef, useState, useEffect, useCallback, useLayoutEffect, useMemo } from 'react';
 import { FaMobileAlt, FaSave, FaUpload, FaLock, FaLockOpen } from 'react-icons/fa'; // FaLock, FaLockOpen 추가
 import Modal from './Modal'; // 모달 컴포넌트
