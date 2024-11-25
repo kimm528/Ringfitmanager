@@ -134,7 +134,7 @@ const DataGridView = () => {
         );
       },
       cellStyle: { fontSize: '16px' },
-      width: 75,  // 이 부분에서 `width`를 설정합니다.
+      width: 100,  // 이 부분에서 `width`를 설정합니다.
       resizable: false // 크기 조정 비활성화
     },
     {
@@ -155,7 +155,7 @@ const DataGridView = () => {
         );
       },
       cellStyle: { fontSize: '16px' },
-      width: 85,  // 이 부분에서 `width`를 설정합니다.
+      width: 105,  // 이 부분에서 `width`를 설정합니다.
       resizable: false // 크기 조정 비활성화
     },
   ];
