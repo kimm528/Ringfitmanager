@@ -16,7 +16,6 @@ const Header = ({ setShowModal, setSearchQuery }) => {
     [setSearchQuery]
   );
 
-  // 검색 입력 디바운싱
   useEffect(() => {
     const handler = setTimeout(() => {
       setSearchQuery(localSearch);
@@ -46,20 +45,27 @@ const Header = ({ setShowModal, setSearchQuery }) => {
           style={{ backgroundColor: '#f4f4f4', color: '#333', width: '200px' }}
           aria-label="이름 검색"
         />
-        {/* 사용자 추가 버튼 with framer-motion */}
+        {/* 사용자 추가 버튼 */}
         <motion.button
           onClick={() => setShowModal(true)}
-          className="add-user-btn bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg flex items-center"
+          className="add-user-btn bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg flex items-center mr-4"
           aria-label="사용자 추가"
           whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
           whileTap={{ scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 300 }}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
         >
           <FaPlus className="mr-2" /> 사용자 추가
         </motion.button>
+        {/* DataGridView로 이동하는 버튼 */}
+        <Link to="/datagridview">
+          <motion.button
+            className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg"
+            aria-label="Data Grid View"
+            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Data Grid View
+          </motion.button>
+        </Link>
       </div>
     </header>
   );

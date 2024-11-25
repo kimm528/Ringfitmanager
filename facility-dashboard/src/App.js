@@ -13,6 +13,7 @@ import Login from './components/Login.js';
 import Settings from './components/Settings.js';
 import FloorPlan from './components/FloorPlan.js';
 import DeviceManagement from './components/DeviceManagement.js';
+import DataGridView from './components/DataGridView.js';
 
 // React.memo로 컴포넌트 래핑
 const MemoizedSidebar = memo(Sidebar);
@@ -187,6 +188,7 @@ function App() {
       );
 
     } catch (healthError) {
+      console.warn(`사용자 ${userId}의 건강 데이터 가져오기 실패:`, healthError.message);
       setHealthData((prevData) => ({
         ...prevData,
         [`${userId}_${formatDateYYMMDD(date)}`]: {}
@@ -912,7 +914,6 @@ function App() {
                             toggleFavorite={toggleFavorite}
                             availableRings={availableRings}
                             disconnectInterval={disconnectInterval}
-                            // updateKey={updateKey} // updateKey 제거
                             devices={devices} // props로 전달
                           />
                         </main>
@@ -957,7 +958,6 @@ function App() {
                         setDevices={setDevices}
                         setFloorPlanImage={setFloorPlanImage}
                         siteId={siteId}
-                        // updateKey={updateKey} // updateKey 제거
                         isLocked={isLocked}
                         setIsLocked={setIsLocked}
                       />
@@ -975,6 +975,10 @@ function App() {
                       />
                     }
                   />
+                  <Route
+                    path="/datagridview"
+                    element={<DataGridView />}
+                  />
                 </Routes>
               </div>
             </div>
@@ -985,6 +989,6 @@ function App() {
       )}
     </Router>
   );
-}
+};
 
 export default App;

@@ -1,10 +1,16 @@
 {
   "dependencies": {
+    "@ag-grid-community/client-side-row-model": "^32.3.3",
+    "@ag-grid-community/core": "^32.3.3",
+    "@ag-grid-community/react": "^32.3.3",
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
     "@heroicons/react": "^2.2.0",
     "@mui/material": "^6.1.8",
+    "@mui/x-data-grid": "^7.22.3",
     "@types/react-datepicker": "^7.0.0",
+    "ag-grid-community": "^32.3.3",
+    "ag-grid-react": "^32.3.3",
     "axios": "^1.7.7",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
@@ -15,11 +21,13 @@
     "process": "^0.11.10",
     "react": "^18.3.1",
     "react-circular-progressbar": "^2.1.0",
+    "react-data-grid": "^7.0.0-beta.47",
     "react-datepicker": "^7.5.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.3.1",
     "react-draggable": "^4.4.6",
+    "react-hook-form": "^7.53.2",
     "react-icons": "^5.3.0",
     "react-konva": "^18.2.10",
     "react-router-dom": "^7.0.1",
@@ -36,6 +44,9 @@
     "util": "^0.12.5"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "babel-loader": "^9.2.1",
+    "webpack": "^5.96.1",
+    "webpack-cli": "^5.1.4"
   }
 }
