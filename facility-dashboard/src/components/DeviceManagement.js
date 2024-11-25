@@ -1,5 +1,3 @@
-// src/components/DeviceManagement.js
-
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { XMarkIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
