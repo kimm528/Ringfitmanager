@@ -13,26 +13,9 @@ export const calculateUserStatus = (user) => {
     heartRateDangerHigh: 140,
   };
 
-  // getLastNonZero 함수 (0을 제외하고 가장 최근의 값을 가져오기 위한 함수)
-  const getLastNonZero = (arr) => {
-    if (!arr || !Array.isArray(arr)) return 0;
-    for (let i = arr.length - 1; i >= 0; i--) {
-      if (arr[i] !== 0) {
-        return arr[i];
-      }
-    }
-    return 0;
-  };
-
-  // HeartRateArr와 MinBloodOxygenArr, MaxBloodOxygenArr에서 최신 값 가져오기
-  const latestHeartRate = getLastNonZero(user.ring?.HeartRateArr || []);
-  const bpm = latestHeartRate !== 0 ? latestHeartRate : user.data?.bpm || 0;
-
-  const latestMinOxygen = getLastNonZero(user.ring?.MinBloodOxygenArr || []);
-  const latestMaxOxygen = getLastNonZero(user.ring?.MaxBloodOxygenArr || []);
-  const oxygen = (latestMinOxygen && latestMaxOxygen)
-    ? Math.round((latestMinOxygen + latestMaxOxygen) / 2)
-    : user.data?.oxygen || 0;
+  // 심박수와 산소포화도 데이터를 user.data에서 가져오기
+  const bpm = user.data?.bpm || 0;
+  const oxygen = user.data?.oxygen || 0;
 
   // 데이터 유효성 검사
   if (bpm == null || oxygen == null) {
@@ -71,14 +54,36 @@ export const calculateUserStatus = (user) => {
   // 전체 상태 결정 (가장 나쁜 상태로 설정)
   if (bpmStatus === 'danger' || oxygenStatus === 'danger') {
     status = 'danger';
-  } else if (
-    bpmStatus === 'warning' ||
-    oxygenStatus === 'warning'
-  ) {
+  } else if (bpmStatus === 'warning' || oxygenStatus === 'warning') {
     status = 'warning';
   } else {
     status = 'normal';
   }
 
   return status;
+};
+
+export const calculateSleepScore = (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
+  if (
+    totalSleepDuration !== 0 &&
+    deepSleepDuration !== 0 &&
+    awakeDuration !== 0 &&
+    shallowSleepDuration !== 0
+  ) {
+    // 총 수면 시간, 깊은 수면 시간, 얕은 수면 시간, 깨어있는 시간에 가중치를 부여
+    const totalSleepScore = (totalSleepDuration / 60 / 480.0) * 50; // 8시간(480분)을 기준으로 최대 50점
+    const deepSleepScore = (deepSleepDuration / totalSleepDuration) * 30; // 깊은 수면 비율에 따라 최대 30점
+    const awakePenalty = (awakeDuration / totalSleepDuration) * -20; // 깨어있는 시간은 최대 -20점 페널티
+    const shallowSleepPenalty = (shallowSleepDuration / totalSleepDuration) * -10; // 얕은 수면은 최대 -10점 페널티
+
+    // 총점 계산 (최대 100점)
+    let sleepScore = totalSleepScore + deepSleepScore + awakePenalty + shallowSleepPenalty;
+
+    // 점수는 0 ~ 100 사이로 보정
+    sleepScore = Math.max(0, Math.min(100, sleepScore));
+
+    return Math.round(sleepScore); // 정수로 반환
+  } else {
+    return 0;
+  }
 };

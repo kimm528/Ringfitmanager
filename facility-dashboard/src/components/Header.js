@@ -46,21 +46,22 @@ const Header = ({ setShowModal, setSearchQuery }) => {
           placeholder="이름 검색"
           className="search-input border border-gray-300 rounded-full p-2 mr-4"
           style={{ backgroundColor: '#f4f4f4', color: '#333', width: '200px' }}
+          aria-label="이름 검색"
         />
         {/* 사용자 추가 버튼 with framer-motion */}
         <motion.button
-  onClick={() => setShowModal(true)}
-  className="add-user-btn bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg flex items-center"
-  aria-label="사용자 추가"
-  whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
-  whileTap={{ scale: 0.95 }}
-  transition={{ type: "spring", stiffness: 300 }}
-  initial={{ opacity: 0, y: -20 }}
-  animate={{ opacity: 1, y: 0 }}
-  exit={{ opacity: 0, y: -20 }}
->
-  <FaPlus className="mr-2" /> 사용자 추가
-</motion.button>
+          onClick={() => setShowModal(true)}
+          className="add-user-btn bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg flex items-center"
+          aria-label="사용자 추가"
+          whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 300 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+        >
+          <FaPlus className="mr-2" /> 사용자 추가
+        </motion.button>
       </div>
     </header>
   );

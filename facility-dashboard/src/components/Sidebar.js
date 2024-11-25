@@ -7,12 +7,12 @@ import {
   Cog6ToothIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  DeviceTabletIcon // 추가된 아이콘
 } from "@heroicons/react/24/outline";
 import './Sidebar.css';
 import Modal from './Modal';
 import { openDB } from 'idb'; // IndexedDB를 위한 idb 라이브러리
-import PropTypes from 'prop-types'; // PropTypes 추가
 
 const Sidebar = ({
   isSidebarOpen,
@@ -21,8 +21,6 @@ const Sidebar = ({
   setIsLoggedIn,
   sortOption,
   setSortOption,
-  searchQuery,
-  setSearchQuery,
   siteId, // siteId prop
 }) => {
   const navigate = useNavigate();
@@ -54,8 +52,15 @@ const Sidebar = ({
 
   // 로그아웃 처리 함수
   const handleLogout = useCallback(async () => {
-    localStorage.removeItem('isLoggedIn');
-    await clearFloorPlanCache(); // 로그아웃 시 siteId를 이미 함수에 포함했으므로 인자 전달 필요 없음
+    // sessionStorage에서 로그인 관련 데이터 제거
+    sessionStorage.removeItem('adminId');
+    sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('siteId');
+  
+    // 캐시 삭제
+    await clearFloorPlanCache();
+  
+    // 로그인 상태 업데이트 및 리다이렉트
     setIsLoggedIn(false);
     navigate('/');
   }, [setIsLoggedIn, navigate, clearFloorPlanCache]);
@@ -163,6 +168,13 @@ const Sidebar = ({
               <Link to="/" className="flex items-center space-x-2">
                 <HomeIcon className="w-12 h-8" />
                 <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>Home</span>
+              </Link>
+            </li>
+            {/* 새로운 "기기 관리" 탭 추가 */}
+            <li className="mb-4">
+              <Link to="/devices" className="flex items-center space-x-2">
+                <DeviceTabletIcon className="w-12 h-8" />
+                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>기기 관리</span>
               </Link>
             </li>
           </ul>

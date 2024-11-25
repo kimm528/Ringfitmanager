@@ -1,3 +1,5 @@
+// src/components/Login.js
+
 import React, { useState, useCallback } from "react";
 
 export default function Login({ setIsLoggedIn, setSiteId }) {
@@ -15,86 +17,88 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   const [signUpErrorMessage, setSignUpErrorMessage] = useState("");
 
   const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
+  //const url = 'http://14.47.20.111:7201'
+  const url = 'https://fitlife.dotories.com'
+
+  // 세션 스토리지 관련 헬퍼 함수
+  const loadFromSessionStorage = (key, defaultValue) => {
+    if (key === 'users') return defaultValue;
+    const stored = sessionStorage.getItem(key);
+    if (!stored) return defaultValue;
+    try {
+      return JSON.parse(stored);
+    } catch (error) {
+      console.error(`Error parsing sessionStorage key "${key}":`, error);
+      return defaultValue;
+    }
+  };
+  const formattedTime = (date) => {
+    const pad = (n) => n.toString().padStart(2, '0');
+  
+    const yy = pad(date.getFullYear() % 100); // 연도 (마지막 2자리)
+    const MM = pad(date.getMonth() + 1); // 월 (0부터 시작하므로 +1)
+    const dd = pad(date.getDate()); // 일
+    const HH = pad(date.getHours()); // 시
+    const mm = pad(date.getMinutes()); // 분
+    const ss = pad(date.getSeconds()); // 초
+  
+    return `${yy}${MM}${dd}${HH}${mm}${ss}`;
+  };
+
+  const saveToSessionStorage = (key, value) => {
+    if (key === 'users') return;
+    sessionStorage.setItem(key, JSON.stringify(value));
+  };
 
   // Handle login
   const handleLogin = useCallback(async (e) => {
-    e.preventDefault(); // Prevent form submission default behavior
-
+    e.preventDefault(); // Form 기본 동작 방지
+  
     if (!username || !password) {
       setLoginErrorMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
-
+  
     try {
+      // 서버 요청
       const response = await fetch(
-        `https://fitlife.dotories.com/api/manager?adminId=${username}`,
+        `${url}/api/manager?id=${username}&password=${password}&time=${formattedTime(new Date())}`,
         {
           method: "GET",
           headers: {
-            "Authorization": `Basic ${credentials}`,
+            Authorization: `Basic ${credentials}`,
             "Content-Type": "application/json",
-          }
+          },
         }
       );
-
-      let data;
-
-      // 첫 번째 파싱 시도
-      try {
-        data = await response.json();
-        console.log("첫 번째 파싱 결과:", data);
-
-        // 만약 data가 문자열이라면, 두 번째 파싱 시도
-        if (typeof data === 'string') {
-          data = JSON.parse(data);
-          console.log("두 번째 파싱 결과:", data);
-        }
-      } catch (jsonError) {
-        // JSON 파싱 실패 시 텍스트로 가져와서 다시 파싱 시도
-        const textData = await response.text();
-        try {
-          data = JSON.parse(textData);
-          console.log("로그인 응답 데이터 (텍스트 파싱):", data);
-
-          if (typeof data === 'string') {
-            data = JSON.parse(data);
-            console.log("로그인 응답 데이터 (이중 파싱):", data);
-          }
-        } catch (parseError) {
-          console.error("응답 데이터 파싱 실패:", parseError);
-          setLoginErrorMessage("로그인 실패. 응답 데이터 형식이 올바르지 않습니다.");
-          return;
-        }
-      }
-
-      // 디버깅용 로그
-      console.log("로그인 응답 데이터:", data);
+  
+      // 응답 데이터 파싱
+      let data = await response.json();
+      console.log("첫 번째 파싱 결과:", data);
       console.log("데이터 타입:", typeof data);
-      console.log("Header 존재 여부:", data.Header !== undefined);
-      console.log("Header 내용:", data.Header);
-
+  
+      // 만약 data가 문자열이라면, 두 번째 파싱 시도
+      if (typeof data === "string") {
+        data = JSON.parse(data);
+        console.log("두 번째 파싱 결과:", data);
+      }
+  
+      // 응답 상태 확인
       if (response.ok) {
-         { 
-          if (Array.isArray(data.Data) && data.Data.length > 0) {
-            const admin = data.Data[0];
-            // 서버 측에서 비밀번호 검증을 처리하도록 변경
-            if (admin.Password === password) { // 클라이언트 측 비밀번호 검증 (보안상 권장되지 않음)
-              setIsLoggedIn(true);
-              setSiteId(admin.SiteId || ""); // 서버 응답에서 siteId 추출
-              localStorage.setItem('adminId', username); // username은 로그인 시 입력한 관리자 ID
-              localStorage.setItem('isLoggedIn', JSON.stringify(true));
-              localStorage.setItem('siteId', JSON.stringify(admin.SiteId || ""));
-              alert("로그인 성공");
-              setUsername("");
-              setPassword("");
-              setLoginErrorMessage("");
-            } else {
-              setLoginErrorMessage("비밀번호가 잘못되었습니다. 다시 시도하세요.");
-            }
-          } else {
-            setLoginErrorMessage("로그인 실패. 관리자 정보를 찾을 수 없습니다.");
-          }
-        } 
+        setIsLoggedIn(true);
+  
+        // siteId 추출 및 저장
+        const siteId = data.Header?.SiteId || data.Data?.[0]?.SiteId || "";
+        setSiteId(siteId);
+        sessionStorage.setItem("siteId", siteId);
+  
+        // 기타 정보 저장
+        sessionStorage.setItem("adminId", username);
+        sessionStorage.setItem("isLoggedIn", JSON.stringify(true));
+        alert("로그인 성공");
+        setUsername("");
+        setPassword("");
+        setLoginErrorMessage("");
       } else {
         setLoginErrorMessage("로그인 실패. 다시 시도하세요.");
       }
@@ -103,6 +107,10 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
       setLoginErrorMessage("서버와의 통신에 실패했습니다.");
     }
   }, [username, password, credentials, setIsLoggedIn, setSiteId]);
+  
+  
+  
+  
 
   // Handle sign-up
   const handleSignUp = useCallback(async (e) => {
@@ -115,7 +123,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
 
     try {
       const response = await fetch(
-        `https://fitlife.dotories.com/api/manager`,
+        `${url}/api/manager`,
         {
           method: "INSERT",
           headers: {
@@ -124,7 +132,6 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           },
           body: JSON.stringify({
             header: {
-              command: 7, // 회원가입을 위한 명령 코드 (PostAdminCommand)
                // siteId 추가
             },
             data: {
@@ -133,7 +140,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
               siteId: signUpSiteId,
               Name: signUpName
             }
-          })
+          }),
         }
       );
 

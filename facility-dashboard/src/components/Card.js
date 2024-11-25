@@ -5,7 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { FaStar, FaEllipsisV } from 'react-icons/fa';
 import {
   BarChart,
+  ReferenceArea,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -19,11 +21,19 @@ import {
   MdLocationOn,
   MdHotel,
 } from 'react-icons/md';
-import '../App.css'; // 경로 수정: '../App.css'로 변경
+import '../App.css';
 import ReactSlider from 'react-slider';
-import { calculateUserStatus } from './calculateUserStatus'; // 함수 임포트
+import { calculateUserStatus, calculateSleepScore } from './CalculateUserStatus';
 
-const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, users, disconnectInterval, updateKey }) => { // updateKey 추가
+const Card = ({
+  user,
+  toggleFavorite,
+  updateUser,
+  deleteUser,
+  availableRings,
+  users,
+  disconnectInterval,
+}) => {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -34,70 +44,99 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   const [editedName, setEditedName] = useState(user.name);
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
-  const [isRingConnected, setIsRingConnected] = useState(true);
-
-  const [processedData, setProcessedData] = useState({
-    bpm: 0,
-    oxygen: 0,
-    stress: 0,
-    sleep: 0,
-    steps: 0,
-    calories: 0,
-    distance: 0,
-  });
+  const [isRingConnected, setIsRingConnected] = useState(false);
 
   const menuRef = useRef(null);
   const modalRef = useRef(null);
 
-  // 산소포화도 임계값 상수로 정의
   const OXYGEN_WARNING_THRESHOLD = 95;
   const OXYGEN_DANGER_THRESHOLD = 90;
 
-  // 위험/경고 수준 상태 추가 (심박수 임계값만 포함)
   const [thresholds, setThresholds] = useState({
-    heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
-    heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
-    heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
-    heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
+    heartRateWarningLow: user.thresholds?.heartRateWarningLow || 60,
+    heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 100,
+    heartRateDangerLow: user.thresholds?.heartRateDangerLow || 50,
+    heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 110,
   });
 
-  // user props가 변경될 때 thresholds 상태를 업데이트
+  const sleepScore = useMemo(() => {
+    const sleepData = user.data?.sleepData || {};
+    const {
+      totalSleepDuration = 0,
+      deepSleepDuration = 0,
+      awakeDuration = 0,
+      shallowSleepDuration = 0,
+    } = sleepData;
+
+    return calculateSleepScore(
+      totalSleepDuration,
+      deepSleepDuration,
+      awakeDuration,
+      shallowSleepDuration
+    );
+  }, [user.data]);
+
   useEffect(() => {
     setThresholds({
-      heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
-      heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
-      heartRateDangerLow: user.thresholds?.heartRateDangerLow || 70,
-      heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 140,
+      heartRateWarningLow: user.thresholds?.heartRateWarningLow || 60,
+      heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 100,
+      heartRateDangerLow: user.thresholds?.heartRateDangerLow || 50,
+      heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 110,
     });
   }, [user.thresholds]);
 
-  // 수면 점수 계산 함수
-  const calculateSleepScore = useCallback(
-    (totalSleepDuration, deepSleepDuration, awakeDuration, shallowSleepDuration) => {
-      if (totalSleepDuration === 0) {
-        return 0;
+  const parseConnectedTime = useCallback((connectedTimeStr) => {
+    // connectedTimeStr은 "YYMMDDhhmmss" 형식
+    if (!connectedTimeStr || connectedTimeStr.length !== 12) {
+      return null;
+    }
+    const year = parseInt(connectedTimeStr.slice(0, 2), 10) + 2000; // 2000년대 가정
+    const month = parseInt(connectedTimeStr.slice(2, 4), 10) - 1; // 월은 0부터 시작
+    const day = parseInt(connectedTimeStr.slice(4, 6), 10);
+    const hour = parseInt(connectedTimeStr.slice(6, 8), 10);
+    const minute = parseInt(connectedTimeStr.slice(8, 10), 10);
+    const second = parseInt(connectedTimeStr.slice(10, 12), 10);
+  
+    const date = new Date(year, month, day, hour, minute, second);
+  
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    return date;
+  }, []);
+
+  useEffect(() => {
+    const checkRingConnection = () => {
+      if (user.ring && user.ring.ConnectedTime) {
+        const connectedTime = parseConnectedTime(user.ring.ConnectedTime);
+        if (connectedTime) {
+          const currentTime = Date.now();
+          const timeDiff = currentTime - connectedTime.getTime();
+          if (timeDiff > disconnectInterval * 60 * 1000) {
+            setIsRingConnected(false);
+          } else {
+            setIsRingConnected(true);
+          }
+        } else {
+          setIsRingConnected(false);
+        }
+      } else {
+        setIsRingConnected(false);
       }
+    };
+  
+    checkRingConnection();
+  
+    const checkInterval = Math.max((disconnectInterval * 60 * 1000) / 5, 300 * 1000);
+  
+    const intervalId = setInterval(checkRingConnection, checkInterval);
+  
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [user.ring, disconnectInterval, parseConnectedTime]);
 
-      // 각 기간이 0인 경우 기본값 설정
-      deepSleepDuration = deepSleepDuration || 0;
-      awakeDuration = awakeDuration || 0;
-      shallowSleepDuration = shallowSleepDuration || 0;
-
-      const totalSleepScore = (totalSleepDuration / 480.0) * 50;
-      const deepSleepScore = (deepSleepDuration / totalSleepDuration) * 30;
-      const awakePenalty = (awakeDuration / totalSleepDuration) * -20;
-      const shallowSleepPenalty = (shallowSleepDuration / totalSleepDuration) * -10;
-
-      let sleepScore = totalSleepScore + deepSleepScore + awakePenalty + shallowSleepPenalty;
-
-      sleepScore = Math.max(0, Math.min(100, sleepScore));
-
-      return Math.round(sleepScore);
-    },
-    []
-  );
-
-  // Get Last Non-Zero Value
+  // 데이터에서 마지막 0이 아닌 값을 추출하는 함수
   const getLastNonZero = useCallback((arr) => {
     if (!arr || !Array.isArray(arr)) return 0;
     for (let i = arr.length - 1; i >= 0; i--) {
@@ -108,247 +147,102 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     return 0;
   }, []);
 
-  useEffect(() => {
-    const checkRingConnection = () => {
-      if (user.ring && user.ring.ConnectedTime) {
-        const connectedTime = new Date(user.ring.ConnectedTime).getTime();
-        const currentTime = Date.now();
-        const timeDiff = currentTime - connectedTime;
-        if (timeDiff > disconnectInterval * 60 * 1000) { // disconnectInterval 분
-          setIsRingConnected(false);
-        } else {
-          setIsRingConnected(true);
-        }
-      } else {
-        setIsRingConnected(false);
-      }
-    };
-  
-    // 컴포넌트가 마운트될 때 한 번 체크
-    checkRingConnection();
-  
-    // 체크 주기 계산 (예: disconnectInterval의 1/5)
-    const checkInterval = Math.max(disconnectInterval * 60 * 1000 / 5, 300 * 1000); // 최소 30초
+  // 시간대별 데이터에서 마지막 0이 아닌 값 추출
+  const lastSteps = useMemo(() => getLastNonZero(user.data?.hourlyData?.steps || []), [user.data, getLastNonZero]);
+  const lastCalories = useMemo(() => getLastNonZero(user.data?.hourlyData?.calories || []), [user.data, getLastNonZero]);
+  const lastDistance = useMemo(() => getLastNonZero(user.data?.hourlyData?.distance || []), [user.data, getLastNonZero]);
 
-    const intervalId = setInterval(checkRingConnection, checkInterval);
+  // 기존 총합 데이터를 제거하고, 마지막 값을 사용
+  const processedSteps = lastSteps;
+  const processedCalories = lastCalories;
+  const processedDistance = lastDistance;
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [user.ring, disconnectInterval]);
+  const { bpm, oxygen, stress, sleep } = user.data || {
+    bpm: 0,
+    oxygen: 0,
+    stress: 0,
+    sleep: 0,
+  };
 
-  // Process Ring Data
-  useEffect(() => {
-    if (user.ring) {
-      const {
-        HeartRateArr = [],
-        MinBloodOxygenArr = [],
-        MaxBloodOxygenArr = [],
-        Sport = {},
-        PressureArr = [],
-        Sleep = {},
-      } = user.ring;
-      const latestHeartRate = getLastNonZero(HeartRateArr);
-      const latestMinOxygen = getLastNonZero(MinBloodOxygenArr);
-      const latestMaxOxygen = getLastNonZero(MaxBloodOxygenArr);
-      const avgOxygen = Math.round((latestMinOxygen + latestMaxOxygen) / 2); // 소수점 제거
-      const latestStress = getLastNonZero(PressureArr);
-
-      const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = Sport;
-      const latestSteps = getLastNonZero(TotalStepsArr);
-      const latestCalories = getLastNonZero(CalorieArr);
-      const latestDistance = getLastNonZero(WalkDistanceArr) / 1000; // km 단위로 변환
-
-      // 수면 데이터 추출 및 단위 변환 (필요한 경우)
-      const {
-        TotalSleepDuration = 0,
-        DeepSleepDuration = 0,
-        ShallowSleepDuration = 0,
-        AwakeDuration = 0,
-      } = Sleep;
-
-      // 수면 시간이 초 단위라면 분 단위로 변환
-      const totalSleepMinutes = TotalSleepDuration / 60;
-      const deepSleepMinutes = DeepSleepDuration / 60;
-      const shallowSleepMinutes = ShallowSleepDuration / 60;
-      const awakeMinutes = AwakeDuration / 60;
-
-      // 수면 점수 계산
-      const sleepScore = calculateSleepScore(
-        totalSleepMinutes,
-        deepSleepMinutes,
-        awakeMinutes,
-        shallowSleepMinutes
-      );
-
-      const newProcessedData = {
-        bpm: latestHeartRate || 0,
-        oxygen: avgOxygen || 0,
-        stress: latestStress || 0,
-        sleep: sleepScore || 0,
-        steps: latestSteps || 0,
-        calories: latestCalories || 0,
-        distance: latestDistance || 0,
-      };
-  
-      setProcessedData(newProcessedData);
-
-      // 사용자 데이터 업데이트 (필요한 경우)
-      const shouldUpdateUser =
-        latestHeartRate !== user.data?.bpm ||
-        avgOxygen !== user.data?.oxygen ||
-        latestSteps !== user.data?.steps ||
-        latestCalories !== user.data?.calories ||
-        latestDistance !== user.data?.distance ||
-        latestStress !== user.data?.stress ||
-        sleepScore !== user.data?.sleep;
-
-      if (shouldUpdateUser) {
-        const updatedUser = {
-          ...user,
-          data: {
-            ...(user.data || {}),
-            ...newProcessedData,
-          },
-          lastReceivedTime: Date.now(), // 마지막 수신 시간 갱신
-        };
-        console.log('Updating lastReceivedTime:', new Date(updatedUser.lastReceivedTime).toLocaleTimeString());
-        updateUser(updatedUser, false);
-      }
-    } else {
-      // 링 데이터가 없을 경우 기본값 사용
-      setProcessedData({
-        bpm: user.data?.bpm || 0,
-        oxygen: user.data?.oxygen || 0,
-        stress: user.data?.stress || 0,
-        sleep: user.data?.sleep || 0,
-        steps: user.data?.steps || 0,
-        calories: user.data?.calories || 0,
-        distance: user.data?.distance || 0,
-      });
-    }
-  }, [user.ring, getLastNonZero, updateUser, calculateSleepScore, user.data]);
-
-  // Extract Variables from Processed Data
-  const { bpm, oxygen, stress, sleep, steps, calories, distance } = processedData;
-
-  // 위험 수준에 따른 색상 설정 함수 (동적 임계값 사용)
-  const getHeartRateColor = useCallback((value) => {
-    if (value === 0) return '#cccccc'; // 값이 0이면 회색
-    if (value >= thresholds.heartRateDangerHigh || value <= thresholds.heartRateDangerLow)
-      return '#f44336'; // 위험 (빨간색)
-    if (value >= thresholds.heartRateWarningHigh || value <= thresholds.heartRateWarningLow)
-      return '#ff9800'; // 주의 (주황색)
-    return '#4caf50'; // 정상 (초록색)
-  }, [thresholds]);
-
-  const getOxygenColor = useCallback((value) => {
-    if (value === 0) return '#cccccc';
-    if (value < OXYGEN_DANGER_THRESHOLD) return '#f44336'; // 위험
-    if (value < OXYGEN_WARNING_THRESHOLD) return '#ff9800'; // 주의
-    return '#4caf50'; // 정상
-  }, []);
-
-  const getStressColor = useCallback((value) => {
-    if (value === 0) return '#cccccc';
-    if (value >= 66) return '#f44336'; // 높음
-    if (value >= 33) return '#ff9800'; // 보통
-    return '#4caf50'; // 낮음
-  }, []);
-
-  const COLORS = useMemo(() => ({
-    danger: '#f44336', // 빨간색
-    warning: '#ff9800', // 주황색
+  const STATUS_COLORS = {
     normal: '#4caf50', // 초록색
-  }), []);
+    warning: '#ff9800', // 노란색
+    danger: '#f44336', // 빨간색
+  };
 
-  // 심박수 구간 계산 함수 추가
-  const calculateHeartRateSegments = useCallback((value) => {
-    const segments = {
-      dangerLow: 0,
-      warningLow: 0,
-      normal: 0,
-      warningHigh: 0,
-      dangerHigh: 0,
-    };
+  // 심박수 상태 계산 함수
+  const getHeartRateStatus = useCallback(
+    (value) => {
+      if (value === 0) return 'normal';
+      if (value >= thresholds.heartRateDangerHigh || value <= thresholds.heartRateDangerLow)
+        return 'danger';
+      if (value >= thresholds.heartRateWarningHigh || value <= thresholds.heartRateWarningLow)
+        return 'warning';
+      return 'normal';
+    },
+    [thresholds]
+  );
 
-    if (value <= thresholds.heartRateDangerLow) {
-      segments.dangerLow = value;
-    } else if (value <= thresholds.heartRateWarningLow) {
-      segments.dangerLow = thresholds.heartRateDangerLow;
-      segments.warningLow = value - thresholds.heartRateDangerLow;
-    } else if (value <= thresholds.heartRateWarningHigh) {
-      segments.dangerLow = thresholds.heartRateDangerLow;
-      segments.warningLow = thresholds.heartRateWarningLow - thresholds.heartRateDangerLow;
-      segments.normal = value - thresholds.heartRateWarningLow;
-    } else if (value <= thresholds.heartRateDangerHigh) {
-      segments.dangerLow = thresholds.heartRateDangerLow;
-      segments.warningLow = thresholds.heartRateWarningLow - thresholds.heartRateDangerLow;
-      segments.normal = thresholds.heartRateWarningHigh - thresholds.heartRateWarningLow;
-      segments.warningHigh = value - thresholds.heartRateWarningHigh;
-    } else {
-      segments.dangerLow = thresholds.heartRateDangerLow;
-      segments.warningLow = thresholds.heartRateWarningLow - thresholds.heartRateDangerLow;
-      segments.normal = thresholds.heartRateWarningHigh - thresholds.heartRateWarningLow;
-      segments.warningHigh = thresholds.heartRateDangerHigh - thresholds.heartRateWarningHigh;
-      segments.dangerHigh = value - thresholds.heartRateDangerHigh;
-    }
+  // 산소포화도 상태 계산 함수
+  const getOxygenStatus = useCallback((value) => {
+    if (value === 0) return 'normal';
+    if (value < OXYGEN_DANGER_THRESHOLD) return 'danger';
+    if (value < OXYGEN_WARNING_THRESHOLD) return 'warning';
+    return 'normal';
+  }, []);
 
-    return segments;
-  }, [thresholds]);
+  // 스트레스 지수 상태 계산 함수
+  const getStressStatus = useCallback((value) => {
+    if (value === 0) return 'normal';
+    if (value >= 66) return 'danger';
+    if (value >= 33) return 'warning';
+    return 'normal';
+  }, []);
 
-  // 데이터 준비 (메모이제이션)
-  const heartRateSegments = useMemo(() => calculateHeartRateSegments(bpm), [bpm, calculateHeartRateSegments]);
-
-  const barChartData = useMemo(() => [
+  const barChartData = [
     {
       name: '심박수',
-      dangerLow: heartRateSegments.dangerLow,
-      warningLow: heartRateSegments.warningLow,
-      normal: heartRateSegments.normal,
-      warningHigh: heartRateSegments.warningHigh,
-      dangerHigh: heartRateSegments.dangerHigh,
-      bpmValue: bpm, // 심박수 값
-      oxygenValue: 0,
-      stressValue: 0,
+      xValue: 1,
+      value: bpm,
+      status: getHeartRateStatus(bpm),
+      dangerLow: thresholds.heartRateDangerLow,
+      warningLow: thresholds.heartRateWarningLow,
+      warningHigh: thresholds.heartRateWarningHigh,
+      dangerHigh: thresholds.heartRateDangerHigh,
     },
     {
       name: '산소포화도',
-      dangerLow: 0,
-      warningLow: 0,
-      normal: 0,
-      warningHigh: 0,
-      dangerHigh: 0,
-      bpmValue: 0,
-      oxygenValue: oxygen,
-      stressValue: 0,
+      xValue: 2,
+      value: oxygen,
+      status: getOxygenStatus(oxygen),
+      dangerLow: OXYGEN_DANGER_THRESHOLD,
+      warningLow: OXYGEN_WARNING_THRESHOLD,
+      warningHigh: 100,
+      dangerHigh: 100,
     },
     {
       name: '스트레스',
-      dangerLow: 0,
-      warningLow: 0,
-      normal: 0,
+      xValue: 3,
+      value: stress,
+      status: getStressStatus(stress),
+      dangerLow: 66,
+      warningLow: 33,
       warningHigh: 0,
       dangerHigh: 0,
-      bpmValue: 0,
-      oxygenValue: 0,
-      stressValue: stress,
     },
-  ], [heartRateSegments, bpm, oxygen, stress]);
+  ];
 
-  // 카드 상태 계산 (중복 제거)
   const status = useMemo(() => {
     return calculateUserStatus({
       ...user,
-      data: { ...user.data, bpm: processedData.bpm, oxygen: processedData.oxygen },
+      data: { ...user.data },
       thresholds,
     });
-  }, [user, processedData.bpm, processedData.oxygen, thresholds]);
+  }, [user, thresholds]);
 
-  // Open Threshold Modal
   const openThresholdModal = useCallback(
     (e) => {
-      e.stopPropagation(); // 이벤트 전파 중단
+      e.stopPropagation();
       setThresholds({
         heartRateWarningLow: user.thresholds?.heartRateWarningLow || 80,
         heartRateWarningHigh: user.thresholds?.heartRateWarningHigh || 120,
@@ -358,10 +252,9 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       setShowThresholdModal(true);
       setMenuOpen(false);
     },
-    [user]  
+    [user]
   );
 
-  // Open Ring Management Modal
   const openRingModal = useCallback(
     (e) => {
       e.stopPropagation();
@@ -385,7 +278,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     []
   );
 
-  // Click Outside to Close Menu or Prevent Navigation
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -407,8 +299,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     };
   }, [menuRef, modalRef, showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
 
-  // Open Edit Modal
-  const openEditModal = useCallback(
+  const openEditModalHandler = useCallback(
     (e) => {
       e.stopPropagation();
       setEditedName(user.name);
@@ -420,8 +311,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     [user]
   );
 
-  // Delete Modal Handlers
-  const openDeleteModal = useCallback(
+  const openDeleteModalHandler = useCallback(
     (e) => {
       e.stopPropagation();
       setShowDeleteModal(true);
@@ -439,7 +329,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
     setShowDeleteModal(false);
   }, []);
 
-  // Save Edited User Info
   const handleSaveUserInfo = useCallback(() => {
     const updatedUser = {
       ...user,
@@ -454,8 +343,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
       albumPath: user.albumPath,
       lifeLogs: user.lifeLogs,
     };
-    console.log('Updated User Info:', updatedUser);
-    updateUser(updatedUser, true); // 서버로 요청 보내기 위해 sendToServer를 true로 설정
+    updateUser(updatedUser, true);
     setShowEditModal(false);
   }, [user, editedName, editedGender, editedAge, updateUser]);
 
@@ -469,7 +357,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
           fill="#000"
           textAnchor="middle"
           fontSize={16}
-          style={{ pointerEvents: 'none' }} // 마우스 이벤트 방지
+          style={{ pointerEvents: 'none' }}
         >
           {value}
         </text>
@@ -480,126 +368,234 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
 
   return (
     <div
-      className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
-        status === 'warning' ? 'border-4 border-yellow-500' : ''
-      } ${
-        status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''
-      }`}
-      style={{ width: '350px', margin: '10px', fontFamily: 'Nanum Gothic, sans-serif', minHeight: '400px' }}
-      onClick={navigateToUserDetail}
+  className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
+    status === 'warning' ? 'border-4 border-yellow-500' : ''
+  } ${
+    status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''
+  }`}
+  style={{
+    width: '350px',
+    margin: '10px',
+    fontFamily: 'Nanum Gothic, sans-serif',
+    minHeight: '400px',
+  }}
+  onClick={navigateToUserDetail}
+>
+  <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
+    <button
+      style={{
+        padding: '5px',
+        marginRight: '5px',
+        borderRadius: '80%',
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        toggleFavorite(user.id);
+      }}
     >
-      
-      <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
+      <FaStar
+        className={`mr-1 ${user.isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
+        size={20}
+      />
+    </button>
+    <button onClick={toggleMenu}>
+      <FaEllipsisV size={20} />
+    </button>
+    {menuOpen && (
+      <div className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-10">
         <button
-          style={{
-            padding: '5px',
-            marginRight: '5px',
-            borderRadius: '80%',
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleFavorite(user.id);
-          }}
+          className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+          onClick={openThresholdModal}
         >
-          <FaStar
-            className={`mr-1 ${user.isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
-            size={20}
-          />
+          위험도 수정
         </button>
-        <button onClick={toggleMenu}>
-          <FaEllipsisV size={20} />
+        <button
+          className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+          onClick={openEditModalHandler}
+        >
+          정보 수정
         </button>
-        {menuOpen && (
-          <div className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-10">
-            <button
-              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openThresholdModal}
-            >
-              위험도 수정
-            </button>
-            <button
-              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openEditModal}
-            >
-              정보 수정
-            </button>
-            <button
-              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openRingModal}
-            >
-              링 관리
-            </button>
-            <button
-              className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openDeleteModal}
-            >
-              삭제
-            </button>
-          </div>
-        )}
+        <button
+          className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+          onClick={openDeleteModalHandler}
+        >
+          삭제
+        </button>
       </div>
+    )}
+  </div>
 
-      <div className="card-header mb-4">
-        <h2 className="font-bold text-lg">
-          {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
-        </h2>
-      </div>
+  <div className="card-header mb-4">
+    <h2 className="font-bold text-lg">
+      {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
+    </h2>
+    <p className="text-sm text-gray-600">
+      {user.ring ? `연결된 링: ${user.ring.Name || 'Unknown Ring'}` : '링 없음'}
+    </p>
+  </div>
 
       <div className="card-body">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
             data={barChartData}
-            margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
-            barCategoryGap={20}
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis domain={[0, 200]} ticks={[0, 50, 100, 150, 200]} />
+            <CartesianGrid strokeDasharray="2 2" />
+            <XAxis
+              dataKey="xValue"
+              type="number"
+              xAxisId="x"
+              ticks={[1, 2, 3]} // 틱 위치 지정
+              tickFormatter={(value) => {
+                const entry = barChartData.find((item) => item.xValue === value);
+                return entry ? entry.name : '';
+              }}
+              domain={[0.5, 3.5]}
+              allowDuplicatedCategory={false}
+            />
+            <YAxis domain={[0, 180]} ticks={[0, 30, 60, 90, 120, 150, 180]} />
 
-            {/* 심박수 */}
-            <Bar dataKey="dangerLow" stackId="a" fill={COLORS.danger} isAnimationActive={false} />
-            <Bar dataKey="warningLow" stackId="a" fill={COLORS.warning} isAnimationActive={false} />
-            <Bar dataKey="normal" stackId="a" fill={COLORS.normal} isAnimationActive={false} />
-            <Bar dataKey="warningHigh" stackId="a" fill={COLORS.warning} isAnimationActive={false} />
-            <Bar dataKey="dangerHigh" stackId="a" fill={COLORS.danger} isAnimationActive={false}>
-              <LabelList dataKey="bpmValue" content={renderCustomLabel} />
-            </Bar>
+            {/* ReferenceArea에 마진 적용 */}
+            {barChartData.map((entry, index) => (
+              <React.Fragment key={`reference-${index}`}>
+                {(() => {
+                  const margin = 0.2; // 마진 값 (0보다 크고 0.5보다 작은 값)
+                  return (
+                    <>
+                      {/* 심박수와 산소포화도 그래프 */}
+                      {entry.name !== '스트레스' && (
+                        <>
+                          {/* 위험 하한 영역 */}
+                          <ReferenceArea
+                            x1={entry.xValue - 0.5 + margin}
+                            x2={entry.xValue + 0.5 - margin}
+                            y1={0}
+                            y2={entry.dangerLow}
+                            xAxisId="x"
+                            fill="#f44336"
+                            fillOpacity={0.2}
+                          />
+                          {/* 경고 하한 영역 */}
+                          <ReferenceArea
+                            x1={entry.xValue - 0.5 + margin}
+                            x2={entry.xValue + 0.5 - margin}
+                            y1={entry.dangerLow}
+                            y2={entry.warningLow}
+                            xAxisId="x"
+                            fill="#ff9800"
+                            fillOpacity={0.2}
+                          />
+                          {/* 정상 영역 */}
+                          <ReferenceArea
+                            x1={entry.xValue - 0.5 + margin}
+                            x2={entry.xValue + 0.5 - margin}
+                            y1={entry.warningLow}
+                            y2={entry.warningHigh || entry.warningLow}
+                            xAxisId="x"
+                            fill="#4caf50"
+                            fillOpacity={0.2}
+                          />
+                          {/* 경고 상한 영역 */}
+                          {entry.warningHigh && (
+                            <ReferenceArea
+                              x1={entry.xValue - 0.5 + margin}
+                              x2={entry.xValue + 0.5 - margin}
+                              y1={entry.warningHigh}
+                              y2={entry.dangerHigh || entry.warningHigh}
+                              xAxisId="x"
+                              fill="#ff9800"
+                              fillOpacity={0.2}
+                            />
+                          )}
+                          {/* 위험 상한 영역 */}
+                          {entry.dangerHigh && (
+                            <ReferenceArea
+                              x1={entry.xValue - 0.5 + margin}
+                              x2={entry.xValue + 0.5 - margin}
+                              y1={entry.dangerHigh}
+                              y2={180} // Y축 최대값에 맞게 조정
+                              xAxisId="x"
+                              fill="#f44336"
+                              fillOpacity={0.2}
+                            />
+                          )}
+                        </>
+                      )}
 
-            {/* 산소포화도 */}
-            <Bar dataKey="oxygenValue" fill={getOxygenColor(oxygen)} stackId="a" isAnimationActive={false}>
-              <LabelList dataKey="oxygenValue" content={renderCustomLabel} />
-            </Bar>
+                      {/* 스트레스 그래프 */}
+                      {entry.name === '스트레스' && (
+                        <>
+                          {/* 정상 영역 (0 ~ 33) */}
+                          <ReferenceArea
+                            x1={entry.xValue - 0.5 + margin}
+                            x2={entry.xValue + 0.5 - margin}
+                            y1={0}
+                            y2={entry.warningLow}
+                            xAxisId="x"
+                            fill="#4caf50"
+                            fillOpacity={0.2}
+                          />
+                          {/* 경고 영역 (34 ~ 66) */}
+                          <ReferenceArea
+                            x1={entry.xValue - 0.5 + margin}
+                            x2={entry.xValue + 0.5 - margin}
+                            y1={34}
+                            y2={66}
+                            xAxisId="x"
+                            fill="#ff9800"
+                            fillOpacity={0.2}
+                          />
+                          {/* 위험 영역 (67 ~ 100) */}
+                          <ReferenceArea
+                            x1={entry.xValue - 0.5 + margin}
+                            x2={entry.xValue + 0.5 - margin}
+                            y1={67}
+                            y2={180}
+                            xAxisId="x"
+                            fill="#f44336"
+                            fillOpacity={0.2}
+                          />
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+              </React.Fragment>
+            ))}
 
-            {/* 스트레스 */}
-            <Bar dataKey="stressValue" fill={getStressColor(stress)} stackId="a" isAnimationActive={false}>
-              <LabelList dataKey="stressValue" content={renderCustomLabel} />
+            {/* 실제 값 표시를 위한 Bar */}
+            <Bar dataKey="value" isAnimationActive={false} xAxisId="x" barSize={30}>
+              {barChartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status]} />
+              ))}
+              <LabelList dataKey="value" content={renderCustomLabel} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-       
-      {/* Footer with Steps, Calories, Distance, Sleep Score */}
+
+      {/* Footer with Last Non-Zero Steps, Calories, Distance, Sleep Score */}
       <div className="card-footer mt-4 grid grid-cols-4 gap-2 text-center text-sm p-2 bg-gray-100 rounded-md">
         {[
           {
             icon: <MdDirectionsWalk size={24} color="#3b82f6" />,
             label: '걸음수',
-            value: steps,
+            value: `${processedSteps}보`,
           },
           {
             icon: <MdLocalFireDepartment size={24} color="#ff5722" />,
             label: '칼로리',
-            value: `${(calories / 1000).toFixed(0)} kcal`,
+            value: `${(processedCalories / 1000).toFixed(0)} kcal`,
           },
           {
             icon: <MdLocationOn size={24} color="#4caf50" />,
             label: '이동거리',
-            value: `${distance.toFixed(2)} km`,
+            value: `${(processedDistance / 1000).toFixed(2)} km`, // 거리 단위를 km로 변환
           },
           {
             icon: <MdHotel size={24} color="#9c27b0" />,
             label: '수면점수',
-            value: `${sleep}점`,
+            value: `${sleepScore}점`,
           },
         ].map((item, index) => (
           <div key={index}>
@@ -618,7 +614,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
           <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
           <div className="mb-6">
             <h3 className="font-semibold mb-8">심박수 임계값</h3>
-            
+
             {/* 다중 핸들 슬라이더 */}
             <div className="relative mb-6">
               <ReactSlider
@@ -652,29 +648,15 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
                       width: '25px',
                       backgroundColor:
                         state.index === 0 || state.index === 3
-                          ? '#f44336' // 위험 수준 핸들 - 빨간색
-                          : '#ff9800', // 경고 수준 핸들 - 주황색
+                          ? '#f44336'
+                          : '#ff9800',
                       borderRadius: '50%',
                       cursor: 'pointer',
                       top: '50%',
                       transform: 'translate(-50%, -50%)',
                       position: 'absolute',
                     }}
-                  >
-                    {/* 핸들 레이블 추가 */}
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '-30px',
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        color: '#000',
-                        fontSize: '12px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                    </span>
-                  </div>
+                  ></div>
                 )}
                 renderTrack={(props, state) => (
                   <div
@@ -685,17 +667,17 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
                       backgroundColor: (() => {
                         switch (state.index) {
                           case 0:
-                            return '#f44336'; // 위험 구간 (하한선 이하) - 빨간색
+                            return '#f44336';
                           case 1:
-                            return '#ff9800'; // 경고 구간 (하한선과 상한선 사이) - 주황색
+                            return '#ff9800';
                           case 2:
-                            return '#4caf50'; // 정상 구간 - 초록색
+                            return '#4caf50';
                           case 3:
-                            return '#ff9800'; // 경고 구간 (상한선과 위험 상한선 사이) - 주황색
+                            return '#ff9800';
                           case 4:
-                            return '#f44336'; // 위험 구간 (상한선 이상) - 빨간색
+                            return '#f44336';
                           default:
-                            return '#ddd'; // 기본 색상
+                            return '#ddd';
                         }
                       })(),
                     }}
@@ -703,7 +685,6 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
                 )}
               />
             </div>
-            {/* 현재 값 표시 영역 개선 */}
             <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
               <div className="text-center">
                 <div
@@ -742,13 +723,11 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
           <div className="flex justify-end">
             <button
               onClick={() => {
-                // 임계값을 업데이트한 사용자 객체 생성
                 const updatedUser = {
                   ...user,
                   thresholds: { ...thresholds },
                 };
-                // 사용자 업데이트 함수 호출 (서버로 전송)
-                updateUser(updatedUser, true); // sendToServer를 true로 설정하여 서버로 전송
+                updateUser(updatedUser, true);
                 setShowThresholdModal(false);
               }}
               className="px-4 py-2 bg-blue-500 text-white rounded-md"
@@ -816,7 +795,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
           </div>
         </Modal>
       )}
-      
+
       {/* Ring Connection Status */}
       <div className="ring-status mt-4 flex items-center justify-center gap-4">
         {user.ring ? (
@@ -824,7 +803,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
             <>
               <span className="text-green-500 font-semibold">링 연결됨</span>
               <span className="text-gray-700 font-medium">
-                배터리: {user.ring.BatteryLevel}%
+                배터리: {user.ring.BatteryLevel || 'N/A'}%
               </span>
             </>
           ) : (
@@ -835,8 +814,8 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
         )}
       </div>
 
-       {/* Ring Management Modal */}
-       {showRingModal && (
+      {/* Ring Management Modal */}
+      {showRingModal && (
         <Modal onClose={() => setShowRingModal(false)} ref={modalRef}>
           <h2 className="text-xl font-semibold mb-4">링 관리</h2>
           {user.ring ? (
@@ -844,12 +823,10 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
               <p>현재 연결된 링: {user.ring.Name || 'Unknown Ring'}</p>
               <button
                 onClick={() => {
-                  // 링 연결 해제
                   const updatedUser = {
                     ...user,
                     ring: null,
-                    macAddr: '', // macAddr를 빈 문자열로 설정
-                    // 필요한 다른 필드들도 포함
+                    macAddr: '',
                     name: user.name,
                     gender: user.gender,
                     age: user.age,
@@ -861,7 +838,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
                     albumPath: user.albumPath,
                     lifeLogs: user.lifeLogs,
                   };
-                  updateUser(updatedUser, true); // 서버로 전송
+                  updateUser(updatedUser, true);
                   setShowRingModal(false);
                 }}
                 className="mt-2 px-4 py-2 bg-red-500 text-white rounded-md"
@@ -878,22 +855,16 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
             <ul>
               {availableRings.length > 0 ? (
                 availableRings
-                  // 이미 다른 사용자에게 할당된 링은 제외
-                  .filter(
-                    (ring) =>
-                      !users.some((otherUser) => otherUser.macAddr === ring.MacAddr)
-                  )
+                  .filter((ring) => !users.some((otherUser) => otherUser.macAddr === ring.MacAddr))
                   .map((ring) => (
                     <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
-                      <span>{ring.Name || "Unknown Ring"}</span>
+                      <span>{ring.Name || 'Unknown Ring'}</span>
                       <button
                         onClick={() => {
-                          // 링 연결
                           const updatedUser = {
                             ...user,
                             ring: ring,
-                            macAddr: ring.MacAddr, // 선택한 링의 MacAddr로 설정
-                            // 필요한 다른 필드들도 포함
+                            macAddr: ring.MacAddr,
                             name: user.name,
                             gender: user.gender,
                             age: user.age,
@@ -905,7 +876,7 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
                             albumPath: user.albumPath,
                             lifeLogs: user.lifeLogs,
                           };
-                          updateUser(updatedUser, true); // 서버로 전송
+                          updateUser(updatedUser, true);
                           setShowRingModal(false);
                         }}
                         className="px-2 py-1 bg-blue-500 text-white rounded-md"
@@ -955,5 +926,4 @@ const Card = ({ user, toggleFavorite, updateUser, deleteUser, availableRings, us
   );
 };
 
-// React.memo 제거: Card.js는 이제 React.memo 없이 내보냅니다.
 export default Card;

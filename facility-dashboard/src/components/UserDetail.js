@@ -1,8 +1,7 @@
-// src/components/UserDetail.js
+// src/Components/UserDetail.js
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 import { 
   FaEdit, FaPlus, FaHeartbeat, FaBed, 
   FaSmile, FaTint, FaWalking, FaFireAlt, FaRoute 
@@ -13,7 +12,8 @@ import {
 } from 'recharts';
 import Modal from './Modal';
 import CustomLegend from './CustomLegend';
-// import { calculateUserStatus } from './calculateUserStatus'; // 필요 시 임포트
+import { calculateSleepScore } from './CalculateUserStatus';
+import axios from 'axios';
 
 // Helper Function to get the last non-zero value
 const getLastNonZero = (arr = []) => {
@@ -40,12 +40,62 @@ const InfoCard = ({ icon, title, value }) => (
   </div>
 );
 
-const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
+// 세션 스토리지 관련 헬퍼 함수
+const loadFromSessionStorage = (key, defaultValue) => {
+  const stored = sessionStorage.getItem(key);
+  if (!stored) return defaultValue;
+
+  // JSON 파싱이 필요한 키 목록
+  const jsonKeys = ['healthData'];
+
+  if (jsonKeys.includes(key)) {
+    try {
+      const parsed = JSON.parse(stored);
+      return parsed;
+    } catch (error) {
+      console.error(`Error parsing sessionStorage key "${key}":`, error);
+      return defaultValue;
+    }
+  } else {
+    // 단순 문자열인 경우 그대로 반환
+    return stored;
+  }
+};
+
+const saveToSessionStorage = (key, value) => {
+  if (typeof value === 'object') {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } else {
+    sessionStorage.setItem(key, value);
+  }
+};
+
+const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDENTIALS }) => {
   const { userId } = useParams();  // Get userId from URL
 
   // 사용자 상태를 useState로 관리
   const [user, setUser] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date()); // 기본 날짜는 오늘
+  const [isLoading, setIsLoading] = useState(false);
+  const [healthData, setHealthData] = useState(() => loadFromSessionStorage('healthData', {})); // 초기 상태 로드
+  const [error, setError] = useState(null); // 에러 상태 추가
 
+  // 날짜 형식 변환 함수 (YYMMDD)
+  const formatDateYYMMDD = useCallback((date) => {
+    const year = String(date.getFullYear()).slice(-2); // 마지막 두 자리
+    const month = (`0${date.getMonth() + 1}`).slice(-2); // 월은 0부터 시작하므로 +1
+    const day = (`0${date.getDate()}`).slice(-2);
+    return `${year}${month}${day}`;
+  }, []);
+
+  // 날짜 변경 핸들러
+  const handleDateChange = useCallback((e) => {
+    const dateString = e.target.value;
+    const selected = new Date(dateString);
+    setSelectedDate(selected);
+  }, []);
+
+  // 사용자 변경 시 user 상태 업데이트
   useEffect(() => {
     if (users && Array.isArray(users)) {
       const foundUser = users.find((u) => u.id === parseInt(userId));
@@ -58,17 +108,48 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   }, [users, userId]);
 
   // 사용자 데이터 구조 분해 (기본값 설정)
-  const {
-    sleep = 0,
-  } = user || {};
+  const { data: userData = {} } = user || {};
 
-  const processedSleep = typeof sleep === 'object' ? sleep.score || 0 : sleep;
+  const {
+    bpm = 0,
+    oxygen = 0,
+    stress = 0,
+    sleep = 0,
+    deepSleepDuration = 0, // 추가된 필드
+    awakeDuration = 0,     // 추가된 필드
+    shallowSleepDuration = 0, // 추가된 필드
+    steps = 0,
+    calories = 0,
+    distance = 0,
+    heartRateArr = [],
+    oxygenArr = [],
+    stressArr = [],
+    hourlyData = {},
+  } = userData;
+
+  // Sleep 점수 계산
+  const sleepScore = useMemo(() => {
+    if (
+      sleep > 0 &&
+      deepSleepDuration > 0 &&
+      awakeDuration > 0 &&
+      shallowSleepDuration > 0
+    ) {
+      return calculateSleepScore(
+        sleep, // totalSleepDuration (분 단위)
+        deepSleepDuration,
+        awakeDuration,
+        shallowSleepDuration
+      );
+    } else {
+      return 0;
+    }
+  }, [sleep, deepSleepDuration, awakeDuration, shallowSleepDuration]);
 
   const lifeLogs = user?.lifeLogs || [];
 
   // State variables
   const [logItems, setLogItems] = useState(lifeLogs);
-  const [selectedDate, setSelectedDate] = useState(new Date()); // Use Date object
   const [sortOption, setSortOption] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newItem, setNewItem] = useState({
@@ -80,254 +161,96 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [activityLineChartData, setActivityLineChartData] = useState([]);
-  const [processedRingData, setProcessedRingData] = useState({
-    latestBpm: 0,
-    averageOxygen: 0,
-    steps: 0,
-    calories: 0,
-    distance: 0,
-    stress: 0,
-  });
-  const [lineChartData, setLineChartData] = useState([]);
   const [showBpm, setShowBpm] = useState(true);
   const [showOxygen, setShowOxygen] = useState(true);
+  const [showStress, setShowStress] = useState(true); // 추가된 부분
   const [showSteps, setShowSteps] = useState(true);
   const [showCalories, setShowCalories] = useState(true);
   const [showDistance, setShowDistance] = useState(true);
-  const [selectedRingData, setSelectedRingData] = useState(null); // State to hold fetched ring data
 
-  // 캐시를 useRef로 관리
-  const ringDataCacheRef = React.useRef({});
+  // 건강 데이터 가져오기 함수 정의
+  const fetchHealthData = useCallback(async (userId, date) => {
+    if (!siteId) {
+      console.warn('siteId가 설정되지 않았습니다.');
+      return;
+    }
 
-  // Helper to check if a date is today
-  const isToday = (date) => {
-    const today = new Date();
-    return date.getFullYear() === today.getFullYear() &&
-           date.getMonth() === today.getMonth() &&
-           date.getDate() === today.getDate();
-  };
+    setIsLoading(true);
+    setError(null);
 
-  // Fetch ring data by date with caching
-  const fetchRingDataByDate = useCallback(async (date, userMacAddr) => { 
     try {
-      const dateKey = date.toISOString().split('T')[0]; // 'YYYY-MM-DD' 형식
-      const cacheKey = `${dateKey}_${userMacAddr}`; // 캐시 키에 사용자 MAC 주소 포함
+      const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
+      const key = `${userId}_${formattedDate}`;
 
-      // 캐시에 데이터가 있는지 확인
-      if (ringDataCacheRef.current[cacheKey]) {
-        console.log(`Using cached data for ${cacheKey}`);
-        return ringDataCacheRef.current[cacheKey];
-      }
-
-      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      
-      // 날짜를 'YYMMDD' 형식으로 변환
-      const year = String(date.getFullYear()).slice(-2);
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const formattedDate = `${year}${month}${day}`; // 예: '240930'
-
-      console.log(`Fetching ring data for formattedDate: ${formattedDate} and macAddr: ${userMacAddr}`);
-
-      // MAC 주소를 쿼리 파라미터에 포함
-      const ringUrl = `https://fitlife.dotories.com/api/ring?siteId=${siteId}&yearMonthDay=${formattedDate}&macAddr=${userMacAddr}`;
-
-      const response = await axios.get(ringUrl, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${credentials}`,
-        },
-      });
-      
-      if (response.status !== 200) {
-        throw new Error(`API response error: ${response.status}`);
-      }
-    
-      const jsonDataIndex = JSON.parse(response.data); 
-      const dataIndex = jsonDataIndex.Data.findIndex(
-        (item) => item.MacAddr === userMacAddr
-      );
-
-      if (dataIndex === -1) {
-        throw new Error('MAC 주소에 해당하는 데이터가 없습니다.');
-      }
-
-      const fetchedData = jsonDataIndex.Data[dataIndex];
-
-      // 캐시에 저장
-      ringDataCacheRef.current[cacheKey] = fetchedData;
-
-      return fetchedData;
-      
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      return null;
-    }
-  }, [siteId]);
-
-  // 날짜 변경 핸들러
-  const handleDateChange = useCallback((e) => {
-    const dateString = e.target.value;
-    const selected = new Date(dateString);
-    setSelectedDate(selected);
-  }, []);
-
-  // 선택된 날짜 또는 사용자가 변경될 때 링 데이터 가져오기
-  useEffect(() => {
-    if (user && selectedDate) {
-      const userMacAddr = user.macAddr;
-
-      if (!userMacAddr) {
-        console.error('User MAC address not found.');
-        setSelectedRingData(null); // 이전 데이터 초기화
-        return;
-      }
-
-      const fetchData = async () => {
-        if (isToday(selectedDate) && user.ring) {
-          console.log('Using user.ring data for today');
-          setSelectedRingData(user.ring);
-        } else {
-          const data = await fetchRingDataByDate(selectedDate, userMacAddr);
-          if (data) {
-            setSelectedRingData(data);
-          } else {
-            setSelectedRingData(null);
+      // 세션 스토리지에서 데이터 확인
+      const cachedHealthData = loadFromSessionStorage('healthData', {});
+      if (cachedHealthData[key]) {
+        setHealthData(cachedHealthData);
+        console.log(`세션 스토리지에서 사용자 ${userId}의 건강 데이터 로드:`, cachedHealthData[key]);
+      } else {
+        const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
+        //const url = 'http://14.47.20.111:7201'
+        const url = 'https://fitlife.dotories.com'
+        // API 요청
+        const healthResponse = await axios.get(
+          `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Basic ${credentials}`,
+            },
           }
-        }
-      };
+        );
 
-      fetchData();
-    } else {
-      setSelectedRingData(null);
-    }
-  }, [selectedDate, user, fetchRingDataByDate]);
+        const healthJson = typeof healthResponse.data === 'string' ? JSON.parse(healthResponse.data) : healthResponse.data;
+        const healthDataArray = healthJson.Data || [];
 
-  // 선택된 링 데이터가 변경될 때 데이터 처리
-  useEffect(() => {
-    if (selectedRingData) {
-      // 데이터 처리 로직
-      const {
-        HeartRateArr = [],
-        MinBloodOxygenArr = [],
-        MaxBloodOxygenArr = [],
-        PressureArr = [],
-        Sport = {},
-      } = selectedRingData;
+        // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
+        const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
 
-      const {
-        TotalStepsArr = [],
-        CalorieArr = [],
-        WalkDistanceArr = [],
-      } = Sport;
+        // healthData 상태 업데이트
+        setHealthData(prevData => ({
+          ...prevData,
+          [key]: latestHealthData
+        }));
 
-      // BPM 및 산소 데이터 처리
-      const aggregatedBpmArr = HeartRateArr.filter((_, index) => index % 2 === 0);
+        // 세션 스토리지에 저장
+        saveToSessionStorage('healthData', {
+          ...cachedHealthData,
+          [key]: latestHealthData
+        });
 
-      const timePoints = Array.from({ length: 24 * 12 }, (_, i) => {
-        const hour = Math.floor(i / 12);
-        const minute = (i % 12) * 5;
-        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-      });
+        console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
+      }
 
-      const bpmData = HeartRateArr.map((bpm, index) => ({
-        time: timePoints[index],
-        bpm: bpm || null,
+    } catch (healthError) {
+      console.warn(`사용자 ${userId}의 건강 데이터 가져오기 실패:`, healthError.message);
+      setError('건강 데이터 가져오기 실패');
+      // 실패 시, healthData에 빈 객체 설정
+      setHealthData(prevData => ({
+        ...prevData,
+        [`${userId}_${formatDateYYMMDD(date)}`]: {}
       }));
-
-      const oxygenData = MinBloodOxygenArr.map((minOxy, index) => {
-        const avgOxy = MaxBloodOxygenArr[index]
-          ? ((minOxy + MaxBloodOxygenArr[index]) / 2).toFixed(1)
-          : minOxy;
-        return {
-          time: timePoints[index * 12], // 시간별 인덱스에 매핑
-          oxygen: avgOxy || null,
-        };
-      });
-
-      const mergedData = timePoints.map((time, index) => ({
-        time,
-        bpm: bpmData[index] ? bpmData[index].bpm : null,
-        oxygen: oxygenData.find(o => o.time === time)?.oxygen || null,
-      }));
-
-      setLineChartData(mergedData);
-
-      // 활동 데이터 처리
-      const lastCalorie = getLastNonZero(CalorieArr);
-      const lastDistance = getLastNonZero(WalkDistanceArr);
-
-      const ringSteps = getLastNonZero(TotalStepsArr);
-      const ringCalories = lastCalorie ? (lastCalorie / 1000).toFixed(2) : 0; // kcal
-      const ringDistance = lastDistance ? (lastDistance / 1000).toFixed(2) : 0; // km
-      const latestStress = getLastNonZero(PressureArr);
-
-      setProcessedRingData({
-        latestBpm: Number(getLastNonZero(aggregatedBpmArr)),
-        averageOxygen: Number(((getLastNonZero(MinBloodOxygenArr) + getLastNonZero(MaxBloodOxygenArr)) / 2).toFixed(1)),
-        steps: Number(ringSteps),
-        calories: Number(ringCalories),
-        distance: Number(ringDistance),
-        stress: latestStress, 
-      });
-    } else {
-      setLineChartData([]);
-      setProcessedRingData({
-        latestBpm: 0,
-        averageOxygen: 0,
-        steps: 0,
-        calories: 0,
-        distance: 0,
-        stress: 0,
-      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [selectedRingData]);
+  }, [siteId, API_URL, CREDENTIALS, formatDateYYMMDD]);
 
-  // 활동 라인 차트 데이터 준비
+  // 건강 데이터 가져오기
   useEffect(() => {
-    if (selectedRingData?.Sport) {
-      const { TotalStepsArr = [], CalorieArr = [], WalkDistanceArr = [] } = selectedRingData.Sport;
-  
-      const timePoints = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-  
-      let lastKnownData = { steps: 0, calories: 0, distance: 0 };
-  
-      const activityData = timePoints.map((time, index) => {
-        let steps = lastKnownData.steps;
-        let calories = lastKnownData.calories;
-        let distance = lastKnownData.distance;
-  
-        if (TotalStepsArr[index] !== undefined) {
-          steps = TotalStepsArr[index];
-        }
-        if (CalorieArr[index] !== undefined) {
-          calories = CalorieArr[index] / 1000; // kcal
-        }
-        if (WalkDistanceArr[index] !== undefined) {
-          distance = WalkDistanceArr[index]; // km
-        }
-  
-        lastKnownData = { steps, calories, distance };
-  
-        return {
-          time,
-          steps,
-          calories,
-          distance,
-        };
-      });
-  
-      setActivityLineChartData(activityData);
-    } else {
-      setActivityLineChartData([]);
+    if (user) {
+      fetchHealthData(user.id, selectedDate);
     }
-  }, [selectedRingData]);
+  }, [user, selectedDate, fetchHealthData]);
 
-  // 사용자 변경 시 logItems 업데이트
-  useEffect(() => {
-    setLogItems(user?.lifeLogs || []);
-  }, [user]);
+  // 현재 선택한 사용자와 날짜에 해당하는 건강 데이터 가져오기
+  const currentHealthData = useMemo(() => {
+    if (user) {
+      const key = `${user.id}_${formatDateYYMMDD(selectedDate)}`;
+      return healthData[key] || {};
+    }
+    return {};
+  }, [user, selectedDate, healthData, formatDateYYMMDD]);
 
   // Sorting Function
   const handleSort = useCallback((option) => {
@@ -344,6 +267,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
     setLogItems(sortedItems);
     setSortOption(option);
+    console.log(`Sorted Log Items by ${option}:`, sortedItems);
   }, [logItems]);
 
   // Checkbox Change Handler
@@ -361,6 +285,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
     // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
     updateUserLifeLog(updatedUser, true);
+    console.log('Updated Life Logs after Checkbox Change:', updatedItems);
   }, [logItems, updateUserLifeLog, user]);
 
   // Add Modal Toggle
@@ -375,6 +300,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       dose: item.dose, // '세부 사항'을 그대로 사용
     });
     setIsEditModalOpen(true);
+    console.log('Opened Edit Modal for Item:', item);
   }, []);
 
   // Add Life Log Item
@@ -402,6 +328,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
     // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
     updateUserLifeLog(updatedUser, true);
+    console.log('Added New Life Log Item:', newLogItem);
 
     toggleAddModal();
     setNewItem({ medicine: '', date: '', dose: '', time: '12:00', taken: false });
@@ -434,6 +361,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
     // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
     updateUserLifeLog(updatedUser, true);
+    console.log('Saved Edited Life Log Item:', updatedEditItem);
 
     setIsEditModalOpen(false);
     setEditItem(null);
@@ -453,6 +381,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
       // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
       updateUserLifeLog(updatedUser, true);
+      console.log('Deleted Life Log Item with ID:', editItem.id);
 
       setIsEditModalOpen(false);
       setEditItem(null);
@@ -473,6 +402,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
     // 부모 컴포넌트의 상태 업데이트 및 서버로 전송
     updateUserLifeLog(updatedUser, true);
+    console.log('Updated All Life Logs as Taken:', isChecked);
   }, [logItems, updateUserLifeLog, user]);
 
   // Prepare log items for display
@@ -495,11 +425,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     });
   }, []);
 
-  // Legend Items for BPM and Oxygen
+  // Legend Items for BPM, Oxygen, and Stress
   const bpmOxygenLegend = useMemo(() => [
     { dataKey: 'bpm', value: '심박수 (BPM)', color: 'red', show: showBpm, setShow: setShowBpm },
     { dataKey: 'oxygen', value: '혈중 산소포화도 (%)', color: '#1e88e5', show: showOxygen, setShow: setShowOxygen },
-  ], [showBpm, showOxygen]);
+    { dataKey: 'stress', value: '스트레스 지수', color: '#FFD700', show: showStress, setShow: setShowStress },
+  ], [showBpm, showOxygen, showStress]);
 
   // Legend Items for Activity Data
   const activityLegend = useMemo(() => [
@@ -507,6 +438,74 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     { dataKey: 'calories', value: '소모 칼로리 (kcal)', color: '#ff9800', show: showCalories, setShow: setShowCalories },
     { dataKey: 'distance', value: '이동거리 (km)', color: '#4caf50', show: showDistance, setShow: setShowDistance },
   ], [showSteps, showCalories, showDistance]);
+
+  // Prepare data for 일별 데이터 선그래프
+  const dailyLineChartData = useMemo(() => {
+    // Assuming heartRateArr is 288 elements (5-minute intervals)
+    // oxygenArr is 24 elements (hourly)
+    // stressArr is 48 elements (30-minute intervals)
+
+    // Create time points based on the maximum length
+    const maxLength = Math.max(heartRateArr.length, oxygenArr.length * 12, stressArr.length * 6); // 288 vs 288 vs 288
+    const data = [];
+
+    for (let i = 0; i < 288; i++) { // 24 hours * 12 intervals per hour (5 minutes)
+      const hour = Math.floor(i / 12);
+      const minute = (i % 12) * 5;
+      const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+      data.push({
+        time,
+        bpm: heartRateArr[i] !== undefined && heartRateArr[i] !== 0 ? heartRateArr[i] : null,
+        oxygen: Math.floor(i / 12) < oxygenArr.length ? (oxygenArr[Math.floor(i / 12)] !== 0 ? oxygenArr[Math.floor(i / 12)] : null) : null,
+        stress: Math.floor(i / 6) < stressArr.length ? (stressArr[Math.floor(i / 6)] !== 0 ? stressArr[Math.floor(i / 6)] : null) : null,
+      });
+    }
+
+    return data;
+  }, [heartRateArr, oxygenArr, stressArr]);
+
+  // Prepare data for 활동 데이터 그래프
+  const activityLineChartData = useMemo(() => {
+    const { steps: stepsArr = [], calories: caloriesArr = [], distance: distanceArr = [] } = hourlyData;
+
+    const data = [];
+
+    for (let i = 0; i < 24; i++) { // 24 hours
+      const time = `${String(i).padStart(2, '0')}:00`;
+      data.push({
+        time,
+        steps: stepsArr[i] || 0,
+        calories: caloriesArr[i] ? (caloriesArr[i] / 1000).toFixed(2) : 0, // Convert to kcal and fix decimals
+        distance: distanceArr[i] ? (distanceArr[i] / 1000).toFixed(2) : 0, // Convert to km and fix decimals
+      });
+    }
+
+    return data;
+  }, [hourlyData]);
+
+  // 포맷팅 함수 (링 연결 시간)
+  const formatConnectedTime = useCallback((timeString) => {
+    if (!timeString || timeString.length !== 12) {
+      return 'Invalid format';
+    }
+  
+    const year = `20${timeString.slice(0, 2)}`; // YY -> 20YY
+    const month = timeString.slice(2, 4) - 1; // MM (0-indexed for JavaScript Date)
+    const day = timeString.slice(4, 6); // DD
+    const hours = timeString.slice(6, 8); // hh
+    const minutes = timeString.slice(8, 10); // mm
+    const seconds = timeString.slice(10, 12); // ss
+  
+    const date = new Date(year, month, day, hours, minutes, seconds);
+  
+    return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleString();
+  }, []);
+
+  // Calculate last non-zero values for steps, calories, distance
+  const lastSteps = useMemo(() => getLastNonZero(hourlyData.steps), [hourlyData.steps]);
+  const lastCalories = useMemo(() => getLastNonZero(hourlyData.calories), [hourlyData.calories]); // Convert to kcal
+  const lastDistance = useMemo(() => getLastNonZero(hourlyData.distance), [hourlyData.distance]);
 
   return (
     <div className="p-4">
@@ -521,10 +520,10 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
         <div className="flex items-center">
           <input
             type="date"
-            value={selectedDate.toISOString().split('T')[0]}
+            value={formatDateYYMMDD(selectedDate)}
             onChange={handleDateChange}
             className="p-2 border border-gray-300 rounded-lg"
-            max={new Date().toISOString().split('T')[0]}
+            max={formatDateYYMMDD(new Date())} // 오늘 날짜까지만 선택 가능
             aria-label="날짜 선택"
           />
         </div>
@@ -541,7 +540,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
               <h3 className="text-xl font-bold mb-4">링 정보</h3>
               <div className="flex space-x-8 items-center">
                 <p><strong>이름:</strong> {user.ring.Name}</p>
-                <p><strong>연결 시간:</strong> {user.ring.ConnectedTime ? new Date(user.ring.ConnectedTime).toLocaleString() : 'N/A'}</p>
+                <p><strong>연결 시간:</strong> {user.ring.ConnectedTime ? formatConnectedTime(user.ring.ConnectedTime) : 'N/A'}</p>
                 <p><strong>배터리 수준:</strong> {user.ring.BatteryLevel !== undefined ? `${user.ring.BatteryLevel}%` : 'N/A'}</p>
               </div>
             </div>
@@ -549,75 +548,92 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
           {/* 건강 정보 카드 */}
           <div className="info-boxes grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <InfoCard icon={<FaHeartbeat className="text-red-500" />} title="심박수" value={`${processedRingData.latestBpm} BPM`} />
-            <InfoCard icon={<FaTint className="text-blue-500" />} title="혈중 산소" value={`${processedRingData.averageOxygen}%`} />
-            <InfoCard icon={<FaSmile className="text-yellow-500" />} title="스트레스" value={`${processedRingData.stress}점`} />            
-            <InfoCard icon={<FaBed className="text-gray-500" />} title="수면 점수" value={`${processedSleep}점`} />
+            <InfoCard icon={<FaHeartbeat className="text-red-500" />} title="심박수" value={`${currentHealthData.bpm || bpm} BPM`} />
+            <InfoCard icon={<FaTint className="text-blue-500" />} title="혈중 산소" value={`${currentHealthData.oxygen || oxygen}%`} />
+            <InfoCard icon={<FaSmile className="text-yellow-500" />} title="스트레스" value={`${currentHealthData.stress || stress}점`} />            
+            <InfoCard icon={<FaBed className="text-gray-500" />} title="수면 점수" value={`${sleepScore}점`} />
           </div>
 
           {/* 일별 데이터 선그래프 */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-6">
             <h3 className="text-xl font-bold mb-4">일별 데이터</h3>
 
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={lineChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="time" 
-                  ticks={xAxisTicks} 
-                  interval={0} 
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(tick) => tick}
-                />
-                <YAxis domain={[0, 200]} />
-                <Tooltip />
-                <Legend 
-                  verticalAlign="top" 
-                  height={36} 
-                  content={<CustomLegend legendItems={bpmOxygenLegend} />} 
-                />
-                {showBpm && (
-                  <Line 
-                    type="monotone"
-                    dataKey="bpm"
-                    stroke="red"
-                    strokeWidth={2}
-                    connectNulls={true}
-                    name="심박수 (BPM)"
-                    dot={false} // 점 숨기기
+            {isLoading ? (
+              <p>데이터를 불러오는 중...</p>
+            ) : error ? (
+              <p className="text-red-500">{error}</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={dailyLineChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="time" 
+                    ticks={xAxisTicks} 
+                    interval={11} // Show ticks at every 2 hours (0, 2, 4, ..., 22)
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(tick) => tick}
                   />
-                )}
-                {showOxygen && (
-                  <Line 
-                    type="monotone"
-                    dataKey="oxygen"
-                    stroke="#1e88e5"
-                    strokeWidth={2}
-                    connectNulls={true}
-                    name="혈중 산소포화도 (%)"
-                    dot={false} // 점 숨기기
+                  <YAxis domain={[0, 200]} />
+                  <Tooltip />
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36} 
+                    content={<CustomLegend legendItems={bpmOxygenLegend} />} 
                   />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
+                  {showBpm && (
+                    <Line 
+                      type="monotone"
+                      dataKey="bpm"
+                      stroke="red"
+                      strokeWidth={2}
+                      connectNulls={true}
+                      name="심박수 (BPM)"
+                      dot={false}
+                    />
+                  )}
+                  {showOxygen && (
+                    <Line 
+                      type="monotone"
+                      dataKey="oxygen"
+                      stroke="#1e88e5"
+                      strokeWidth={2}
+                      connectNulls={true}
+                      name="혈중 산소포화도 (%)"
+                      dot={false}
+                    />
+                  )}
+                  {showStress && (
+                    <Line 
+                      type="monotone"
+                      dataKey="stress"
+                      stroke="#FFD700"
+                      strokeWidth={2}
+                      connectNulls={true}
+                      name="스트레스 지수"
+                      dot={false}
+                    />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
-          {/* 걸음수, 칼로리, 이동거리 정보 */}
+          {/* 걸음수, 소모 칼로리, 이동거리 정보 */}
           <div className="additional-info mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <InfoCard 
               icon={<FaWalking className="text-green-500" />} 
               title="걸음수" 
-              value={`${processedRingData.steps} 걸음`} 
+              value={`${lastSteps} 걸음`} 
             />
             <InfoCard 
               icon={<FaFireAlt className="text-orange-500" />} 
               title="소모 칼로리" 
-              value={`${processedRingData.calories.toFixed(2)} kcal`} 
+              value={`${(lastCalories / 1000).toFixed(2)} kcal`} 
             />
             <InfoCard 
               icon={<FaRoute className="text-blue-500" />} 
               title="이동거리" 
-              value={`${processedRingData.distance.toFixed(2)} km`} 
+              value={`${(lastDistance / 1000).toFixed(2)} km`} 
             />
           </div>
 
@@ -631,7 +647,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                 <XAxis 
                   dataKey="time" 
                   ticks={xAxisTicks} 
-                  interval={0} 
+                  interval={5} // Show ticks at every 2 hours
                   tick={{ fontSize: 12 }}
                   tickFormatter={(tick) => tick}
                 />

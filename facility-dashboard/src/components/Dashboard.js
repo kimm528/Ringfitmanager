@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import Modal from './Modal';
-import { calculateUserStatus } from './calculateUserStatus';
+import { calculateUserStatus } from './CalculateUserStatus';
 import { motion } from 'framer-motion'; // framer-motion 임포트
 import { FaMap } from 'react-icons/fa'; // FaMap 아이콘 임포트
 import { Link } from 'react-router-dom'; // Link 컴포넌트 임포트
