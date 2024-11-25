@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-route
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 임포트
 
 // 필요한 컴포넌트 임포트 (React.memo 적용)
-import Header from './Components/Header';
+import Header from './Components/Header.js';
 import Sidebar from './Components/Sidebar';
 import Dashboard from './Components/Dashboard';
 import UserDetail from './Components/UserDetail';
