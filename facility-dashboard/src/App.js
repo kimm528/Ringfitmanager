@@ -308,39 +308,47 @@ function App() {
   
       // **변경 감지 및 상태 업데이트**
       setUsers((prevUsers) => {
-        const prevUsersMap = new Map(prevUsers.map(user => [user.id, user]));
-        const changedUsers = [];
-      
-        const mergedUsers = updatedUsers.map(user => {
-          const prevUser = prevUsersMap.get(user.id);
-          if (!prevUser) {
-            // 새로운 사용자
-            changedUsers.push(user);
-            return user;
+        try {
+          const prevUsersMap = new Map(prevUsers.map(user => [user.id, user]));
+          const changedUsers = [];
+        
+          const mergedUsers = updatedUsers.map(user => {
+            const prevUser = prevUsersMap.get(user.id);
+            if (!prevUser) {
+              // 새로운 사용자
+              changedUsers.push(user);
+              return user;
+            }
+        
+            // connectedTime을 제외한 사용자 데이터 비교
+            const { ring: prevRing = {}, ...prevUserRest } = prevUser;
+            const { ring: newRing = {}, ...newUserRest } = user;
+            
+            if(prevRing == null)
+            {
+              return user;
+            }
+            // connectedTime을 제외한 링 데이터 비교 (ring은 항상 객체)
+            const { ConnectedTime: _, ...prevRingRest } = prevRing;
+            const { ConnectedTime: __, ...newRingRest } = newRing;
+        
+            if (!isEqual(prevUserRest, newUserRest) || !isEqual(prevRingRest, newRingRest)) {
+              changedUsers.push(user);
+              return user;
+            }
+        
+            return prevUser; // 동일한 객체 참조 유지
+          });
+        
+          if (changedUsers.length > 0) {
+            console.log('변경된 사용자 데이터가 있습니다:', changedUsers);
+            return mergedUsers;
+          } else {
+            console.log('사용자 데이터에 변경 사항이 없습니다.');
+            return prevUsers;
           }
-      
-          // connectedTime을 제외한 사용자 데이터 비교
-          const { ring: prevRing = {}, ...prevUserRest } = prevUser;
-          const { ring: newRing = {}, ...newUserRest } = user;
-      
-          // connectedTime을 제외한 링 데이터 비교 (ring은 항상 객체)
-          const { ConnectedTime: _, ...prevRingRest } = prevRing;
-          const { ConnectedTime: __, ...newRingRest } = newRing;
-      
-          if (!isEqual(prevUserRest, newUserRest) || !isEqual(prevRingRest, newRingRest)) {
-            changedUsers.push(user);
-            return user;
-          }
-      
-          return prevUser; // 동일한 객체 참조 유지
-        });
-      
-        if (changedUsers.length > 0) {
-          console.log('변경된 사용자 데이터가 있습니다:', changedUsers);
-          return mergedUsers;
-        } else {
-          console.log('사용자 데이터에 변경 사항이 없습니다.');
-          return prevUsers;
+        } catch (e) {
+          return null;
         }
       });
   

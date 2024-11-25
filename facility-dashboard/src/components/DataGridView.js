@@ -50,7 +50,7 @@ const DataGridView = () => {
   }, []);
 
   const columnDefs = [
-    { field: 'name', headerName: '이름', sortable: true, filter: true, cellStyle: { fontSize: '16px' }// 헤더 폰트 크기 설정
+    { field: 'name', headerName: '이름', sortable: true,  cellStyle: { fontSize: '16px' }// 헤더 폰트 크기 설정
  },
     {
       field: 'heartRate',
