@@ -187,7 +187,6 @@ function App() {
       );
 
     } catch (healthError) {
-      console.warn(`사용자 ${userId}의 건강 데이터 가져오기 실패:`, healthError.message);
       setHealthData((prevData) => ({
         ...prevData,
         [`${userId}_${formatDateYYMMDD(date)}`]: {}
@@ -432,31 +431,36 @@ function App() {
     }
   }, [siteId, credentials, url]);
 
+  const isFirstRun = useRef(true);
+
   // 주기적인 데이터 업데이트 (30초마다)
   useEffect(() => {
-    if (!isLoggedIn || !siteId || !isLocked) return; // 조건에 따라 새로고침 중지
-   
-    // 초기 데이터 로드
-    fetchUsersAndRingData();
-    handleLoadFloorPlan();
+    if (isFirstRun.current) {
+      if (!isLoggedIn || !siteId || !isLocked) return; // 조건에 따라 새로고침 중지
 
-    // 인터벌 설정 전에 기존 인터벌이 있는지 확인
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    intervalRef.current = setInterval(() => {
-      console.log('30초마다 사용자 및 링 데이터 가져오기');
+      // 초기 데이터 로드
       fetchUsersAndRingData();
       handleLoadFloorPlan();
-    }, 30000); // 30초
-
-    console.log('인터벌이 설정되었습니다.');
-
-    return () => {
-      clearInterval(intervalRef.current);
-      console.log('인터벌이 정리되었습니다.');
-    };
+  
+      // 인터벌 설정 전에 기존 인터벌이 있는지 확인
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+  
+      intervalRef.current = setInterval(() => {
+        console.log('30초마다 사용자 및 링 데이터 가져오기');
+        fetchUsersAndRingData();
+        handleLoadFloorPlan();
+      }, 30000); // 30초
+  
+      console.log('인터벌이 설정되었습니다.');
+  
+      return () => {
+        clearInterval(intervalRef.current);
+        console.log('인터벌이 정리되었습니다.');
+      };
+      
+    }
   }, [fetchUsersAndRingData, handleLoadFloorPlan, isLoggedIn, siteId, isLocked]);
 
   // 사용자 데이터 변경 시 세션 스토리지에 저장
@@ -490,35 +494,30 @@ function App() {
     saveToSessionStorage('availableRings', availableRings);
   }, [availableRings]);
 
-  // 초기 데이터 로드 (컴포넌트 마운트 시)
   useEffect(() => {
     if (isLoggedIn && siteId) {
       const storedUsers = loadFromSessionStorage('users', []);
       if (storedUsers.length > 0) {
         setUsers(storedUsers);
         console.log('초기 로드 시 세션 스토리지에서 사용자 데이터 로드');
-
-        // 각 사용자에 대해 건강 데이터 가져오기
+  
+        // **이미 로드된 사용자에 대해 호출 방지**
         storedUsers.forEach(user => {
-          const today = new Date(); // 오늘 날짜로 설정
-          fetchHealthData(user.id, today);
+          const today = new Date();
+          const formattedDate = formatDateYYMMDD(today);
+          const key = `${user.id}_${formattedDate}`;
+  
+          setHealthData((prevData) => {
+            if (!prevData[key]) {
+              fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
+            }
+            return prevData;
+          });
         });
-
-      } else {
-        setUsers([]); // 이전 사용자 데이터 초기화
-        fetchUsersAndRingData(); // 새로운 데이터 가져오기
-        handleLoadFloorPlan(); // 배치도 및 디바이스 데이터 가져오기
-      }
-
-      // availableRings 로드
-      const storedRings = loadFromSessionStorage('availableRings', []);
-      if (storedRings.length > 0) {
-        setAvailableRings(storedRings);
-        console.log('초기 로드 시 세션 스토리지에서 링 데이터 로드');
       }
     }
-  }, [isLoggedIn, siteId, fetchUsersAndRingData, handleLoadFloorPlan, fetchHealthData]);
-
+  }, [isLoggedIn, siteId, fetchHealthData]);
+  
   // 새로운 ID 생성 함수
   const getNewId = useCallback((users) => {
     const existingIds = users.map((user) => user.id).sort((a, b) => a - b);
