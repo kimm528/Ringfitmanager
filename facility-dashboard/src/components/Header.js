@@ -1,5 +1,3 @@
-// src/components/Header.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus } from 'react-icons/fa';
 import fitLogo from '../assets/Fitmon_logo.svg';

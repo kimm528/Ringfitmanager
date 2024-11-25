@@ -3,7 +3,7 @@ import axios from 'axios';
 import { XMarkIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { FaGem } from 'react-icons/fa'; // FaGem 아이콘 임포트
 import Header from './Header.js';
-import Modal from './Modal';
+import Modal from './Modal.js';
 
 const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveComponent, devices, availableRings }) => {
   const [connectableDevices, setConnectableDevices] = useState([]);

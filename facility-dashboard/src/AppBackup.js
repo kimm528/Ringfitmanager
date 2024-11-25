@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Header from './Components/Header';
-import Sidebar from './Components/Sidebar';
-import Dashboard from './Components/Dashboard';
-import UserDetail from './Components/UserDetail';
-import Login from './Components/Login';
+import Header from './components/Header';
+import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import UserDetail from './components/UserDetail';
+import Login from './components/Login';
 
 // 기본 프로필 이미지 URL 설정
 const defaultProfileImage = 'https://via.placeholder.com/150?text=No+Image';

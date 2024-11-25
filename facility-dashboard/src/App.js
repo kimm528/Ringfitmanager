@@ -5,14 +5,14 @@ import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 임포트
 
-import Header from './Components/Header.js';
-import Sidebar from './Components/Sidebar';
-import Dashboard from './Components/Dashboard';
-import UserDetail from './Components/UserDetail';
-import Login from './Components/Login';
-import Settings from './Components/Settings';
-import FloorPlan from './Components/FloorPlan';
-import DeviceManagement from './Components/DeviceManagement';
+import Header from './components/Header.js';
+import Sidebar from './components/Sidebar.js';
+import Dashboard from './components/Dashboard.js';
+import UserDetail from './components/UserDetail.js';
+import Login from './components/Login.js';
+import Settings from './components/Settings.js';
+import FloorPlan from './components/FloorPlan.js';
+import DeviceManagement from './components/DeviceManagement.js';
 
 // React.memo로 컴포넌트 래핑
 const MemoizedSidebar = memo(Sidebar);
