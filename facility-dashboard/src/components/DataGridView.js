@@ -80,12 +80,18 @@ const DataGridView = () => {
         );
       },
       cellStyle: { fontSize: '16px'},
-      comparator: (a, b, nodeA, nodeB) => {
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
         if (a === b) {
-          // 심박수가 같으면 이름으로 정렬
-          return nodeA.data.name.localeCompare(nodeB.data.name);
+          if(isDescending)
+          {
+            return -nodeA.data.name.localeCompare(nodeB.data.name);
+          }
+          else
+          {
+            return nodeA.data.name.localeCompare(nodeB.data.name);
+          }
         }
-        return a - b; // 심박수를 기준으로 정렬
+        return a - b;
       },
     },
     {
@@ -104,12 +110,18 @@ const DataGridView = () => {
         />
       ),
       cellStyle: { fontSize: '16px' },
-      comparator: (a, b, nodeA, nodeB) => {
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
         if (a === b) {
-          // 심박수가 같으면 이름으로 정렬
-          return nodeA.data.name.localeCompare(nodeB.data.name);
+          if(isDescending)
+          {
+            return -nodeA.data.name.localeCompare(nodeB.data.name);
+          }
+          else
+          {
+            return nodeA.data.name.localeCompare(nodeB.data.name);
+          }
         }
-        return a - b; // 심박수를 기준으로 정렬
+        return a - b;
       },
     },
     {
@@ -128,24 +140,35 @@ const DataGridView = () => {
         />
       ),
       cellStyle: { fontSize: '16px' },
-      comparator: (a, b, nodeA, nodeB) => {
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
         if (a === b) {
-          // 심박수가 같으면 이름으로 정렬
-          return nodeA.data.name.localeCompare(nodeB.data.name);
+          if(isDescending)
+            {
+              return -nodeA.data.name.localeCompare(nodeB.data.name);
+            }
+            else
+            {
+              return nodeA.data.name.localeCompare(nodeB.data.name);
+            }
         }
-        return a - b; // 심박수를 기준으로 정렬
+        return a - b;
       },
     },
     {
       field: 'riskLevel',
       headerName: '위험도',
       sortable: true,
-      comparator: (a, b, nodeA, nodeB) => {
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
         if (a === b) {
-          // 위험도가 같으면 이름으로 정렬
-          return nodeA.data.name.localeCompare(nodeB.data.name);
+          if(isDescending)
+            {
+              return -nodeA.data.name.localeCompare(nodeB.data.name);
+            }
+            else
+            {
+              return nodeA.data.name.localeCompare(nodeB.data.name);
+            }
         }
-        // 위험도를 기준으로 정렬 (High > Moderate > Low)
         const riskOrder = { High: 1, Moderate: 2, Low: 3 };
         return riskOrder[a] - riskOrder[b];
       },
