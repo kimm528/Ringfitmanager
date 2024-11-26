@@ -1,0 +1,55 @@
+.card {
+  width: 300px; /* 카드 너비를 고정 */
+  margin: 10px; /* 카드 간격을 최소화 */
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  background-color: #fff;
+  box-sizing: border-box; /* 패딩과 보더를 너비에 포함 */
+  min-height: 400px; /* 카드의 최소 높이 고정 */
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+}
+
+.card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-info div {
+  margin-bottom: 8px;
+}
+
+.circular-progress {
+  width: 80px;
+  height: 80px;
+}
+
+/* 메뉴가 가로로 펼쳐지도록 설정 */
+.dropdown-menu {
+  display: flex;
+  flex-direction: row; /* 가로로 나열되도록 설정 */
+  position: absolute;
+  top: 100%; /* 카드 아래로 나옴 */
+  left: 0;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 5px;
+  padding: 8px;
+  z-index: 100;
+}
+
+.dropdown-menu-item {
+  margin-right: 10px; /* 각 메뉴 사이 간격 */
+  padding: 5px;
+  cursor: pointer;
+}
+
+/* Dashboard.css */
+.dashboard-container {
+  padding: 20px;
+}

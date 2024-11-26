@@ -1,0 +1,150 @@
+/* src/components/FloorPlan.css */
+
+/* 전체 레이아웃 설정 */
+.floorplan-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+}
+
+/* 스마트폰 리스트를 화면 너비에 맞춤 */
+.smartphone-list {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+/* 캔버스를 중앙에 고정된 크기로 정렬 */
+.canvas-container {
+  width: 800px; /* 원하는 고정 크기 */
+  height: 600px; /* 원하는 고정 크기 */
+  position: relative;
+  margin: 0 auto;
+}
+
+/* 기본 스타일 설정 */
+.smartphone-palette {
+  display: flex;
+  gap: 10px;
+}
+
+.upload-section input[type="file"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.smartphone-list ul {
+  list-style: none;
+  padding: 0;
+}
+
+.smartphone-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 위험 신호 테두리 깜빡임 애니메이션 */
+@keyframes blinking-border {
+  0% { border-color: red; box-shadow: 0 0 10px red; }
+  50% { border-color: transparent; box-shadow: 0 0 20px red; }
+  100% { border-color: red; box-shadow: 0 0 10px red; }
+}
+
+/* 사용자 이름 깜빡임 애니메이션 */
+@keyframes blink-text {
+  0% { color: red; }
+  50% { color: transparent; }
+  100% { color: red; }
+}
+
+/* 위험 상태 테두리 및 애니메이션 */
+.danger-border {
+  border: 3px solid red; /* 테두리 두께 강화 */
+  animation: blinking-border 1s infinite; /* 지속적인 애니메이션 */
+}
+
+/* 사용자 이름에 위험 상태 적용 */
+.user-danger {
+  color: red;
+  animation: blink-text 1s infinite; /* 지속적인 깜빡임 */
+}
+
+/* Tooltip 텍스트 스타일 조정 */
+.MuiTooltip-tooltip {
+  color: white !important; /* 모든 텍스트를 하얀색으로 설정 */
+  font-size: 15px !important; /* 텍스트 크기 조정 */
+  background-color: rgba(0, 0, 0, 0.75) !important; /* 배경색 조정 */
+}
+
+
+/* 잠금 버튼 스타일 */
+.lock-button {
+  background-color: rgba(0, 0, 0, 0.6); /* 반투명 배경 */
+  color: white;
+  padding: 8px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2; /* 캔버스 위에 표시되도록 설정 */
+}
+
+.lock-button:hover {
+  background-color: rgba(0, 0, 0, 0.8); /* 호버 시 배경색 변경 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1200px) {
+  .canvas-container {
+    width: 90%;
+    height: auto;
+  }
+
+  .smartphone-list {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .smartphone-palette {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .canvas-container {
+    width: 100%;
+    height: auto;
+  }
+
+  .smartphone-list {
+    padding: 8px;
+  }
+}
+
+/* interactive-link 기본 스타일 */
+.interactive-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.3s ease, text-decoration 0.3s ease;
+}
+
+/* 이용자 상태에 따른 색상 */
+.interactive-link.text-white {
+  color: white; /* Tooltip 배경이 어두우므로 문제 없음 */
+}
+
+.interactive-link.text-red-500 {
+  color: #f44336; /* 위험 상태일 때는 빨간색 */
+}
+
+/* 호버 효과 추가 */
+.interactive-link:hover {
+  color: #3b82f6; /* 파란색으로 변경 */
+  text-decoration: underline;
+}
