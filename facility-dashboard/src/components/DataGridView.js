@@ -49,6 +49,11 @@ const DataGridView = () => {
     }
   }, []);
 
+  const defaultColDef = {
+    sortable: true,
+    resizable: true, // 열 크기 조정 활성화
+  };
+
   const columnDefs = [
     { field: 'name', headerName: '이름', sortable: true,  cellStyle: { fontSize: '16px' }// 헤더 폰트 크기 설정
  },
@@ -75,6 +80,19 @@ const DataGridView = () => {
         );
       },
       cellStyle: { fontSize: '16px'},
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
+        if (a === b) {
+          if(isDescending)
+          {
+            return -nodeA.data.name.localeCompare(nodeB.data.name);
+          }
+          else
+          {
+            return nodeA.data.name.localeCompare(nodeB.data.name);
+          }
+        }
+        return a - b;
+      },
     },
     {
       field: 'oxygenSaturation',
@@ -92,6 +110,19 @@ const DataGridView = () => {
         />
       ),
       cellStyle: { fontSize: '16px' },
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
+        if (a === b) {
+          if(isDescending)
+          {
+            return -nodeA.data.name.localeCompare(nodeB.data.name);
+          }
+          else
+          {
+            return nodeA.data.name.localeCompare(nodeB.data.name);
+          }
+        }
+        return a - b;
+      },
     },
     {
       field: 'stressLevel',
@@ -109,11 +140,38 @@ const DataGridView = () => {
         />
       ),
       cellStyle: { fontSize: '16px' },
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
+        if (a === b) {
+          if(isDescending)
+            {
+              return -nodeA.data.name.localeCompare(nodeB.data.name);
+            }
+            else
+            {
+              return nodeA.data.name.localeCompare(nodeB.data.name);
+            }
+        }
+        return a - b;
+      },
     },
     {
       field: 'riskLevel',
       headerName: '위험도',
       sortable: true,
+      comparator: (a, b, nodeA, nodeB, isDescending) => {
+        if (a === b) {
+          if(isDescending)
+            {
+              return -nodeA.data.name.localeCompare(nodeB.data.name);
+            }
+            else
+            {
+              return nodeA.data.name.localeCompare(nodeB.data.name);
+            }
+        }
+        const riskOrder = { High: 1, Moderate: 2, Low: 3 };
+        return riskOrder[a] - riskOrder[b];
+      },
       cellRenderer: (params) => {
         const isHighRisk = params.value === 'High' || (params.data.oxygenSaturation == 0 ? false : (params.data.oxygenSaturation < 90)); // 위험한 경우
         const isNormal = isHighRisk ? false : true; // 정상인 경우
@@ -161,24 +219,38 @@ const DataGridView = () => {
   ];
 
   return (
-    <div className="ag-theme-alpine" style={{ height: 'calc(100vh - 100px)', width: '100%', paddingTop: '80px'}}>
-      <style>
-        {`
-          @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-          }
-        `}
-      </style>
-      <AgGridReact
-        rowData={rowData}
-        columnDefs={columnDefs}
-        animateRows={true}
-        pagination={true}
-        paginationPageSize={100}
-        domLayout="autoHeight" // 자동으로 높이 맞추기
-      />
-    </div>
+    <div
+    className="ag-theme-alpine"
+    style={{
+      height: '100vh', // 그리드의 전체 높이
+      width: '100%',
+      overflow: 'auto', // 스크롤 가능
+      paddingTop: '80px',
+    }}
+  >
+    <style>
+      {`
+        .ag-header {
+          position: sticky; /* 헤더를 고정 */
+          top: 0; /* 화면 상단에 고정 */
+          z-index: 2; /* 다른 요소 위로 설정 */
+          background-color: white; /* 배경색 */
+        }
+      `}
+    </style>
+    <AgGridReact
+      rowData={rowData}
+      columnDefs={columnDefs}
+      defaultColDef={{
+        sortable: true,
+        resizable: true,
+      }}
+      animateRows={true}
+      pagination={true}
+      paginationPageSize={100}
+      domLayout="normal" // 레이아웃을 고정으로 설정
+    />
+  </div>
   );
 };
 
