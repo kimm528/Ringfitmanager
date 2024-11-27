@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 임포트
+import isEqual from 'lodash/isEqual';
+import { produce } from 'immer'; // 명명된 임포트
 
+// 컴포넌트 임포트
 import Header from './components/Header.js';
 import Sidebar from './components/Sidebar.js';
 import Dashboard from './components/Dashboard.js';
@@ -22,7 +24,6 @@ const MemoizedUserDetail = memo(UserDetail);
 const MemoizedSettings = memo(Settings);
 const MemoizedFloorPlan = memo(FloorPlan);
 const MemoizedDeviceManagement = memo(DeviceManagement);
-
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 //const url = 'http://14.47.20.111:7201'
 const url = 'https://fitlife.dotories.com'
@@ -76,7 +77,7 @@ const SidebarController = ({ setIsSidebarOpen, children }) => {
   return children;
 };
 
-// 컴포넌트 외부로 함수 이동
+// Helper 함수들
 const getLastNonZero = (arr) => {
   if (!arr || !Array.isArray(arr)) return 0;
   for (let i = arr.length - 1; i >= 0; i--) {
@@ -84,16 +85,36 @@ const getLastNonZero = (arr) => {
       return arr[i];
     }
   }
-  return 0; // Return 0 if all values are zero
+  return 0; // 모든 값이 0인 경우
 };
 
-// 컴포넌트 외부로 함수 이동
 const formatDateYYMMDD = (date) => {
   const year = String(date.getFullYear()).slice(-2); // 마지막 두 자리
   const month = (`0${date.getMonth() + 1}`).slice(-2); // 월은 0부터 시작하므로 +1
   const day = (`0${date.getDate()}`).slice(-2);
   return `${year}${month}${day}`;
 };
+
+// UserItem 컴포넌트 정의 및 메모이제이션
+const UserItem = memo(({ user }) => {
+  return (
+    <div className="user-item">
+      <p>{user.name}</p>
+      {/* 기타 사용자 정보 */}
+    </div>
+  );
+});
+
+// UserList 컴포넌트 정의 및 메모이제이션
+const UserList = memo(({ users }) => {
+  return (
+    <div>
+      {users.map(user => (
+        <UserItem key={user.id} user={user} />
+      ))}
+    </div>
+  );
+});
 
 function App() {
   // 상태 변수들
@@ -111,14 +132,32 @@ function App() {
   const [devices, setDevices] = useState(loadFromSessionStorage('devices', []));
   const [isLoading, setIsLoading] = useState(false); // isLoading 상태 추가
 
-  // **잠금 상태를 App.js에서 관리하도록 추가**
+  // 잠금 상태를 App.js에서 관리하도록 추가
   const [isLocked, setIsLocked] = useState(true); // 잠금 상태 추가
 
-  // **건강 데이터 상태 관리 추가**
+  // 건강 데이터 상태 관리 추가
   const [healthData, setHealthData] = useState(() => loadFromSessionStorage('healthData', {}));
+
+  // 현재 경로 상태
+  const [currentPath, setCurrentPath] = useState('/');
 
   // Ref for interval to prevent multiple intervals
   const intervalRef = useRef(null);
+
+  // PathListener 컴포넌트 사용하여 현재 경로 추적
+  const handleSetCurrentPath = useCallback((path) => {
+    setCurrentPath(path);
+  }, []);
+
+  // PathListener 컴포넌트 정의: 현재 경로를 App의 상태로 전달
+  const PathListener = React.memo(({ setCurrentPath }) => {
+    const location = useLocation();
+    useEffect(() => {
+      setCurrentPath(location.pathname);
+    }, [location.pathname, setCurrentPath]);
+
+    return null;
+  });
 
   // 건강 데이터 fetching 함수
   const fetchHealthData = useCallback(async (userId, date) => {
@@ -159,31 +198,25 @@ function App() {
         return prevData; // 변경되지 않았으므로 상태 업데이트하지 않음
       });
 
-      // 사용자 데이터 업데이트
+      // 사용자 데이터 업데이트 (immer 사용)
       setUsers((prevUsers) =>
-        prevUsers.map(user => {
-          if (user.id === userId) {
-            const newData = {
-              ...user.data,
-              bpm: getLastNonZero(latestHealthData.HeartRateArr),
-              oxygen: getLastNonZero(latestHealthData.BloodOxygenArr),
-              stress: getLastNonZero(latestHealthData.PressureArr), // 스트레스 지수가 API 응답에 없으므로 기본값 또는 다른 로직으로 설정
-              sleep: latestHealthData.Sleep?.TotalSleepDuration || 0,
-              steps: latestHealthData.Sport?.slice(-1)[0]?.TotalSteps || 0,
-              calories: latestHealthData.Sport?.slice(-1)[0]?.Calorie || 0,
-              distance: latestHealthData.Sport?.slice(-1)[0]?.WalkDistance || 0,
-              heartRateArr: latestHealthData.HeartRateArr || [],
-              pressureArr: latestHealthData.PressureArr || [],
-              oxygenArr: latestHealthData.BloodOxygenArr || [],
-              hourlyData: {
-                steps: latestHealthData.Sport?.map(s => s.TotalSteps) || [],
-                calories: latestHealthData.Sport?.map(s => s.Calorie) || [],
-                distance: latestHealthData.Sport?.map(s => s.WalkDistance) || [],
-              },
-            };
-            return { ...user, data: newData };
+        produce(prevUsers, draft => {
+          const user = draft.find(u => u.id === userId);
+          if (user) {
+            user.data.bpm = getLastNonZero(latestHealthData.HeartRateArr);
+            user.data.oxygen = getLastNonZero(latestHealthData.BloodOxygenArr);
+            user.data.stress = getLastNonZero(latestHealthData.PressureArr);
+            user.data.sleep = latestHealthData.Sleep?.TotalSleepDuration || 0;
+            user.data.steps = latestHealthData.Sport?.slice(-1)[0]?.TotalSteps || 0;
+            user.data.calories = latestHealthData.Sport?.slice(-1)[0]?.Calorie || 0;
+            user.data.distance = latestHealthData.Sport?.slice(-1)[0]?.WalkDistance || 0;
+            user.data.heartRateArr = latestHealthData.HeartRateArr || [];
+            user.data.pressureArr = latestHealthData.PressureArr || [];
+            user.data.oxygenArr = latestHealthData.BloodOxygenArr || [];
+            user.data.hourlyData.steps = latestHealthData.Sport?.map(s => s.TotalSteps) || [];
+            user.data.hourlyData.calories = latestHealthData.Sport?.map(s => s.Calorie) || [];
+            user.data.hourlyData.distance = latestHealthData.Sport?.map(s => s.WalkDistance) || [];
           }
-          return user;
         })
       );
 
@@ -306,7 +339,7 @@ function App() {
         };
       });
   
-      // **변경 감지 및 상태 업데이트**
+      // 변경 감지 및 상태 업데이트
       setUsers((prevUsers) => {
         try {
           const prevUsersMap = new Map(prevUsers.map(user => [user.id, user]));
@@ -324,8 +357,7 @@ function App() {
             const { ring: prevRing = {}, ...prevUserRest } = prevUser;
             const { ring: newRing = {}, ...newUserRest } = user;
             
-            if(prevRing == null)
-            {
+            if(prevRing == null) {
               return user;
             }
             // connectedTime을 제외한 링 데이터 비교 (ring은 항상 객체)
@@ -348,19 +380,20 @@ function App() {
             return prevUsers;
           }
         } catch (e) {
-          return null;
+          console.error('사용자 데이터 변경 감지 오류:', e);
+          return prevUsers; // 오류 발생 시 기존 상태 유지
         }
       });
-  
+
       saveToSessionStorage('users', updatedUsers); // 세션 스토리지에 저장
       console.log('서버에서 사용자 데이터 가져오기 및 저장');
-  
+
       // 각 사용자에 대해 건강 데이터 가져오기
       updatedUsers.forEach(user => {
         const today = new Date(); // 오늘 날짜로 설정
         fetchHealthData(user.id, today);
       });
-  
+
     } catch (error) {
       console.error('사용자 데이터 가져오기 실패:', error.response || error.message);
     }
@@ -441,37 +474,44 @@ function App() {
     }
   }, [siteId, credentials, url]);
 
-  const isFirstRun = useRef(true);
-
-  // 주기적인 데이터 업데이트 (30초마다)
   useEffect(() => {
-    if (isFirstRun.current) {
-      if (!isLoggedIn || !siteId || !isLocked) return; // 조건에 따라 새로고침 중지
-
+    if (!isLoggedIn || !siteId || !isLocked) return;
+  
+    if (!intervalRef.current) {
       // 초기 데이터 로드
       fetchUsersAndRingData();
       handleLoadFloorPlan();
   
-      // 인터벌 설정 전에 기존 인터벌이 있는지 확인
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-  
       intervalRef.current = setInterval(() => {
         console.log('30초마다 사용자 및 링 데이터 가져오기');
-        fetchUsersAndRingData();
-        handleLoadFloorPlan();
+        
+        if (currentPath.startsWith('/users/')) {
+          // UserDetail 페이지일 경우 해당 사용자만 업데이트
+          const userId = currentPath.split('/users/')[1]; // URL에서 userId 추출
+          if (userId) {
+            console.log(`UserDetail 페이지: 사용자 ${userId} 데이터만 업데이트`);
+            fetchHealthData(parseInt(userId), new Date());
+          }
+        } else {
+          // 일반적인 업데이트
+          fetchUsersAndRingData();
+          handleLoadFloorPlan();
+        }
       }, 30000); // 30초
   
       console.log('인터벌이 설정되었습니다.');
-  
-      return () => {
-        clearInterval(intervalRef.current);
-        console.log('인터벌이 정리되었습니다.');
-      };
-      
     }
-  }, [fetchUsersAndRingData, handleLoadFloorPlan, isLoggedIn, siteId, isLocked]);
+  
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        console.log('인터벌이 정리되었습니다.');
+      }
+    };
+  }, [currentPath, fetchUsersAndRingData, handleLoadFloorPlan, fetchHealthData, isLoggedIn, siteId, isLocked]);
+  
+  
 
   // 사용자 데이터 변경 시 세션 스토리지에 저장
   useEffect(() => {
@@ -504,19 +544,20 @@ function App() {
     saveToSessionStorage('availableRings', availableRings);
   }, [availableRings]);
 
+  // 초기 로그인 시 사용자 데이터 로드
   useEffect(() => {
     if (isLoggedIn && siteId) {
       const storedUsers = loadFromSessionStorage('users', []);
       if (storedUsers.length > 0) {
         setUsers(storedUsers);
         console.log('초기 로드 시 세션 스토리지에서 사용자 데이터 로드');
-  
-        // **이미 로드된 사용자에 대해 호출 방지**
+
+        // 이미 로드된 사용자에 대해 호출 방지
         storedUsers.forEach(user => {
           const today = new Date();
           const formattedDate = formatDateYYMMDD(today);
           const key = `${user.id}_${formattedDate}`;
-  
+
           setHealthData((prevData) => {
             if (!prevData[key]) {
               fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
@@ -527,7 +568,7 @@ function App() {
       }
     }
   }, [isLoggedIn, siteId, fetchHealthData]);
-  
+
   // 새로운 ID 생성 함수
   const getNewId = useCallback((users) => {
     const existingIds = users.map((user) => user.id).sort((a, b) => a - b);
@@ -624,10 +665,7 @@ function App() {
             },
           };
 
-          setUsers((prevUsers) => {
-            const updatedUsers = [...prevUsers, createdUser];
-            return updatedUsers;
-          });
+          setUsers((prevUsers) => [...prevUsers, createdUser]);
           // 세션 스토리지는 useEffect를 통해 자동 저장
 
           setShowModal(false);
@@ -658,26 +696,21 @@ function App() {
 
   // 사용자 업데이트 함수
   const updateUser = useCallback(
-    async (updatedUser, sendToServer = false) => {
+    async (updatedUser, sendTo_server = false) => {
       console.log('사용자 업데이트:', updatedUser);
 
       // 기존 사용자 데이터와 비교하여 변경된 경우에만 상태 업데이트
       setUsers((prevUsers) => {
-        const updatedUsers = prevUsers.map((u) => {
-          if (u.id === updatedUser.id) {
-            // 변경된 부분이 있는지 확인
-            const isDifferent = !isEqual(u, updatedUser);
-            if (isDifferent) {
-              return { ...u, ...updatedUser };
-            }
+        return produce(prevUsers, draft => {
+          const user = draft.find(u => u.id === updatedUser.id);
+          if (user) {
+            Object.assign(user, updatedUser);
           }
-          return u;
         });
-        return updatedUsers;
       });
 
       // 서버에 업데이트 요청
-      if (sendToServer && siteId) {
+      if (sendTo_server && siteId) {
         try {
           const apiUrl = `${url}/api/user`;
           const gender = updatedUser.gender === 0 ? 0 : 1;
@@ -741,7 +774,7 @@ function App() {
         }
       }
     },
-    [siteId, credentials, url, isEqual]
+    [siteId, credentials, url]
   );
 
   // 사용자 삭제 함수
@@ -875,6 +908,8 @@ function App() {
     <Router>
       {isLoggedIn ? (
         <SidebarController setIsSidebarOpen={setIsSidebarOpen}>
+          {/* PathListener를 통해 현재 경로 추적 */}
+          <PathListener setCurrentPath={setCurrentPath} />
           <div className="flex h-screen bg-gray-100">
             {/* 성공 메시지 모달 */}
             <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col space-y-2 z-50">
@@ -896,8 +931,8 @@ function App() {
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 siteId={siteId}
-                users={users} // props로 전달
-                devices={devices} // props로 전달 (필요 시)
+                users={users}
+                devices={devices}
                 // ... 기타 props
               />
               <div className="flex-1 overflow-y-auto flex flex-col">
@@ -907,28 +942,28 @@ function App() {
                     element={
                       <>
                         <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
-                      <main className="p-4 flex-1">
-                        <MemoizedDashboard
-                          showModal={showModal}
-                          setShowModal={setShowModal}
-                          users={users}
-                          setUsers={setUsers}
-                          searchQuery={searchQuery}
-                          handleAddUser={handleAddUser}
-                          updateUser={updateUser}
-                          deleteUser={deleteUser}
-                          sortOption={sortOption}
-                          setSortOption={setSortOption}
-                          toggleFavorite={toggleFavorite}
-                          availableRings={availableRings}
-                          disconnectInterval={disconnectInterval}
-                          devices={devices} // props로 전달
+                        <main className="p-4 flex-1">
+                          <MemoizedDashboard
+                            showModal={showModal}
+                            setShowModal={setShowModal}
+                            users={users}
+                            setUsers={setUsers}
+                            searchQuery={searchQuery}
+                            handleAddUser={handleAddUser}
+                            updateUser={updateUser}
+                            deleteUser={deleteUser}
+                            sortOption={sortOption}
+                            setSortOption={setSortOption}
+                            toggleFavorite={toggleFavorite}
+                            availableRings={availableRings}
+                            disconnectInterval={disconnectInterval}
+                            devices={devices}
                           />
                         </main>
                       </>
                     }
                   />
-                  {/* 수정된 Route: UserDetail에 fetchHealthData와 healthData 전달 */}
+                  {/* UserDetail Route */}
                   <Route
                     path="/users/:userId"
                     element={
@@ -936,8 +971,8 @@ function App() {
                         users={users}
                         updateUserLifeLog={updateUser}
                         siteId={siteId}
-                        fetchHealthData={fetchHealthData} // 추가
-                        healthData={healthData} // 추가
+                        fetchHealthData={fetchHealthData} 
+                        healthData={healthData} 
                       />
                     }
                   />
@@ -951,7 +986,7 @@ function App() {
                         siteId={siteId}
                         disconnectInterval={disconnectInterval}
                         setDisconnectInterval={setDisconnectInterval}
-                        devices={devices} // props로 전달
+                        devices={devices}
                       />
                     }
                   />
@@ -984,14 +1019,14 @@ function App() {
                     }
                   />
                   <Route
-                  path="/datagridview"
-                  element={
-                    <>
-                      <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
-                      <DataGridView users={users} />
-                    </>
-                  }
-                />
+                    path="/datagridview"
+                    element={
+                      <>
+                        <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
+                        <DataGridView users={users} />
+                      </>
+                    }
+                  />
                 </Routes>
               </div>
             </div>
@@ -1002,6 +1037,6 @@ function App() {
       )}
     </Router>
   );
-};
+}
 
 export default App;

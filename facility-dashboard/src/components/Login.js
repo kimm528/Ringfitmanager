@@ -83,13 +83,10 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   
       // 응답 데이터 파싱
       let data = await response.json();
-      console.log("첫 번째 파싱 결과:", data);
-      console.log("데이터 타입:", typeof data);
   
       // 만약 data가 문자열이라면, 두 번째 파싱 시도
       if (typeof data === "string") {
         data = JSON.parse(data);
-        console.log("두 번째 파싱 결과:", data);
       }
   
       // 응답 상태 확인
