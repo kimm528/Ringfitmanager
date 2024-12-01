@@ -4,10 +4,10 @@ import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import Modal from './Modal';
 import { calculateUserStatus } from './CalculateUserStatus_2';
-import { motion } from 'framer-motion'; // framer-motion 임포트
-import { FaMap } from 'react-icons/fa'; // FaMap 아이콘 임포트
-import { Link } from 'react-router-dom'; // Link 컴포넌트 임포트
-import { Grid, AutoSizer } from 'react-virtualized';  // react-virtualized에서 List 및 AutoSizer 임포트
+import { motion } from 'framer-motion';
+import { FaMap } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import { Grid, AutoSizer } from 'react-virtualized';
 
 const Dashboard = ({
   showModal,
@@ -19,13 +19,12 @@ const Dashboard = ({
   deleteUser,
   availableRings,
   toggleFavorite,
-  disconnectInterval, // 추가
+  disconnectInterval,
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
     gender: '',
     age: '',
-    profileImage: null,
   });
 
   const [sortOption, setSortOption] = useState('이름 순');
@@ -57,6 +56,10 @@ const Dashboard = ({
             return (b.data?.bpm || 0) - (a.data?.bpm || 0);
           case '즐겨찾기 순':
             return (b.isFavorite === true ? 1 : 0) - (a.isFavorite === true ? 1 : 0);
+          case '최근 등록순':
+            const dateA = a.registrationDate ? new Date(a.registrationDate) : new Date(0);
+            const dateB = b.registrationDate ? new Date(b.registrationDate) : new Date(0);
+            return dateB - dateA; // 최신 날짜가 앞에 오도록 내림차순 정렬
           case '이름 순':
           default:
             return (a.name || '').localeCompare(b.name || '', 'ko');
@@ -79,18 +82,16 @@ const Dashboard = ({
     const userToAdd = {
       ...newUser,
       gender: gender,
-      profileImage:
-        newUser.profileImage || 'https://default-image-url.com/default.jpg',
     };
 
     handleAddUser(userToAdd);
-    setNewUser({ name: '', gender: '', age: '', profileImage: null });
+    setNewUser({ name: '', gender: '', age: '' });
     setShowModal(false);
   }, [newUser, handleAddUser, setShowModal]);
 
   return (
-<div className="min-h-screen">
-{/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
+    <div className="min-h-screen">
+      {/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
       <div className="flex justify-between items-center pt-20">
         {/* 좌측 상단: 센터 현황 버튼 with framer-motion */}
         <Link to="/floorplan">
@@ -110,7 +111,7 @@ const Dashboard = ({
 
         {/* 우측 상단: 정렬 버튼 */}
         <div className="flex space-x-2">
-          {['심박수 순', '즐겨찾기 순', '이름 순'].map((option) => (
+          {['심박수 순', '즐겨찾기 순', '이름 순', '최근 등록순'].map((option) => (
             <button
               key={option}
               className={`px-4 py-2 ${
@@ -127,7 +128,7 @@ const Dashboard = ({
       {/* 카드 리스트 - Wrap Panel with Virtualization */}
       <div
         className="dashboard-container"
-        style={{ width: '100%', height: '1200px', overflow: 'auto' }} // 컨테이너의 높이 늘리고 스크롤 추가
+        style={{ width: '100%', height: '1200px', overflow: 'auto' }}
       >
         <AutoSizer>
           {({ height, width }) => {
@@ -171,18 +172,17 @@ const Dashboard = ({
               <Grid
                 cellRenderer={cellRenderer}
                 columnCount={columnCount}
-                columnWidth={columnWidth + margin * 2} // 카드 너비 + 좌우 마진
+                columnWidth={columnWidth + margin * 2}
                 height={height}
                 rowCount={rowCount}
                 rowHeight={rowHeight}
                 width={width}
-                overscanRowCount={2} // 부드러운 스크롤을 위한 추가 행 렌더링
+                overscanRowCount={2}
               />
             );
           }}
         </AutoSizer>
       </div>
-
 
       {/* Add User Modal */}
       {showModal && (
@@ -251,8 +251,6 @@ const Dashboard = ({
       )}
     </div>
   );
-
-
 };
 
 export default Dashboard;

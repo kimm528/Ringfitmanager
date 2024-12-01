@@ -169,7 +169,7 @@ function App() {
     try {
       const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
       const healthResponse = await axios.get(
-        `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
+        `${url}/api/user/health?siteId=${siteId}&yearMonthDay=${formattedDate}`,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -181,55 +181,72 @@ function App() {
       const healthJson = typeof healthResponse.data === 'string' ? JSON.parse(healthResponse.data) : healthResponse.data;
       const healthDataArray = healthJson.Data || [];
 
-      // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
-      const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
+      // healthDataArray를 순회하면서 각 사용자에 대한 데이터 업데이트
+      healthDataArray.forEach((healthItem) => {
+        const userId = healthItem.UserId; // 각 데이터 항목에서 사용자 ID 추출
 
-      // 기존 데이터와 비교하여 변경된 경우에만 업데이트
-      setHealthData((prevData) => {
-        const key = `${userId}_${formattedDate}`;
-        const existingData = prevData[key];
-        if (!isEqual(existingData, latestHealthData)) {
-          console.log(`건강 데이터가 변경되었습니다: 사용자 ${userId}, 날짜 ${formattedDate}`, latestHealthData);
-          return {
-            ...prevData,
-            [key]: latestHealthData,
-          };
-        }
-        return prevData; // 변경되지 않았으므로 상태 업데이트하지 않음
-      });
-
-      // 사용자 데이터 업데이트 (immer 사용)
-      setUsers((prevUsers) =>
-        produce(prevUsers, draft => {
-          const user = draft.find(u => u.id === userId);
-          if (user) {
-            user.data.bpm = getLastNonZero(latestHealthData.HeartRateArr);
-            user.data.oxygen = getLastNonZero(latestHealthData.BloodOxygenArr);
-            user.data.stress = getLastNonZero(latestHealthData.PressureArr);
-            user.data.sleep = latestHealthData.Sleep?.TotalSleepDuration || 0;
-            user.data.steps = latestHealthData.Sport?.slice(-1)[0]?.TotalSteps || 0;
-            user.data.calories = latestHealthData.Sport?.slice(-1)[0]?.Calorie || 0;
-            user.data.distance = latestHealthData.Sport?.slice(-1)[0]?.WalkDistance || 0;
-            user.data.heartRateArr = latestHealthData.HeartRateArr || [];
-            user.data.pressureArr = latestHealthData.PressureArr || [];
-            user.data.oxygenArr = latestHealthData.BloodOxygenArr || [];
-            user.data.hourlyData.steps = latestHealthData.Sport?.map(s => s.TotalSteps) || [];
-            user.data.hourlyData.calories = latestHealthData.Sport?.map(s => s.Calorie) || [];
-            user.data.hourlyData.distance = latestHealthData.Sport?.map(s => s.WalkDistance) || [];
+        // 기존 데이터와 비교하여 변경된 경우에만 업데이트
+        setHealthData((prevData) => {
+          const existingData = prevData[userId]?.[date];
+          if (!isEqual(existingData, healthItem)) {
+            return {
+              ...prevData,
+              [userId]: {
+                ...(prevData[userId] || {}),
+                [date]: healthItem,
+              },
+            };
           }
-        })
-      );
+          return prevData; // 변경되지 않았으므로 상태 업데이트하지 않음
+        });
 
-    } catch (healthError) {
-      console.warn(`사용자 ${userId}의 건강 데이터 가져오기 실패:`, healthError.message);
-      setHealthData((prevData) => ({
-        ...prevData,
-        [`${userId}_${formatDateYYMMDD(date)}`]: {}
-      }));
+        // users 배열에서 해당 ID를 가진 사용자 객체를 찾아 데이터 업데이트
+        setUsers((prevUsers) =>
+          produce(prevUsers, (draft) => {
+            const userDraft = draft.find((u) => u.id === userId);
+            if (userDraft) {
+              userDraft.data.bpm = getLastNonZero(
+                healthItem.HeartRateArr
+              );
+              userDraft.data.oxygen = getLastNonZero(
+                healthItem.BloodOxygenArr
+              );
+              userDraft.data.stress = getLastNonZero(
+                healthItem.PressureArr
+              );
+              userDraft.data.sleep =
+                healthItem.Sleep?.TotalSleepDuration || 0;
+              userDraft.data.steps =
+                healthItem.Sport?.slice(-1)[0]?.TotalSteps || 0;
+              userDraft.data.calories =
+                healthItem.Sport?.slice(-1)[0]?.Calorie || 0;
+              userDraft.data.distance =
+                healthItem.Sport?.slice(-1)[0]?.WalkDistance || 0;
+              userDraft.data.heartRateArr =
+                healthItem.HeartRateArr || [];
+              userDraft.data.pressureArr =
+                healthItem.PressureArr || [];
+              userDraft.data.oxygenArr =
+                healthItem.BloodOxygenArr || [];
+              userDraft.data.hourlyData.steps =
+                healthItem.Sport?.map((s) => s.TotalSteps) || [];
+              userDraft.data.hourlyData.calories =
+                healthItem.Sport?.map((s) => s.Calorie) || [];
+              userDraft.data.hourlyData.distance =
+                healthItem.Sport?.map((s) => s.WalkDistance) || [];
+            }
+          })
+        );
+      });
+    } catch (error) {
+      console.error('건강 데이터 가져오기 실패:', error);
     }
-  }, [siteId, url, credentials]);
+  },
+  [siteId, url, credentials]
+  );
+  
 
-  // 사용자 및 링 데이터 가져오기 함수 (건강 데이터 fetching 제거)
+  // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
     if (!siteId) {
       console.warn('siteId가 설정되지 않았습니다.');
@@ -373,10 +390,8 @@ function App() {
           });
         
           if (changedUsers.length > 0) {
-            console.log('변경된 사용자 데이터가 있습니다:', changedUsers);
             return mergedUsers;
           } else {
-            console.log('사용자 데이터에 변경 사항이 없습니다.');
             return prevUsers;
           }
         } catch (e) {
@@ -386,15 +401,10 @@ function App() {
       });
 
       saveToSessionStorage('users', updatedUsers); // 세션 스토리지에 저장
-      console.log('서버에서 사용자 데이터 가져오기 및 저장');
-
-      // 각 사용자에 대해 건강 데이터 가져오기
-      updatedUsers.forEach(user => {
         const today = new Date(); // 오늘 날짜로 설정
-        fetchHealthData(user.id, today);
-      });
-
-    } catch (error) {
+        fetchHealthData(0, today);
+       
+         } catch (error) {
       console.error('사용자 데이터 가져오기 실패:', error.response || error.message);
     }
   }, [siteId, credentials, url, fetchHealthData, isEqual]);
@@ -416,7 +426,6 @@ function App() {
           // 캔버스 크기 조정은 FloorPlan 컴포넌트에서 처리
         };
         img.src = cachedImageData;
-        console.log('배치도 이미지 로드 성공 (세션에서 불러옴)');
       } else {
         // 서버에서 배치도 이미지 가져오기
         const imageResponse = await axios.get(`${url}/api/site/image?siteId=${siteId}`, {
@@ -440,7 +449,6 @@ function App() {
             img.src = base64data;
           };
           reader.readAsDataURL(blob);
-          console.log('배치도 이미지 로드 성공 (서버에서 불러옴)');
         } else {
           console.error('배치도 이미지 로드 실패:', imageResponse.statusText);
         }
@@ -459,7 +467,6 @@ function App() {
         const fetchedDevices = parsedDeviceData.Data || [];
         setDevices(fetchedDevices);
         saveToSessionStorage('devices', fetchedDevices); // 세션 스토리지에 저장
-        console.log('스마트폰 위치 데이터 불러오기 성공:', fetchedDevices);
       } else {
         console.error('스마트폰 위치 데이터 불러오기 실패:', deviceResponse.statusText);
         setDevices([]); // 오류 발생 시 devices 상태를 빈 배열로 설정
@@ -489,8 +496,7 @@ function App() {
           // UserDetail 페이지일 경우 해당 사용자만 업데이트
           const userId = currentPath.split('/users/')[1]; // URL에서 userId 추출
           if (userId) {
-            console.log(`UserDetail 페이지: 사용자 ${userId} 데이터만 업데이트`);
-            fetchHealthData(parseInt(userId), new Date());
+           // fetchHealthData(parseInt(userId), new Date());
           }
         } else {
           // 일반적인 업데이트
@@ -499,18 +505,15 @@ function App() {
         }
       }, 30000); // 30초
   
-      console.log('인터벌이 설정되었습니다.');
     }
   
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        console.log('인터벌이 정리되었습니다.');
       }
     };
   }, [currentPath, fetchUsersAndRingData, handleLoadFloorPlan, fetchHealthData, isLoggedIn, siteId, isLocked]);
-  
   
 
   // 사용자 데이터 변경 시 세션 스토리지에 저장
@@ -550,20 +553,23 @@ function App() {
       const storedUsers = loadFromSessionStorage('users', []);
       if (storedUsers.length > 0) {
         setUsers(storedUsers);
-        console.log('초기 로드 시 세션 스토리지에서 사용자 데이터 로드');
 
-        // 이미 로드된 사용자에 대해 호출 방지
+        // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있는 경우에만)
         storedUsers.forEach(user => {
-          const today = new Date();
-          const formattedDate = formatDateYYMMDD(today);
-          const key = `${user.id}_${formattedDate}`;
+          if (user.macAddr) {
+            const today = new Date();
+            const formattedDate = formatDateYYMMDD(today);
+            const key = `${user.id}_${formattedDate}`;
 
-          setHealthData((prevData) => {
-            if (!prevData[key]) {
-              fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
-            }
-            return prevData;
-          });
+            setHealthData((prevData) => {
+              if (!prevData[key]) {
+                fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
+              }
+              return prevData;
+            });
+          } else {
+            console.warn(`사용자 ${user.id} (${user.name})에게 macAddr이 없습니다. 건강 데이터 요청을 건너뜁니다.`);
+          }
         });
       }
     }
@@ -625,7 +631,6 @@ function App() {
         const responseText = await response.text();
 
         if (response.ok && responseText.includes('User Insert success')) {
-          console.log('사용자 추가 성공:', responseText);
 
           const createdUser = {
             id: newId,
@@ -678,9 +683,13 @@ function App() {
             setSuccessMessage('');
           }, 3000);
 
-          // 새로 추가된 사용자에 대해 건강 데이터 가져오기
-          const today = new Date();
-          fetchHealthData(newId, today);
+          // 새로 추가된 사용자에 대해 건강 데이터 가져오기 (macAddr이 있는 경우에만)
+          if (createdUser.macAddr) {
+            const today = new Date();
+            fetchHealthData(newId, today);
+          } else {
+            console.warn(`추가된 사용자 ${createdUser.id} (${createdUser.name})에게 macAddr이 없습니다. 건강 데이터 요청을 건너뜁니다.`);
+          }
 
         } else {
           console.error('서버에 사용자 추가 실패:', responseText);
@@ -971,8 +980,8 @@ function App() {
                         users={users}
                         updateUserLifeLog={updateUser}
                         siteId={siteId}
-                        fetchHealthData={fetchHealthData} 
-                        healthData={healthData} 
+                        fetchHealthData={fetchHealthData}
+                        healthData={healthData}
                       />
                     }
                   />

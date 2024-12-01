@@ -1,12 +1,13 @@
 // src/components/Login.js
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 
 export default function Login({ setIsLoggedIn, setSiteId }) {
   // State for login
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginErrorMessage, setLoginErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
 
   // State for sign-up modal
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
@@ -18,7 +19,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
 
   const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
   //const url = 'http://14.47.20.111:7201'
-  const url = 'https://fitlife.dotories.com'
+  const url = 'https://fitlife.dotories.com';
 
   // 세션 스토리지 관련 헬퍼 함수
   const loadFromSessionStorage = (key, defaultValue) => {
@@ -32,6 +33,10 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
       return defaultValue;
     }
   };
+
+  // useEffect에서 새로고침 코드 제거
+  // 새로고침 없이도 상태가 제대로 관리되도록 수정
+  /*
   useEffect(() => {
     // 처음 진입 시 한 번만 새로 고침을 하도록 sessionStorage에 값을 저장
     const isFirstLogin = sessionStorage.getItem('isFirstLogin');
@@ -41,16 +46,18 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
       window.location.reload(); // 새로 고침
     }
   }, []); // 의존성 배열에 빈 배열을 넣어 컴포넌트가 처음 렌더링될 때만 실행
+  */
+
   const formattedTime = (date) => {
     const pad = (n) => n.toString().padStart(2, '0');
-  
+
     const yy = pad(date.getFullYear() % 100); // 연도 (마지막 2자리)
     const MM = pad(date.getMonth() + 1); // 월 (0부터 시작하므로 +1)
     const dd = pad(date.getDate()); // 일
     const HH = pad(date.getHours()); // 시
     const mm = pad(date.getMinutes()); // 분
     const ss = pad(date.getSeconds()); // 초
-  
+
     return `${yy}${MM}${dd}${HH}${mm}${ss}`;
   };
 
@@ -62,12 +69,16 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   // Handle login
   const handleLogin = useCallback(async (e) => {
     e.preventDefault(); // Form 기본 동작 방지
-  
+
+    if (isLoading) return; // 이미 로딩 중이면 함수 종료
+
     if (!username || !password) {
       setLoginErrorMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
-  
+
+    setIsLoading(true); // 로딩 시작
+
     try {
       // 서버 요청
       const response = await fetch(
@@ -80,24 +91,24 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           },
         }
       );
-  
+
       // 응답 데이터 파싱
       let data = await response.json();
-  
+
       // 만약 data가 문자열이라면, 두 번째 파싱 시도
       if (typeof data === "string") {
         data = JSON.parse(data);
       }
-  
+
       // 응답 상태 확인
       if (response.ok) {
         setIsLoggedIn(true);
-  
+
         // siteId 추출 및 저장
         const siteId = data.Header?.SiteId || data.Data?.[0]?.SiteId || "";
         setSiteId(siteId);
         sessionStorage.setItem("siteId", siteId);
-  
+
         // 기타 정보 저장
         sessionStorage.setItem("adminId", username);
         sessionStorage.setItem("isLoggedIn", JSON.stringify(true));
@@ -111,10 +122,12 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
     } catch (error) {
       console.error("로그인 중 오류 발생:", error);
       setLoginErrorMessage("서버와의 통신에 실패했습니다.");
+    } finally {
+      setIsLoading(false); // 로딩 종료
     }
-  }, [username, password, credentials, setIsLoggedIn, setSiteId]);
-  
-  // Handle sign-up
+  }, [username, password, credentials, setIsLoggedIn, setSiteId, isLoading]);
+
+  // Handle sign-up (변경 없음)
   const handleSignUp = useCallback(async (e) => {
     e.preventDefault(); // Prevent form submission default behavior
 
@@ -134,7 +147,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           },
           body: JSON.stringify({
             header: {
-               // siteId 추가
+              // siteId 추가
             },
             data: {
               AdminId: signUpAdminId,
@@ -238,6 +251,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 aria-label="아이디 입력"
+                disabled={isLoading} // 로딩 중일 때 입력 비활성화 (선택 사항)
               />
 
               {/* Password Input */}
@@ -248,23 +262,28 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-label="비밀번호 입력"
+                disabled={isLoading} // 로딩 중일 때 입력 비활성화 (선택 사항)
               />
 
               {/* Login Button */}
               <button
                 type="submit"
-                className="inline-flex items-center justify-center w-full rounded-lg bg-blue-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-blue-600 hover:shadow-lg focus:bg-blue-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-blue-800 active:shadow-lg relative"
+                className={`inline-flex items-center justify-center w-full rounded-lg px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out relative ${
+                  isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+                }`}
                 style={{ zIndex: 10 }}
+                disabled={isLoading} // 로딩 중일 때 버튼 비활성화
               >
-                로그인
+                {isLoading ? '로그인 중...' : '로그인'}
               </button>
 
               {/* Sign Up Button */}
               <button
                 type="button"
                 onClick={() => setIsSignUpModalOpen(true)}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg mt-4 relative"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 mt-4 relative"
                 style={{ zIndex: 10 }}
+                disabled={isLoading} // 로딩 중일 때 버튼 비활성화 (선택 사항)
               >
                 회원가입
               </button>
@@ -330,7 +349,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
               {/* Sign Up Button */}
               <button
                 type="submit"
-                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 hover:shadow-lg focus:bg-purple-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-purple-800 active:shadow-lg"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600"
               >
                 회원가입
               </button>
@@ -353,7 +372,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                   setSignUpName("");
                   setSignUpErrorMessage("");
                 }}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 hover:shadow-lg focus:bg-gray-700 focus:shadow-lg focus:outline-none focus:ring-0 active:bg-gray-800 active:shadow-lg mt-4"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 mt-4"
               >
                 닫기
               </button>

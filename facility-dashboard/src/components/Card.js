@@ -256,15 +256,6 @@ const Card = ({
     [user]
   );
 
-  const openRingModal = useCallback(
-    (e) => {
-      e.stopPropagation();
-      setShowRingModal(true);
-      setMenuOpen(false);
-    },
-    []
-  );
-
   const navigateToUserDetail = useCallback(() => {
     if (!showThresholdModal && !showEditModal && !showDeleteModal && !showRingModal) {
       navigate(`/users/${user.id}`);

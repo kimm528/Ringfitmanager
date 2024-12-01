@@ -41,54 +41,17 @@ const InfoCard = ({ icon, title, value }) => (
 );
 
 
-// 세션 스토리지 관련 헬퍼 함수
-const loadFromSessionStorage = (key, defaultValue) => {
-  const stored = sessionStorage.getItem(key);
-  if (!stored) return defaultValue;
 
-  // JSON 파싱이 필요한 키 목록
-  const jsonKeys = ['healthData'];
-
-  if (jsonKeys.includes(key)) {
-    try {
-      const parsed = JSON.parse(stored);
-      return parsed;
-    } catch (error) {
-      console.error(`Error parsing sessionStorage key "${key}":`, error);
-      return defaultValue;
-    }
-  } else {
-    // 단순 문자열인 경우 그대로 반환
-    return stored;
-  }
-};
-
-const saveToSessionStorage = (key, value) => {
-  if (typeof value === 'object') {
-    sessionStorage.setItem(key, JSON.stringify(value));
-  } else {
-    sessionStorage.setItem(key, value);
-  }
-};
-
-const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDENTIALS }) => {
+const UserDetail = ({ users, updateUserLifeLog, siteId, healthData }) => {
   const { userId } = useParams();  // Get userId from URL
 
   // 사용자 상태를 useState로 관리
   const [user, setUser] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date()); // 기본 날짜는 오늘
   const [isLoading, setIsLoading] = useState(false);
-  const [healthData, setHealthData] = useState(() => loadFromSessionStorage('healthData', {})); // 초기 상태 로드
   const [error, setError] = useState(null); // 에러 상태 추가
-  
-  const isToday = useCallback((date) => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
-  }, []);
+  const [tempHealthData, setTempHealthData] = useState(null);
+
   
   // 날짜 형식 변환 함수 (YYMMDD)
   const formatDateYYMMDD = useCallback((date) => {
@@ -184,33 +147,24 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
   const [showSteps, setShowSteps] = useState(true);
   const [showCalories, setShowCalories] = useState(true);
   const [showDistance, setShowDistance] = useState(true);
+  
+  const isToday = (someDate) => {
+    const today = new Date();
+    return (
+      someDate.getDate() === today.getDate() &&
+      someDate.getMonth() === today.getMonth() &&
+      someDate.getFullYear() === today.getFullYear()
+    );
+  };
 
-  // 건강 데이터 가져오기 함수 정의
-  const fetchHealthData = useCallback(async (userId, date) => {
-    if (!siteId || !userId) {
-      setError('사이트 ID 또는 사용자 ID가 설정되지 않았습니다.');
-      return;
-    }
-  
-    setIsLoading(true);
-    setError(null);
-  
+  var isPast = false;
+  const getPastData= useCallback(async (userId, date) => {
+
     try {
-      const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
-      const key = `${userId}_${formattedDate}`;
-  
-      // 세션 스토리지에서 데이터 확인
-      const cachedHealthData = loadFromSessionStorage('healthData', {});
-      if (cachedHealthData[key] && Object.keys(cachedHealthData[key]).length > 0) {
-        console.log('Using cached health data:', cachedHealthData[key]);
-        setHealthData((prevData) => ({
-          ...prevData,
-          [key]: cachedHealthData[key],
-        }));
-        console.log("Health Data after Fetch:", healthData); // 여기를 추가
-
-        console.log(`세션 스토리지에서 사용자 ${userId}의 건강 데이터 로드:`, cachedHealthData[key]);
-      } else {
+      if(!isToday(date))
+      {
+        isPast = true;
+        const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
         const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
         const url = 'https://fitlife.dotories.com';
   
@@ -231,53 +185,48 @@ const UserDetail = ({ users, updateUserLifeLog, siteId, devices, API_URL, CREDEN
         // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
         const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
   
-        // healthData 상태 업데이트
-        setHealthData((prevData) => ({
-          ...prevData,
-          [key]: latestHealthData,
-        }));
-  
-   
-  
-        console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
+        setTempHealthData(latestHealthData);
+        console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, tempHealthData);
+       
+        console.log('선택한 날짜는 오늘이 아닙니다.');
+        // 다른 날짜의 데이터에 대한 추가 로직을 여기에 작성합니다.
+      } 
+      else 
+      {
       }
-    } catch (healthError) {
-      console.warn(`사용자 ${userId}의 건강 데이터 가져오기 실패:`, healthError.message);
-      setError('건강 데이터 가져오기 실패');
-      setHealthData((prevData) => ({
-        ...prevData,
-        [`${userId}_${formatDateYYMMDD(date)}`]: {},
-      }));
-    } finally {
-      setIsLoading(false);
     }
-  }, [siteId, formatDateYYMMDD]);
-  
-  
+    catch{}
+    finally{}
+  });
+
 
   // 건강 데이터 가져오기
-  useEffect(() => {
-    if (user && selectedDate) {
-      fetchHealthData(user.id, selectedDate);
+  /*const currentHealthData = useMemo(() => {
+    if (user && selectedDate && healthData && Array.isArray(healthData.data)) {
+      const userId = user.id;
+      const userData = healthData.find(dataItem =>
+        dataItem.UserId === userId
+      );
+      console.log("Data for this user and date:", userData);
+      return userData || {};
     }
-  }, [user, selectedDate, fetchHealthData]);
+    return {};
+  }, [user, selectedDate, healthData, formatDateYYMMDD]);*/
   
-  // 현재 선택한 사용자와 날짜에 해당하는 건강 데이터 가져오기
+
+  
   const currentHealthData = useMemo(() => {
-    if (user) {
-      const key = `${user.id}_${formatDateYYMMDD(selectedDate)}`;
-      console.log("Formatted Date (YYMMDD):", formatDateYYMMDD(selectedDate));
-
-      
-      console.log("Generated Key for Selected Date:", key);
-      console.log("Selected Date:", selectedDate instanceof Date ? "Valid Date Object" : "Invalid Date Object");
-
-console.log("Data in healthData for this Key:", healthData[key]);
-      return healthData[key] || {};
+    if(isPast)
+    {
+      return tempHealthData || {};
     }
-  }, [user, selectedDate, healthData, formatDateYYMMDD]);
+    else
+    {
+      return userData || {};
+    }
+  });
+  
 
-  // Sorting Function
   const handleSort = useCallback((option) => {
     let sortedItems = [...logItems];
 
