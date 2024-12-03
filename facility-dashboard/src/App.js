@@ -28,33 +28,27 @@ const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 //const url = 'http://14.47.20.111:7201'
 const url = 'https://fitlife.dotories.com'
 
-// 세션 스토리지 관련 헬퍼 함수
+// 세션 스토리지 관련 헬퍼 함수 (floorPlanImage만 처리하도록 수정)
 const loadFromSessionStorage = (key, defaultValue) => {
+  if (key !== 'floorPlanImage') {
+    return defaultValue;
+  }
+
   const stored = sessionStorage.getItem(key);
   if (!stored) return defaultValue;
 
-  // JSON 파싱이 필요한 키 목록
-  const jsonKeys = ['users', 'devices', 'floorPlanImage', 'availableRings', 'healthData'];
-
-  if (jsonKeys.includes(key)) {
-    try {
-      const parsed = JSON.parse(stored);
-      // 'users'의 경우, 배열인지 확인
-      if (key === 'users') {
-        return Array.isArray(parsed) ? parsed : defaultValue;
-      }
-      return parsed;
-    } catch (error) {
-      console.error(`Error parsing sessionStorage key "${key}":`, error);
-      return defaultValue;
-    }
-  } else {
-    // 단순 문자열인 경우 그대로 반환
-    return stored;
+  try {
+    const parsed = stored; // floorPlanImage는 문자열(base64)이므로 JSON.parse 불필요
+    return parsed;
+  } catch (error) {
+    console.error(`Error parsing sessionStorage key "${key}":`, error);
+    return defaultValue;
   }
 };
 
 const saveToSessionStorage = (key, value) => {
+  if (key !== 'floorPlanImage') return; // floorPlanImage만 저장
+
   if (typeof value === 'object') {
     sessionStorage.setItem(key, JSON.stringify(value));
   } else {
@@ -122,21 +116,21 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState(loadFromSessionStorage('users', []));
+  const [users, setUsers] = useState([]); // sessionStorage에서 로드하지 않음
   const [sortOption, setSortOption] = useState('name');
-  const [availableRings, setAvailableRings] = useState(loadFromSessionStorage('availableRings', [])); // 링 데이터를 초기 로드
+  const [availableRings, setAvailableRings] = useState([]); // sessionStorage에서 로드하지 않음
   const [successMessage, setSuccessMessage] = useState('');
   const [disconnectInterval, setDisconnectInterval] = useState(5);
-  const [siteId, setSiteId] = useState(loadFromSessionStorage('siteId', ''));
+  const [siteId, setSiteId] = useState(''); // sessionStorage에서 로드하지 않음
   const [floorPlanImage, setFloorPlanImage] = useState(loadFromSessionStorage('floorPlanImage', null));
-  const [devices, setDevices] = useState(loadFromSessionStorage('devices', []));
+  const [devices, setDevices] = useState([]); // sessionStorage에서 로드하지 않음
   const [isLoading, setIsLoading] = useState(false); // isLoading 상태 추가
 
   // 잠금 상태를 App.js에서 관리하도록 추가
   const [isLocked, setIsLocked] = useState(true); // 잠금 상태 추가
 
   // 건강 데이터 상태 관리 추가
-  const [healthData, setHealthData] = useState(() => loadFromSessionStorage('healthData', {}));
+  const [healthData, setHealthData] = useState({}); // sessionStorage에서 로드하지 않음
 
   // 현재 경로 상태
   const [currentPath, setCurrentPath] = useState('/');
@@ -144,10 +138,6 @@ function App() {
   // Ref for interval to prevent multiple intervals
   const intervalRef = useRef(null);
 
-  // PathListener 컴포넌트 사용하여 현재 경로 추적
-  const handleSetCurrentPath = useCallback((path) => {
-    setCurrentPath(path);
-  }, []);
 
   // PathListener 컴포넌트 정의: 현재 경로를 App의 상태로 전달
   const PathListener = React.memo(({ setCurrentPath }) => {
@@ -211,9 +201,7 @@ function App() {
               userDraft.data.oxygen = getLastNonZero(
                 healthItem.BloodOxygenArr
               );
-              userDraft.data.stress = getLastNonZero(
-                healthItem.PressureArr
-              );
+              userDraft.data.stress = getLastNonZero(healthItem.PressureArr);
               userDraft.data.sleep =
                 healthItem.Sleep?.TotalSleepDuration || 0;
               userDraft.data.steps =
@@ -244,7 +232,7 @@ function App() {
   },
   [siteId, url, credentials]
   );
-  
+
 
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
@@ -252,7 +240,7 @@ function App() {
       console.warn('siteId가 설정되지 않았습니다.');
       return;
     }
-  
+
     try {
       const userResponse = await axios.get(
         `${url}/api/user?siteId=${siteId}`,
@@ -263,13 +251,13 @@ function App() {
           },
         }
       );
-  
+
       const jsonData = typeof userResponse.data === 'string' ? JSON.parse(userResponse.data) : userResponse.data;
       const userData = jsonData.Data || [];
-  
+
       // 링 데이터 가져오기
       const ringUrl = `${url}/api/ring?siteId=${siteId}`;
-  
+
       let ringData = [];
       try {
         const ringResponse = await axios.get(ringUrl, {
@@ -278,23 +266,23 @@ function App() {
             Authorization: `Basic ${credentials}`,
           },
         });
-  
+
         const jsonRing = typeof ringResponse.data === 'string' ? JSON.parse(ringResponse.data) : ringResponse.data;
         ringData = jsonRing.Data || [];
       } catch (ringError) {
         console.warn('링 데이터 가져오기 실패:', ringError.message);
         ringData = [];
       }
-  
-      // 링 데이터를 상태에 저장하고 세션 스토리지에 저장
+
+      // 링 데이터를 상태에 저장 (세션 스토리지에 저장하지 않음)
       setAvailableRings(ringData);
-      saveToSessionStorage('availableRings', ringData);
-  
+      // saveToSessionStorage('availableRings', ringData); // 제거
+
       const ringMap = new Map();
       ringData.forEach(ring => {
         ringMap.set(ring.MacAddr, ring);
       });
-  
+
       const updatedUsers = userData.map((user) => {
         // LifeLogs 처리
         const lifeLogs = (user.LifeLogs || []).map((log, index) => {
@@ -303,7 +291,7 @@ function App() {
           const date = dateTimeParts[0] || '';
           const timePart = dateTimeParts[1] || '';
           const time = timePart.substring(0, 5) || '';
-  
+
           return {
             id: index + 1,
             medicine: log.LogContent,
@@ -313,10 +301,10 @@ function App() {
             taken: log.IsChecked,
           };
         });
-  
+
         // 사용자와 링 연결
         const userRing = ringMap.get(user.MacAddr) || {}; // 변경: null 대신 빈 객체로 설정
-  
+
         return {
           id: user.Id,
           name: user.Name,
@@ -355,7 +343,7 @@ function App() {
           },
         };
       });
-  
+
       // 변경 감지 및 상태 업데이트
       setUsers((prevUsers) => {
         try {
@@ -400,11 +388,12 @@ function App() {
         }
       });
 
-      saveToSessionStorage('users', updatedUsers); // 세션 스토리지에 저장
-        const today = new Date(); // 오늘 날짜로 설정
-        fetchHealthData(0, today);
-       
-         } catch (error) {
+      // saveToSessionStorage('users', updatedUsers); // 제거
+
+      const today = new Date(); // 오늘 날짜로 설정
+      fetchHealthData(0, today);
+     
+       } catch (error) {
       console.error('사용자 데이터 가져오기 실패:', error.response || error.message);
     }
   }, [siteId, credentials, url, fetchHealthData, isEqual]);
@@ -466,16 +455,16 @@ function App() {
         const parsedDeviceData = typeof deviceResponse.data === 'string' ? JSON.parse(deviceResponse.data) : deviceResponse.data;
         const fetchedDevices = parsedDeviceData.Data || [];
         setDevices(fetchedDevices);
-        saveToSessionStorage('devices', fetchedDevices); // 세션 스토리지에 저장
+        // saveToSessionStorage('devices', fetchedDevices); // 제거
       } else {
         console.error('스마트폰 위치 데이터 불러오기 실패:', deviceResponse.statusText);
         setDevices([]); // 오류 발생 시 devices 상태를 빈 배열로 설정
-        saveToSessionStorage('devices', []); // 빈 배열 저장
+        // saveToSessionStorage('devices', []); // 제거
       }
     } catch (error) {
       console.error('스마트폰 위치 데이터 불러오기 오류:', error);
       setDevices([]); // 오류 발생 시 devices 상태를 빈 배열로 설정
-      saveToSessionStorage('devices', []); // 빈 배열 저장
+      // saveToSessionStorage('devices', []); // 제거
     } finally {
       setIsLoading(false);
     }
@@ -504,7 +493,7 @@ function App() {
           handleLoadFloorPlan();
         }
       }, 30000); // 30초
-  
+
     }
   
     return () => {
@@ -514,68 +503,52 @@ function App() {
       }
     };
   }, [currentPath, fetchUsersAndRingData, handleLoadFloorPlan, fetchHealthData, isLoggedIn, siteId, isLocked]);
-  
 
-  // 사용자 데이터 변경 시 세션 스토리지에 저장
-  useEffect(() => {
-    saveToSessionStorage('users', users);
-  }, [users]);
+  // 사용자 데이터 변경 시 세션 스토리지에 저장하는 useEffect 제거
 
-  // 건강 데이터 변경 시 세션 스토리지에 저장
-  useEffect(() => {
-    saveToSessionStorage('healthData', healthData);
-  }, [healthData]);
+  // 건강 데이터 변경 시 세션 스토리지에 저장하는 useEffect 제거
 
-  // 사이트 ID 변경 시 세션 스토리지에 저장
-  useEffect(() => {
-    saveToSessionStorage('siteId', siteId);
-  }, [siteId]);
+  // 사이트 ID 변경 시 세션 스토리지에 저장하는 useEffect 제거
 
-  // 디바이스 데이터 변경 시 세션 스토리지에 저장
-  useEffect(() => {
-    saveToSessionStorage('devices', devices);
-  }, [devices]);
+  // 디바이스 데이터 변경 시 세션 스토리지에 저장하는 useEffect 제거
 
-  // 배치도 이미지 변경 시 세션 스토리지에 저장
+  // 배치도 이미지 변경 시 세션 스토리지에 저장하는 useEffect 유지
   useEffect(() => {
     if (floorPlanImage && floorPlanImage.src) {
       saveToSessionStorage(`floorPlanImage_${siteId}`, floorPlanImage.src);
     }
   }, [floorPlanImage, siteId]);
 
-  useEffect(() => {
-    saveToSessionStorage('availableRings', availableRings);
-  }, [availableRings]);
+  // availableRings 변경 시 세션 스토리지에 저장하는 useEffect 제거
 
-  // 초기 로그인 시 사용자 데이터 로드
+  // 초기 로그인 시 사용자 데이터 로드 수정
   useEffect(() => {
     if (isLoggedIn && siteId) {
-      const storedUsers = loadFromSessionStorage('users', []);
-      if (storedUsers.length > 0) {
-        setUsers(storedUsers);
+      // const storedUsers = loadFromSessionStorage('users', []); // 제거
+      // if (storedUsers.length > 0) { // 제거
+      //   setUsers(storedUsers); // 제거
 
-        // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있는 경우에만)
-        storedUsers.forEach(user => {
-          if (user.macAddr) {
-            const today = new Date();
-            const formattedDate = formatDateYYMMDD(today);
-            const key = `${user.id}_${formattedDate}`;
+          // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있는 경우에만)
+      users.forEach(user => { // 변경: storedUsers 대신 users
+        if (user.macAddr) {
+          const today = new Date();
+          const formattedDate = formatDateYYMMDD(today);
+          const key = `${user.id}_${formattedDate}`;
 
-            setHealthData((prevData) => {
-              if (!prevData[key]) {
-                fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
-              }
-              return prevData;
-            });
-          } else {
-            console.warn(`사용자 ${user.id} (${user.name})에게 macAddr이 없습니다. 건강 데이터 요청을 건너뜁니다.`);
-          }
-        });
-      }
+          setHealthData((prevData) => {
+            if (!prevData[key]) {
+              fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
+            }
+            return prevData;
+          });
+        } else {
+          console.warn(`사용자 ${user.id} (${user.name})에게 macAddr이 없습니다. 건강 데이터 요청을 건너뜁니다.`);
+        }
+      });
     }
   }, [isLoggedIn, siteId, fetchHealthData]);
 
-  // 새로운 ID 생성 함수
+  // 새로운 ID 생성 함수 (변경 없음)
   const getNewId = useCallback((users) => {
     const existingIds = users.map((user) => user.id).sort((a, b) => a - b);
     let newId = 1;
@@ -589,7 +562,7 @@ function App() {
     return newId;
   }, []);
 
-  // 사용자 추가 함수
+  // 사용자 추가 함수 수정: 세션 스토리지 관련 코드 제거
   const handleAddUser = useCallback(
     async (newUser) => {
       if (!siteId) {
@@ -671,7 +644,7 @@ function App() {
           };
 
           setUsers((prevUsers) => [...prevUsers, createdUser]);
-          // 세션 스토리지는 useEffect를 통해 자동 저장
+          // 세션 스토리지는 useEffect를 통해 자동 저장 (제거됨)
 
           setShowModal(false);
 
@@ -703,7 +676,7 @@ function App() {
     [users, siteId, credentials, fetchHealthData, getNewId, url]
   );
 
-  // 사용자 업데이트 함수
+  // 사용자 업데이트 함수 수정: 세션 스토리지 관련 코드 제거
   const updateUser = useCallback(
     async (updatedUser, sendTo_server = false) => {
       console.log('사용자 업데이트:', updatedUser);
@@ -786,7 +759,7 @@ function App() {
     [siteId, credentials, url]
   );
 
-  // 사용자 삭제 함수
+  // 사용자 삭제 함수 수정: 세션 스토리지 관련 코드 제거
   const deleteUser = useCallback(
     async (userId) => {
       console.log('사용자 삭제 ID:', userId);
@@ -838,7 +811,7 @@ function App() {
     [siteId, credentials, url]
   );
 
-  // 즐겨찾기 토글 함수
+  // 즐겨찾기 토글 함수 수정: 세션 스토리지 관련 코드 제거
   const toggleFavorite = useCallback(
     (userId) => {
       const userToUpdate = users.find((user) => user.id === userId);
@@ -860,7 +833,7 @@ function App() {
     [users, updateUser]
   );
 
-  // 관리자 정보 수정 함수
+  // 관리자 정보 수정 함수 수정: 세션 스토리지 관련 코드 제거
   const handleUpdateAdminInfo = useCallback(
     async (updatedAdminInfo) => {
       if (!siteId) {
@@ -892,7 +865,7 @@ function App() {
 
         if (response.ok && responseData.status !== 'ExistsId') {
           console.log('관리자 정보 수정 성공:', responseData);
-          saveToSessionStorage('adminInfo', updatedAdminInfo);
+          // saveToSessionStorage('adminInfo', updatedAdminInfo); // 제거
           setSuccessMessage('관리자 정보가 성공적으로 수정되었습니다.');
 
           // 3초 후 성공 메시지 제거

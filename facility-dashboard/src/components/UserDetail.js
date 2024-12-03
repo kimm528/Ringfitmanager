@@ -111,9 +111,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   // 데이터 정규화 함수
   const normalizeData = useCallback((data) => {
     if (!data) return {};
-
+  
     const normalized = {};
-
+  
     Object.keys(data).forEach(key => {
       const lowerKey = key.toLowerCase();
       switch (lowerKey) {
@@ -133,9 +133,14 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           // Sport 데이터를 hourlyData로 변환
           normalized.hourlyData = {
             calories: data[key].map(sport => sport.Calorie || 0),
-            distance: data[key].map(sport => sport.WalkDistnace || 0),
+            distance: data[key].map(sport => sport.WalkDistance || 0),
             steps: data[key].map(sport => sport.TotalSteps || 0),
           };
+  
+          // 마지막 값을 steps, calories, distance로 추가
+          normalized.steps = normalized.hourlyData.steps.at(-1) || 0;
+          normalized.calories = normalized.hourlyData.calories.at(-1) || 0;
+          normalized.distance = normalized.hourlyData.distance.at(-1) || 0;
           break;
         case 'hourlydata':
           normalized.hourlyData = {
@@ -143,14 +148,20 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             distance: Array.isArray(data[key].distance) ? data[key].distance : [],
             steps: Array.isArray(data[key].steps) ? data[key].steps : [],
           };
+  
+          // 마지막 값을 steps, calories, distance로 추가
+          normalized.steps = normalized.hourlyData.steps.at(-1) || 0;
+          normalized.calories = normalized.hourlyData.calories.at(-1) || 0;
+          normalized.distance = normalized.hourlyData.distance.at(-1) || 0;
           break;
         default:
           normalized[lowerKey] = data[key];
       }
     });
-
+  
     return normalized;
   }, []);
+  
 
   // Sleep 점수 계산
   const sleepScore = useMemo(() => {
@@ -347,7 +358,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     return Array.from({ length: 24 }, (_, index) => ({
       time: `${String(index).padStart(2, '0')}:00`,
       steps: steps[index],
-      calories: calories[index],
+      calories: calories[index] / 1000,
       distance: distance[index],
     }));
   }, [currentHealthData.hourlyData]);
@@ -763,7 +774,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                       stroke="#4caf50"
                       strokeWidth={2}
                       connectNulls={true}
-                      name="이동 거리 (km)"
+                      name="이동 거리 (m)"
                       dot={false} // 점 숨기기
                     />
                   )}
