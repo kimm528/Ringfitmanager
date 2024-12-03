@@ -128,7 +128,7 @@ const Dashboard = ({
       {/* 카드 리스트 - Wrap Panel with Virtualization */}
       <div
         className="dashboard-container"
-        style={{ width: '100%', height: '1200px', overflow: 'auto' }}
+        style={{ width: '100%', height: '100vh', overflow: 'auto' }}
       >
         <AutoSizer>
           {({ height, width }) => {

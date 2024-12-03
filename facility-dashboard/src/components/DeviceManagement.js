@@ -18,7 +18,9 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
   const [modalAction, setModalAction] = useState('assign');
 
   const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-  const url = 'https://fitlife.dotories.com';
+  //const url = 'https://fitlife.dotories.com';
+  const url = 'http://14.47.20.111:7201'
+
 
   const userListRef = useRef(null);
   const isDragging = useRef(false);
