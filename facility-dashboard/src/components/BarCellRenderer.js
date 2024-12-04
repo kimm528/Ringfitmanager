@@ -2,33 +2,33 @@ import React from 'react';
 
 const BarCellRenderer = ({ value, max, thresholds, showValue, riskLevel, type }) => {
   const { low, high } = thresholds;
-  let backgroundColor = 'lightgray';
+  let backgroundColor = '#9DE008';
 
   if(type == 'heartRate')
   {
     if(riskLevel == 'High')
         {
-           backgroundColor = 'red';
+           backgroundColor = '#FE6E42';
         }
         else if(riskLevel == 'Low')
         {
-           backgroundColor = 'orange';
+           backgroundColor = '#FFCC01';
         }
   }
   else if(type == 'oxygenSaturation')
   {
     if (value < low) {
-        backgroundColor = 'red';
+        backgroundColor = '#FE6E42';
         } else if (value >= low && value <= high) {
-        backgroundColor = 'orange';
+        backgroundColor = '#FFCC01';
         }
   }
   else if(type == 'stressLevel')
   {
     if (value >= low && value <= high) {
-        backgroundColor = 'orange';
+        backgroundColor = '#FFCC01';
         } else if (value > high) {
-        backgroundColor = 'red';
+        backgroundColor = '#FE6E42';
         }
   }
   const barWidth = Math.min((value / max) * 100, 100);

@@ -8,9 +8,12 @@ import BarCellRenderer from './BarCellRenderer';
 import { PiSirenFill, PiPlugsConnectedBold } from 'react-icons/pi'; // 아이콘 임포트
 import { TbPlugConnected } from "react-icons/tb";
 import Header from './Header';
+import Modal from './Modal';
+
 
 const DataGridView = ({ users }) => { // 'users'를 props로 받음
   const [rowData, setRowData] = useState([]);
+  const [showModal, setShowModal] = useState(false); // 모달 상태 관리
 
   useEffect(() => {
     if (users && users.length > 0) {

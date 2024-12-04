@@ -15,6 +15,8 @@ import CustomLegend from './CustomLegend';
 import { calculateSleepScore } from './CalculateUserStatus_2';
 import axios from 'axios';
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 사용
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 // 상수 데이터 정의 (컴포넌트 외부)
 const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => 
@@ -105,13 +107,10 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
   console.log('Found user:', user);
 
-  // 사용자 데이터 구조 분해 (기본값 설정)
   const { data: userData = {} } = user || {};
-
   // 데이터 정규화 함수
   const normalizeData = useCallback((data) => {
     if (!data) return {};
-  
     const normalized = {};
   
     Object.keys(data).forEach(key => {
@@ -130,14 +129,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           normalized.stress = getLastNonZero(normalized.pressurearr);
           break;
         case 'sport':
-          // Sport 데이터를 hourlyData로 변환
           normalized.hourlyData = {
             calories: data[key].map(sport => sport.Calorie || 0),
             distance: data[key].map(sport => sport.WalkDistance || 0),
             steps: data[key].map(sport => sport.TotalSteps || 0),
           };
   
-          // 마지막 값을 steps, calories, distance로 추가
           normalized.steps = normalized.hourlyData.steps.at(-1) || 0;
           normalized.calories = normalized.hourlyData.calories.at(-1) || 0;
           normalized.distance = normalized.hourlyData.distance.at(-1) || 0;
@@ -247,12 +244,16 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     try {
       setIsLoading(true);
       setError(null); // 에러 상태 초기화
+  
+      // 새로운 데이터 fetch 전에 tempHealthData를 기본값으로 초기화
+      setTempHealthData(normalizeData(null));
+  
       if (!isToday(date)) {
         setIsPast(true);
         const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
         const url = 'https://fitlife.dotories.com';
-
+  
         // API 요청
         const healthResponse = await axios.get(
           `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
@@ -263,36 +264,43 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             },
           }
         );
-
+  
         const healthJson =
           typeof healthResponse.data === 'string'
             ? JSON.parse(healthResponse.data)
             : healthResponse.data;
         const healthDataArray = healthJson.Data || [];
-
-        // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
-        const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
-
-        setTempHealthData(latestHealthData);
-        console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
+  
+        if (healthDataArray.length > 0) {
+          // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
+          const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
+  
+          setTempHealthData(normalizeData(latestHealthData)); // normalizeData 적용
+          console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
+        } else {
+          // 데이터가 없는 경우 기본값 설정
+          setTempHealthData(normalizeData(null));
+          console.log(`사용자 ${userId}의 건강 데이터가 없습니다. 기본값으로 설정합니다.`);
+        }
       } else {
         setIsPast(false);
-        setTempHealthData(null);
-        console.log("오늘 날짜를 선택했습니다. tempHealthData를 null로 설정합니다.");
+        setTempHealthData(normalizeData(null)); // 오늘인 경우 기본값 설정
+        console.log("오늘 날짜를 선택했습니다. tempHealthData를 기본값으로 설정합니다.");
       }
     } catch (error) {
       console.error('Error fetching past data:', error);
       setError('데이터를 불러오는데 실패했습니다.');
+      setTempHealthData(normalizeData(null)); // 에러 발생 시 기본값 설정
     } finally {
       setIsLoading(false);
     }
-  }, [formatDateYYMMDD, siteId, isToday]);
+  }, [formatDateYYMMDD, siteId, isToday, normalizeData]);
 
   useEffect(() => {
-    if (userId && selectedDate) {
+    if (userId && selectedDate && !isToday(selectedDate)) {
       getPastData(userId, selectedDate);
     }
-  }, [userId, selectedDate, getPastData]);
+  }, [userId, selectedDate, getPastData, isToday]);
 
   // Normalize currentHealthData
   const currentHealthData = useMemo(() => {
@@ -305,7 +313,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     console.log('normalizeData로부터 반환된 데이터:', normalizedData); // 디버깅용 로그 추가
 
     return normalizedData;
-  }, [isPast, tempHealthData, userData, normalizeData]);
+  }, [isPast, tempHealthData, userData]);
 
   console.log('Current Health Data:', currentHealthData);
 
