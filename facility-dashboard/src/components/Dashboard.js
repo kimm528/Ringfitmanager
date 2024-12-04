@@ -50,14 +50,12 @@ const Dashboard = ({
       case '최근 등록순':
         const aDate = parseCreateDateTime(a.CreateDateTime);
         const bDate = parseCreateDateTime(b.CreateDateTime);
-        console.log(`Comparing ${aDate} with ${bDate}`);
         return bDate - aDate; // 최신 날짜가 먼저 오도록
       case '이름 순':
       default:
         return (a.name || '').localeCompare(b.name || '', 'ko');
     }
   }, [sortOption]);
-  
   
 
   // Filter and Sort Users using useMemo for performance
@@ -66,13 +64,13 @@ const Dashboard = ({
     const filtered = users.filter((user) =>
       (user.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
-
+  
     // 각 사용자에 대해 위험 상태 계산
     const usersWithStatus = filtered.map((user) => ({
       ...user,
       status: calculateUserStatus(user),
     }));
-
+  
     // 사용자 정렬
     usersWithStatus.sort((a, b) => {
       // 'danger' 상태인 사용자만 상단으로 정렬
@@ -84,35 +82,47 @@ const Dashboard = ({
         return sortByOption(a, b); // 선택한 정렬 옵션 적용
       }
     });
-
-    console.log('Sorted Users:', usersWithStatus); // 디버깅용 로그
-
+  
     return usersWithStatus;
   }, [users, searchQuery, sortOption, sortByOption, calculateUserStatus]);
 
+  const formatDateTime = (date) => {
+    const padZero = (num) => num.toString().padStart(2, '0');
+    return (
+      date.getFullYear().toString().slice(-2) +
+      padZero(date.getMonth() + 1) +
+      padZero(date.getDate()) +
+      padZero(date.getHours()) +
+      padZero(date.getMinutes()) +
+      padZero(date.getSeconds())
+    );
+  };
   // Handle User Addition
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!newUser.name || !newUser.gender || !newUser.age) {
       alert('모든 필드를 입력하세요.');
       return;
     }
-
+  
     try {
       const gender = Number(newUser.gender);
-
+      const createDateTime = formatDateTime(new Date()); // 현재 시간으로 설정
+  
       const userToAdd = {
         ...newUser,
         gender: gender,
+        CreateDateTime: createDateTime, // CreateDateTime 추가
       };
-
-      handleAddUser(userToAdd);
+  
+      await handleAddUser(userToAdd); // 사용자 추가 완료를 기다림
       setNewUser({ name: '', gender: '', age: '' });
+      setSortOption('최근 등록순'); // 정렬 옵션을 '최근 등록순'으로 설정
       setShowModal(false);
     } catch (error) {
       console.error('사용자 추가 실패:', error);
       alert('사용자 추가 중 오류가 발생했습니다.');
     }
-  }, [newUser, handleAddUser, setShowModal]);
+  }, [newUser, handleAddUser, setShowModal, formatDateTime]);
 
   return (
     <div className="min-h-screen">

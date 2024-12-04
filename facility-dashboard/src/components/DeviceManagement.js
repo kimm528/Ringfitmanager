@@ -1,18 +1,23 @@
+// src/components/DeviceManagement.js
+
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { XMarkIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { FaGem } from 'react-icons/fa'; // FaGem 아이콘 임포트
 import Header from './Header.js';
 import Modal from './Modal.js';
+import { useLocation } from 'react-router-dom'; // useLocation 임포트
 
 const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveComponent, devices, availableRings }) => {
+  const location = useLocation();
+  
   const [connectableDevices, setConnectableDevices] = useState([]);
   const [assignedDevices, setAssignedDevices] = useState([]);
   const [editingDeviceMacAddr, setEditingDeviceMacAddr] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null); // 기존 selectedUser 유지
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [modalAction, setModalAction] = useState('assign');
@@ -20,7 +25,6 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
   const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
   const url = 'https://fitlife.dotories.com';
   //const url = 'http://14.47.20.111:7201'
-
 
   const userListRef = useRef(null);
   const isDragging = useRef(false);
@@ -66,7 +70,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     setAssignedDevices(assigned);
   }, [availableRings, users]);
 
-  // 컴포넌트 마운트 시 데이터 분류
+  // 컴포넌트 마운트 시 데이터 분류 및 선택된 사용자 설정
   useEffect(() => {
     if (setActiveComponent) {
       setActiveComponent('DeviceManagement');
@@ -75,12 +79,18 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     classifyDevices();
     setIsLoadingDevices(false);
 
+    // **선택된 사용자 상태 설정**
+    if (location.state && location.state.selectedUser) {
+      const user = location.state.selectedUser;
+      setSelectedUser(user);
+    }
+
     return () => {
       if (setActiveComponent) {
         setActiveComponent('');
       }
     };
-  }, [setActiveComponent, classifyDevices]);
+  }, [setActiveComponent, classifyDevices, location.state]);
 
   // 사용자 필터링 (링이 할당되지 않은 사용자만 표시) 및 이름순 정렬
   const filteredUsers = useMemo(() => {
@@ -349,14 +359,6 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
                       </p>
                     </div>
                     {/* "할당된 링" 정보 제거 */}
-                    {/*
-                    {user.ring && (
-                      <div className="ml-4">
-                        <p className="text-sm font-medium">할당된 링:</p>
-                        <p className="text-sm text-gray-700">{user.ring.Name || '이름 없음'}</p>
-                      </div>
-                    )}
-                    */}
                   </li>
                 ))}
               </ul>

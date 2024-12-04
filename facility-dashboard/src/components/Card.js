@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStar, FaEllipsisV } from 'react-icons/fa';
+import { FaStar, FaEllipsisV, FaExchangeAlt } from 'react-icons/fa'; // FaExchangeAlt 아이콘 임포트
 import {
   BarChart,
   ReferenceArea,
@@ -25,7 +25,6 @@ import '../App.css';
 import ReactSlider from 'react-slider';
 import { calculateUserStatus, calculateSleepScore } from './CalculateUserStatus_2';
 
-
 const Card = ({
   user,
   toggleFavorite,
@@ -46,6 +45,9 @@ const Card = ({
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
   const [isRingConnected, setIsRingConnected] = useState(false);
+  
+  // **새로 추가된 상태**
+  const [showRingDisconnectModal, setShowRingDisconnectModal] = useState(false);
 
   const menuRef = useRef(null);
   const modalRef = useRef(null);
@@ -358,73 +360,107 @@ const Card = ({
     return null;
   }, []);
 
+  // **새로 추가된 링 변경 핸들러**
+  const handleRingChangeClick = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (user.ring && user.ring.MacAddr) {
+        // 링이 연결된 사용자일 경우 링 해제 확인 모달 표시
+        setShowRingDisconnectModal(true);
+      } else {
+        // 링이 연결되지 않은 사용자일 경우 DeviceManagement 페이지로 이동하면서 사용자 전달
+        navigate('/devices', { state: { selectedUser: user } });
+      }
+    },
+    [user, navigate]
+  );
+
   return (
     <div
-  className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
-    status === 'warning' ? 'border-4 border-yellow-500' : ''
-  } ${
-    status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''
-  }`}
-  style={{
-    width: '350px',
-    margin: '10px',
-    fontFamily: 'Nanum Gothic, sans-serif',
-    minHeight: '400px',
-  }}
-  onClick={navigateToUserDetail}
->
-  <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
-    <button
+      className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
+        status === 'warning' ? 'border-4 border-yellow-500' : ''
+      } ${
+        status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''
+      }`}
       style={{
-        padding: '5px',
-        marginRight: '5px',
-        borderRadius: '80%',
+        width: '350px',
+        margin: '10px',
+        fontFamily: 'Nanum Gothic, sans-serif',
+        minHeight: '400px',
       }}
-      onClick={(e) => {
-        e.stopPropagation();
-        toggleFavorite(user.id);
-      }}
+      onClick={navigateToUserDetail}
     >
-      <FaStar
-        className={`mr-1 ${user.isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
-        size={20}
-      />
-    </button>
-    <button onClick={toggleMenu}>
-      <FaEllipsisV size={20} />
-    </button>
-    {menuOpen && (
-      <div className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-10">
+      <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
+        {/* 즐겨찾기 버튼 */}
         <button
-          className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-          onClick={openThresholdModal}
+          style={{
+            padding: '5px',
+            marginRight: '5px',
+            borderRadius: '80%',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFavorite(user.id);
+          }}
         >
-          위험도 수정
+          <FaStar
+            className={`mr-1 ${user.isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
+            size={20}
+          />
         </button>
-        <button
-          className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-          onClick={openEditModalHandler}
-        >
-          정보 수정
-        </button>
-        <button
-          className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-          onClick={openDeleteModalHandler}
-        >
-          삭제
-        </button>
-      </div>
-    )}
-  </div>
 
-  <div className="card-header mb-4">
-    <h2 className="font-bold text-lg">
-      {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
-    </h2>
-    <p className="text-sm text-gray-600">
-      {user.ring ? `연결된 링: ${user.ring.Name || 'Unknown Ring'}` : '링 없음'}
-    </p>
-  </div>
+        {/* **링 변경 버튼 추가** */}
+        <button
+          style={{
+            padding: '5px',
+            marginRight: '5px',
+            borderRadius: '80%',
+          }}
+          onClick={handleRingChangeClick}
+          aria-label="링 변경"
+        >
+          <FaExchangeAlt
+            className={`mr-1 ${user.ring && user.ring.MacAddr ? 'text-blue-500' : 'text-gray-400'}`}
+            size={20}
+          />
+        </button>
+
+        {/* 메뉴 버튼 */}
+        <button onClick={toggleMenu} aria-label="메뉴 열기">
+          <FaEllipsisV size={20} />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-10">
+            <button
+              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+              onClick={openThresholdModal}
+            >
+              위험도 수정
+            </button>
+            <button
+              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+              onClick={openEditModalHandler}
+            >
+              정보 수정
+            </button>
+            <button
+              className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+              onClick={openDeleteModalHandler}
+            >
+              삭제
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="card-header mb-4">
+        <h2 className="font-bold text-lg">
+          {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
+        </h2>
+        <p className="text-sm text-gray-600">
+          {user.ring ? `연결된 링: ${user.ring.Name || 'Unknown Ring'}` : '링 없음'}
+        </p>
+      </div>
 
       <div className="card-body">
         <ResponsiveContainer width="100%" height={200}>
@@ -729,6 +765,37 @@ const Card = ({
           </div>
         </Modal>
       )}
+
+{showRingDisconnectModal && (
+  <Modal onClose={() => setShowRingDisconnectModal(false)} ref={modalRef}>
+    <div onClick={(e) => e.stopPropagation()}> {/* 이벤트 전파 중지 */}
+      <h2 className="text-xl font-semibold mb-4">링 해제</h2>
+      <p>링을 해제하시겠습니까?</p>
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={() => setShowRingDisconnectModal(false)}
+          className="px-4 py-2 bg-gray-300 text-black rounded-md mr-2"
+        >
+          취소
+        </button>
+        <button
+          onClick={() => {
+            const updatedUser = {
+              ...user,
+              ring: null,
+              macAddr: '',
+            };
+            updateUser(updatedUser, true);
+            setShowRingDisconnectModal(false);
+          }}
+          className="px-4 py-2 bg-red-500 text-white rounded-md"
+        >
+          확인
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
 
       {/* Edit User Modal */}
       {showEditModal && (

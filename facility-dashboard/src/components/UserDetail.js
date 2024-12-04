@@ -123,7 +123,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           break;
         case 'bloodoxygenarr':
           normalized.oxygenarr = Array.isArray(data[key]) ? data[key] : [];
-          normalized.oxygen = getLastNonZero(normalized.bloodoxygenarr);
+          normalized.oxygen = getLastNonZero(normalized.oxygenarr);
           break;
         case 'pressurearr':
           normalized.pressurearr = Array.isArray(data[key]) ? data[key] : [];

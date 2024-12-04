@@ -227,7 +227,6 @@ function App() {
         );
       });
     } catch (error) {
-      console.error('건강 데이터 가져오기 실패:', error);
     }
   },
   [siteId, url, credentials]
@@ -350,34 +349,43 @@ function App() {
         try {
           const prevUsersMap = new Map(prevUsers.map(user => [user.id, user]));
           const changedUsers = [];
-        
+      
           const mergedUsers = updatedUsers.map(user => {
             const prevUser = prevUsersMap.get(user.id);
             if (!prevUser) {
-              // 새로운 사용자
               changedUsers.push(user);
               return user;
             }
-        
-            // connectedTime을 제외한 사용자 데이터 비교
-            const { ring: prevRing = {}, ...prevUserRest } = prevUser;
-            const { ring: newRing = {}, ...newUserRest } = user;
-            
-            if(prevRing == null) {
-              return user;
-            }
-            // connectedTime을 제외한 링 데이터 비교 (ring은 항상 객체)
-            const { ConnectedTime: _, ...prevRingRest } = prevRing;
-            const { ConnectedTime: __, ...newRingRest } = newRing;
-        
-            if (!isEqual(prevUserRest, newUserRest) || !isEqual(prevRingRest, newRingRest)) {
+      
+            const { ring: prevRing, ...prevUserRest } = prevUser;
+            const { ring: newRing, ...newUserRest } = user;
+      
+            if ((prevRing == null && newRing != null) || (prevRing != null && newRing == null)) {
+              // 링이 추가되었거나 제거된 경우
               changedUsers.push(user);
               return user;
             }
-        
+      
+            if (prevRing && newRing) {
+              // 링이 변경된 경우 (ConnectedTime 제외)
+              const { ConnectedTime: _, ...prevRingRest } = prevRing;
+              const { ConnectedTime: __, ...newRingRest } = newRing;
+      
+              if (!isEqual(prevUserRest, newUserRest) || !isEqual(prevRingRest, newRingRest)) {
+                changedUsers.push(user);
+                return user;
+              }
+            } else {
+              // 링이 없는 상태에서 사용자 데이터만 비교
+              if (!isEqual(prevUserRest, newUserRest)) {
+                changedUsers.push(user);
+                return user;
+              }
+            }
+      
             return prevUser; // 동일한 객체 참조 유지
           });
-        
+      
           if (changedUsers.length > 0) {
             return mergedUsers;
           } else {
@@ -927,7 +935,6 @@ function App() {
                 siteId={siteId}
                 users={users}
                 devices={devices}
-                // ... 기타 props
               />
               <div className="flex-1 overflow-y-auto flex flex-col">
                 <Routes>
@@ -937,7 +944,7 @@ function App() {
                       <>
                         <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
                         <main className="p-4 flex-1">
-                          <MemoizedDashboard
+                          <Dashboard
                             showModal={showModal}
                             setShowModal={setShowModal}
                             users={users}
