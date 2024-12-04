@@ -18,8 +18,8 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
   const [modalAction, setModalAction] = useState('assign');
 
   const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-  //const url = 'https://fitlife.dotories.com';
-  const url = 'http://14.47.20.111:7201'
+  const url = 'https://fitlife.dotories.com';
+  //const url = 'http://14.47.20.111:7201'
 
 
   const userListRef = useRef(null);
@@ -378,6 +378,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
                   key={ring.MacAddr}
                   className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleDeviceClick(ring, false)}
+                  title={`MAC 주소: ${ring.MacAddr}`} // title 속성 추가
                 >
                   <div className="flex items-center">
                     <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-4">
@@ -430,10 +431,6 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
                           </button>
                         </div>
                       )}
-                      {/* MAC 주소 표시 제거 */}
-                      {/* <p className="text-sm text-gray-600">
-                        MAC 주소: {ring.MacAddr || '없음'}
-                      </p> */}
                     </div>
                   </div>
                 </div>

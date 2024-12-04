@@ -318,6 +318,7 @@ function App() {
           lifeLogs: lifeLogs,
           ring: userRing, // 링 데이터 연결 (null 대신 객체)
           isFavorite: user.Favorite || false,
+          CreateDateTime: user.CreateDateTime,
           data: {
             bpm: 0,
             oxygen: 0,
@@ -387,8 +388,6 @@ function App() {
           return prevUsers; // 오류 발생 시 기존 상태 유지
         }
       });
-
-      // saveToSessionStorage('users', updatedUsers); // 제거
 
       const today = new Date(); // 오늘 날짜로 설정
       fetchHealthData(0, today);
@@ -561,7 +560,17 @@ function App() {
     }
     return newId;
   }, []);
-
+  const formatCreateDateTime = () => {
+    const now = new Date();
+    const year = String(now.getFullYear()).slice(-2); // 마지막 두 자리 연도
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // 월 (0부터 시작하므로 +1)
+    const day = String(now.getDate()).padStart(2, '0'); // 날짜
+    const hour = String(now.getHours()).padStart(2, '0'); // 시
+    const minute = String(now.getMinutes()).padStart(2, '0'); // 분
+    const second = String(now.getSeconds()).padStart(2, '0'); // 초
+  
+    return `${year}${month}${day}${hour}${minute}${second}`;
+  };
   // 사용자 추가 함수 수정: 세션 스토리지 관련 코드 제거
   const handleAddUser = useCallback(
     async (newUser) => {
@@ -573,6 +582,8 @@ function App() {
       try {
         const apiUrl = `${url}/api/user`;
         const gender = newUser.gender === '남성' || newUser.gender === 0 ? 0 : 1;
+        const createDateTime = formatCreateDateTime();
+
         let newId = getNewId(users);
 
         // 서버에 사용자 추가 요청
@@ -597,6 +608,7 @@ function App() {
               KmTarget: newUser.kmTarget || 5,
               MacAddr: newUser.macAddr || '',
               LifeLogs: [],
+              CreateDateTime: createDateTime, // 생성 시간 추가
             },
           }),
         });

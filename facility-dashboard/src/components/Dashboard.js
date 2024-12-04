@@ -29,6 +29,37 @@ const Dashboard = ({
 
   const [sortOption, setSortOption] = useState('이름 순');
 
+  const parseCreateDateTime = (createDateTime) => {
+    if (!createDateTime || createDateTime.length !== 12) return new Date(0); // 기본 날짜
+    const year = parseInt(createDateTime.slice(0, 2), 10) + 2000; // '24' -> 2024
+    const month = parseInt(createDateTime.slice(2, 4), 10) - 1; // 월은 0부터 시작
+    const day = parseInt(createDateTime.slice(4, 6), 10);
+    const hours = parseInt(createDateTime.slice(6, 8), 10);
+    const minutes = parseInt(createDateTime.slice(8, 10), 10);
+    const seconds = parseInt(createDateTime.slice(10, 12), 10);
+    
+    return new Date(year, month, day, hours, minutes, seconds);
+  };
+  
+  const sortByOption = useCallback((a, b) => {
+    switch (sortOption) {
+      case '심박수 순':
+        return (b.data?.bpm || 0) - (a.data?.bpm || 0);
+      case '즐겨찾기 순':
+        return (b.isFavorite === true ? 1 : 0) - (a.isFavorite === true ? 1 : 0);
+      case '최근 등록순':
+        const aDate = parseCreateDateTime(a.CreateDateTime);
+        const bDate = parseCreateDateTime(b.CreateDateTime);
+        console.log(`Comparing ${aDate} with ${bDate}`);
+        return bDate - aDate; // 최신 날짜가 먼저 오도록
+      case '이름 순':
+      default:
+        return (a.name || '').localeCompare(b.name || '', 'ko');
+    }
+  }, [sortOption]);
+  
+  
+
   // Filter and Sort Users using useMemo for performance
   const sortedUsers = useMemo(() => {
     // 검색어로 필터링
@@ -50,25 +81,14 @@ const Dashboard = ({
       } else if (b.status === 'danger' && a.status !== 'danger') {
         return 1;
       } else {
-        // 그 외의 경우에는 선택한 정렬 옵션으로 정렬
-        switch (sortOption) {
-          case '심박수 순':
-            return (b.data?.bpm || 0) - (a.data?.bpm || 0);
-          case '즐겨찾기 순':
-            return (b.isFavorite === true ? 1 : 0) - (a.isFavorite === true ? 1 : 0);
-          case '최근 등록순':
-            const dateA = a.registrationDate ? new Date(a.registrationDate) : new Date(0);
-            const dateB = b.registrationDate ? new Date(b.registrationDate) : new Date(0);
-            return dateB - dateA; // 최신 날짜가 앞에 오도록 내림차순 정렬
-          case '이름 순':
-          default:
-            return (a.name || '').localeCompare(b.name || '', 'ko');
-        }
+        return sortByOption(a, b); // 선택한 정렬 옵션 적용
       }
     });
 
+    console.log('Sorted Users:', usersWithStatus); // 디버깅용 로그
+
     return usersWithStatus;
-  }, [users, searchQuery, sortOption]);
+  }, [users, searchQuery, sortOption, sortByOption, calculateUserStatus]);
 
   // Handle User Addition
   const handleSubmit = useCallback(() => {
@@ -77,16 +97,21 @@ const Dashboard = ({
       return;
     }
 
-    const gender = Number(newUser.gender);
+    try {
+      const gender = Number(newUser.gender);
 
-    const userToAdd = {
-      ...newUser,
-      gender: gender,
-    };
+      const userToAdd = {
+        ...newUser,
+        gender: gender,
+      };
 
-    handleAddUser(userToAdd);
-    setNewUser({ name: '', gender: '', age: '' });
-    setShowModal(false);
+      handleAddUser(userToAdd);
+      setNewUser({ name: '', gender: '', age: '' });
+      setShowModal(false);
+    } catch (error) {
+      console.error('사용자 추가 실패:', error);
+      alert('사용자 추가 중 오류가 발생했습니다.');
+    }
   }, [newUser, handleAddUser, setShowModal]);
 
   return (
@@ -115,7 +140,7 @@ const Dashboard = ({
             <button
               key={option}
               className={`px-4 py-2 ${
-                sortOption === option ? 'font-bold' : 'text-gray-500'
+                sortOption === option ? 'font-bold text-black' : 'text-gray-500'
               }`}
               onClick={() => setSortOption(option)}
             >
@@ -177,7 +202,7 @@ const Dashboard = ({
                 rowCount={rowCount}
                 rowHeight={rowHeight}
                 width={width}
-                overscanRowCount={2}
+                overscanRowCount={5} // 성능 최적화를 위해 증가
               />
             );
           }}
