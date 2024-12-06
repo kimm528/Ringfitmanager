@@ -663,9 +663,8 @@ function App() {
             },
           };
 
-          setUsers((prevUsers) => [...prevUsers, createdUser]);
-          // 세션 스토리지는 useEffect를 통해 자동 저장 (제거됨)
 
+          setUsers((prevUsers) => [...prevUsers, newUser]);
           setShowModal(false);
 
           // 성공 메시지 설정
@@ -959,6 +958,7 @@ function App() {
                             availableRings={availableRings}
                             disconnectInterval={disconnectInterval}
                             devices={devices}
+                            getNewId={getNewId}
                           />
                         </main>
                       </>

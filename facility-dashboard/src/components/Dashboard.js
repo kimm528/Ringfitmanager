@@ -20,6 +20,7 @@ const Dashboard = ({
   availableRings,
   toggleFavorite,
   disconnectInterval,
+  getNewId,
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -108,8 +109,10 @@ const Dashboard = ({
       const gender = Number(newUser.gender);
       const createDateTime = formatDateTime(new Date()); // 현재 시간으로 설정
   
+      let newId = getNewId(users);
       const userToAdd = {
         ...newUser,
+        id: newId,
         gender: gender,
         CreateDateTime: createDateTime, // CreateDateTime 추가
       };

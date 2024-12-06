@@ -1,0 +1,27 @@
+import React from 'react';
+
+const HeartRateCellRender = ({ value, max, thresholds, showValue, riskLevel, type}) => {
+
+    const { low, high } = thresholds;
+    const barWidth = Math.min((value / max) * 100, 100);
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        {/* Bar */}
+        <div
+          style={{
+            height: '10px',
+            width: `${barWidth}%`,
+            //background: 'linear-gradient(to right, #CCCCCC 0%, #CCCCCC 10%, green 0%, green 90%, #CCCCCC 60%, #CCCCCC 100%)',
+            backgroundColor,
+            borderRadius: '2px',
+            marginRight: '5px',
+          }}
+        ></div>
+        {/* Show value */}
+        {showValue && <span style={{ fontSize: '16px' }}>{value}</span>}
+      </div>
+    );
+};
+
+export default HeartRateCellRender;

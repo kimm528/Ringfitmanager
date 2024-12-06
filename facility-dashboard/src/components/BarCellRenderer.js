@@ -40,6 +40,7 @@ const BarCellRenderer = ({ value, max, thresholds, showValue, riskLevel, type })
         style={{
           height: '10px',
           width: `${barWidth}%`,
+          //background: 'linear-gradient(to right, #CCCCCC 0%, #CCCCCC 10%, green 0%, green 90%, #CCCCCC 60%, #CCCCCC 100%)',
           backgroundColor,
           borderRadius: '2px',
           marginRight: '5px',

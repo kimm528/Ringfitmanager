@@ -34,20 +34,6 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
     }
   };
 
-  // useEffect에서 새로고침 코드 제거
-  // 새로고침 없이도 상태가 제대로 관리되도록 수정
-  /*
-  useEffect(() => {
-    // 처음 진입 시 한 번만 새로 고침을 하도록 sessionStorage에 값을 저장
-    const isFirstLogin = sessionStorage.getItem('isFirstLogin');
-    
-    if (!isFirstLogin) {
-      sessionStorage.setItem('isFirstLogin', 'true'); // 로그인 후 처음 진입으로 설정
-      window.location.reload(); // 새로 고침
-    }
-  }, []); // 의존성 배열에 빈 배열을 넣어 컴포넌트가 처음 렌더링될 때만 실행
-  */
-
   const formattedTime = (date) => {
     const pad = (n) => n.toString().padStart(2, '0');
 
@@ -59,11 +45,6 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
     const ss = pad(date.getSeconds()); // 초
 
     return `${yy}${MM}${dd}${HH}${mm}${ss}`;
-  };
-
-  const saveToSessionStorage = (key, value) => {
-    if (key === 'users') return;
-    sessionStorage.setItem(key, JSON.stringify(value));
   };
 
   // Handle login

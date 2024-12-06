@@ -459,7 +459,7 @@ const Card = ({
           {user.name} ({user.gender === 0 ? '남성' : '여성'}, {user.age})
         </h2>
         <p className="text-sm text-gray-600">
-          {user.ring ? `연결된 링: ${user.ring.Name || 'Unknown Ring'}` : '링 없음'}
+          {user.ring ? `연결된 링: ${user.ring.Name || '없음'}` : '링 없음'}
         </p>
       </div>
 

@@ -10,17 +10,20 @@ import { useLocation } from 'react-router-dom'; // useLocation 임포트
 
 const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveComponent, devices, availableRings }) => {
   const location = useLocation();
-  
+
   const [connectableDevices, setConnectableDevices] = useState([]);
   const [assignedDevices, setAssignedDevices] = useState([]);
   const [editingDeviceMacAddr, setEditingDeviceMacAddr] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [connectableSearchTerm, setConnectableSearchTerm] = useState('');
+  const [assignedSearchTerm, setAssignedSearchTerm] = useState('');
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null); // 기존 selectedUser 유지
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [modalAction, setModalAction] = useState('assign');
+  
 
   const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
   const url = 'https://fitlife.dotories.com';
@@ -52,12 +55,12 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
       setAssignedDevices([]);
       return;
     }
-  
+
     console.log('classifyDevices 호출:', { availableRings, users });
-  
+
     // 사용자들의 MacAddr 목록 수집
     const userMacAddrs = users.map(user => user.macAddr).filter(mac => mac);
-  
+
     // 기기 상태에 따라 분류
     const connectable = availableRings.filter(
       ring => !userMacAddrs.includes(ring.MacAddr)
@@ -65,7 +68,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     const assigned = availableRings.filter(ring =>
       userMacAddrs.includes(ring.MacAddr)
     );
-    
+
     setConnectableDevices(connectable);
     setAssignedDevices(assigned);
   }, [availableRings, users]);
@@ -101,18 +104,6 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
       .sort((a, b) => collator.compare(a.name, b.name)); // 이름순 정렬
   }, [users, searchTerm]);
 
-  // 연결된 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
-  const sortedAssignedDevices = useMemo(() => {
-    const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
-
-    return [...assignedDevices].sort((a, b) => {
-      const nameA = a.Name || '이름 없음';
-      const nameB = b.Name || '이름 없음';
-
-      return collator.compare(nameA, nameB);
-    });
-  }, [assignedDevices]);
-
   // 연결 가능한 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
   const sortedConnectableDevices = useMemo(() => {
     const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
@@ -124,6 +115,18 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
       return collator.compare(nameA, nameB);
     });
   }, [connectableDevices]);
+
+  // 연결된 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
+  const sortedAssignedDevices = useMemo(() => {
+    const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
+
+    return [...assignedDevices].sort((a, b) => {
+      const nameA = a.Name || '이름 없음';
+      const nameB = b.Name || '이름 없음';
+
+      return collator.compare(nameA, nameB);
+    });
+  }, [assignedDevices]);
 
   // 드래그로 스크롤 기능
   const handleMouseDown = e => {
@@ -263,10 +266,8 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     }
   };
 
-  // 기기 클릭 시 처리
   const handleDeviceClick = (device, isAssigned) => {
     if (isAssigned) {
-      // 이미 연결된 기기를 클릭했을 때
       const userWithDevice = users.find(user => user.macAddr === device.MacAddr);
       if (!userWithDevice) {
         alert('이 기기에 할당된 사용자를 찾을 수 없습니다.');
@@ -288,7 +289,6 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     }
   };
 
-  // 확인 모달에서 확인 버튼 클릭 시 처리
   const handleConfirmAction = () => {
     if (modalAction === 'assign') {
       updateUserRing(selectedUser, selectedDevice, 'assign');
@@ -297,12 +297,29 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     }
   };
 
-  // **추가된 useEffect: availableRings이나 users가 변경될 때 classifyDevices 호출**
   useEffect(() => {
     console.log('availableRings 또는 users가 변경되었습니다:', { availableRings, users });
     classifyDevices();
   }, [availableRings, users, classifyDevices]);
 
+  // Filtered ring lists based on search terms
+  const filteredConnectableDevices = useMemo(() => {
+    return sortedConnectableDevices.filter(ring =>
+      ring.Name?.toLowerCase().includes(connectableSearchTerm.toLowerCase())
+    );
+  }, [sortedConnectableDevices, connectableSearchTerm]);
+
+  const filteredAssignedDevices = useMemo(() => {
+    const lowerSearchTerm = assignedSearchTerm.toLowerCase();
+    
+    return sortedAssignedDevices.filter(ring => {
+      const ringName = ring.Name?.toLowerCase() || '';
+      const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
+      const userName = assignedUser?.name?.toLowerCase() || '';
+      
+      return ringName.includes(lowerSearchTerm) || userName.includes(lowerSearchTerm);
+    });
+  }, [sortedAssignedDevices, assignedSearchTerm, users]);
   return (
     <div className="flex flex-col h-screen pt-20">
       <Header setShowModal={() => {}} setSearchQuery={setSearchTerm} />
@@ -312,14 +329,25 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
         <div className="w-full sm:w-1/3 pr-4 flex flex-col mt-4 px-4">
           <h2 className="text-xl font-semibold mb-4">사용자 목록</h2>
           {/* 사용자 검색 입력 */}
-          <input
-            type="text"
-            placeholder="사용자 검색..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="mb-4 p-2 border border-gray-300 rounded-md w-full"
-            aria-label="사용자 검색 입력"
-          />
+          <div className="relative mb-4">
+            <input
+              type="text"
+              placeholder="사용자 검색..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="p-2 border border-gray-300 rounded-md w-full"
+              aria-label="사용자 검색 입력"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                aria-label="검색어 지우기"
+              >
+                ×
+              </button>
+            )}
+          </div>
           {/* 사용자 목록 */}
           <div
             ref={userListRef}
@@ -367,114 +395,152 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
         </div>
 
         {/* 연결 가능한 링 목록 */}
-<div className="w-full sm:w-1/3 px-2 mt-4 px-4">
-  <h2 className="text-xl font-semibold mb-4">연결 가능한 링 목록</h2>
-  <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* 스크롤 추가 */}
-    {isLoadingDevices ? (
-      <div className="flex items-center justify-center h-full">
-        <p>링 목록 로딩 중...</p>
-      </div>
-    ) : (
-      sortedConnectableDevices.map(ring => (
-        <div
-          key={ring.MacAddr}
-          className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => handleDeviceClick(ring, false)}
-          title={`MAC 주소: ${ring.MacAddr}`} // title 속성 추가
-        >
-          <div className="flex items-center">
-            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-4">
-              <FaGem className="text-gray-600" size={24} /> {/* FaGem 아이콘 사용 */}
-            </div>
-            <div className="flex-1">
-              {editingDeviceMacAddr === ring.MacAddr ? (
-                <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="text"
-                    value={newDeviceName}
-                    onChange={(e) => setNewDeviceName(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1 border border-gray-300 rounded mr-2 flex-1"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      updateDeviceName(editingDeviceMacAddr);
-                    }}
-                    className="text-green-500 hover:text-green-700"
-                    aria-label="링 이름 저장"
-                  >
-                    <CheckIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingDeviceMacAddr(null);
-                      setNewDeviceName('');
-                    }}
-                    className="text-red-500 hover:text-red-700 ml-2"
-                    aria-label="링 이름 편집 취소"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
+        <div className="w-full sm:w-1/3 px-2 mt-4 px-4">
+          <h2 className="text-xl font-semibold mb-4">연결 가능한 링 목록</h2>
+          {/* 연결 가능한 링 검색 입력 */}
+          <div className="relative mb-4">
+            <input
+              type="text"
+              placeholder="링 검색..."
+              value={connectableSearchTerm}
+              onChange={e => setConnectableSearchTerm(e.target.value)}
+              className="p-2 border border-gray-300 rounded-md w-full"
+              aria-label="연결 가능한 링 검색 입력"
+            />
+            {connectableSearchTerm && (
+              <button
+                onClick={() => setConnectableSearchTerm('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                aria-label="검색어 지우기"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* 스크롤 추가 */}
+            {isLoadingDevices ? (
+              <div className="flex items-center justify-center h-full">
+                <p>링 목록 로딩 중...</p>
+              </div>
+            ) : (
+              filteredConnectableDevices.map(ring => (
+                <div
+                  key={ring.MacAddr}
+                  className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleDeviceClick(ring, false)}
+                  title={`MAC 주소: ${ring.MacAddr}`} // title 속성 추가
+                >
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-4">
+                      <FaGem className="text-gray-600" size={24} /> {/* FaGem 아이콘 사용 */}
+                    </div>
+                    <div className="flex-1">
+                      {editingDeviceMacAddr === ring.MacAddr ? (
+                        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="text"
+                            value={newDeviceName}
+                            onChange={(e) => setNewDeviceName(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 border border-gray-300 rounded mr-2 flex-1"
+                          />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateDeviceName(editingDeviceMacAddr);
+                            }}
+                            className="text-green-500 hover:text-green-700"
+                            aria-label="링 이름 저장"
+                          >
+                            <CheckIcon className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingDeviceMacAddr(null);
+                              setNewDeviceName('');
+                            }}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                            aria-label="링 이름 편집 취소"
+                          >
+                            <XMarkIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <h3 className="text-lg font-medium flex-1">{ring.Name || '이름 없음'}</h3>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              startEditingDeviceName(ring.MacAddr, ring.Name);
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                            aria-label="링 이름 편집"
+                          >
+                            <PencilIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex items-center">
-                  <h3 className="text-lg font-medium flex-1">{ring.Name || '이름 없음'}</h3>
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      startEditingDeviceName(ring.MacAddr, ring.Name);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                    aria-label="링 이름 편집"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
         </div>
-      ))
-    )}
+
+        {/* 연결된 링 목록 */}
+        <div className="w-full sm:w-1/3 pl-4 mt-4 px-4">
+          <h2 className="text-xl font-semibold mb-4">연결된 링 목록</h2>
+          {/* 연결된 링 검색 입력 */}
+          <div className="relative mb-4">
+            <input
+              type="text"
+              placeholder="링 검색..."
+              value={assignedSearchTerm}
+              onChange={e => setAssignedSearchTerm(e.target.value)}
+              className="p-2 border border-gray-300 rounded-md w-full"
+              aria-label="연결된 링 검색 입력"
+            />
+             {assignedSearchTerm && (
+        <button
+          onClick={() => setAssignedSearchTerm('')}
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+          aria-label="검색어 지우기"
+        >
+          ×
+        </button>
+      )}
+    </div>
+    <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+      {isLoadingDevices ? (
+        <div className="flex items-center justify-center h-full">
+          <p>링 목록 로딩 중...</p>
+        </div>
+      ) : (
+        filteredAssignedDevices.map(ring => {
+          const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
+          return (
+            <div
+              key={ring.MacAddr}
+              className="p-4 bg-gray-200 rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer flex items-center"
+              onClick={() => handleDeviceClick(ring, true)}
+            >
+              <FaGem className="text-gray-600 mr-4" size={24} /> {/* 링 아이콘 */}
+              <p className="text-md font-medium">
+                {ring.Name || '이름 없음'}{' '}
+                {assignedUser
+                  ? `${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
+                      assignedUser.age || '알 수 없음'
+                    }세)`
+                  : '사용자 없음'}
+              </p>
+            </div>
+          );
+        })
+      )}
+    </div>
   </div>
-</div>
-
-<div className="w-full sm:w-1/3 pl-4 mt-4 px-4">
-  <h2 className="text-xl font-semibold mb-4">연결된 링 목록</h2>
-  <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* 스크롤 추가 */}
-    {isLoadingDevices ? (
-      <div className="flex items-center justify-center h-full">
-        <p>링 목록 로딩 중...</p>
-      </div>
-    ) : (
-      sortedAssignedDevices.map((ring, index) => {
-        const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
-        return (
-          <div
-            key={ring.MacAddr}
-            className="p-4 bg-gray-200 rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer flex items-center"
-            onClick={() => handleDeviceClick(ring, true)}
-          >
-            <FaGem className="text-gray-600 mr-4" size={24} /> {/* 링 아이콘 */}
-            <p className="text-md font-medium">
-              {ring.Name || '이름 없음'}{' '}
-              {assignedUser
-                ? `${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
-                    assignedUser.age || '알 수 없음'
-                  }세)`
-                : '사용자 없음'}
-            </p>
-          </div>
-        );
-      })
-    )}
-  </div>
-</div>
-
-
-
       </div>
 
       {/* 확인 모달 */}
