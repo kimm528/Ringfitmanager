@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import Modal from './Modal';
 import CustomLegend from './CustomLegend';
-import { calculateSleepScore } from './CalculateUserStatus_2';
+import { calculateSleepScore } from './CalculateUserStatus';
 import axios from 'axios';
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 사용
 import DatePicker from 'react-datepicker';

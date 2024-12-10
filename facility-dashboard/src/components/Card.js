@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStar, FaEllipsisV, FaExchangeAlt } from 'react-icons/fa'; // FaExchangeAlt 아이콘 임포트
+import { FaStar, FaEllipsisV, FaExchangeAlt } from 'react-icons/fa';
 import {
   BarChart,
   ReferenceArea,
@@ -23,7 +23,9 @@ import {
 } from 'react-icons/md';
 import '../App.css';
 import ReactSlider from 'react-slider';
-import { calculateUserStatus, calculateSleepScore } from './CalculateUserStatus_2';
+import { calculateUserStatus, calculateSleepScore } from './CalculateUserStatus';
+import { PiSirenFill } from 'react-icons/pi';
+
 
 const Card = ({
   user,
@@ -45,7 +47,7 @@ const Card = ({
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
   const [isRingConnected, setIsRingConnected] = useState(false);
-  
+
   // **새로 추가된 상태**
   const [showRingDisconnectModal, setShowRingDisconnectModal] = useState(false);
 
@@ -99,9 +101,9 @@ const Card = ({
     const hour = parseInt(connectedTimeStr.slice(6, 8), 10);
     const minute = parseInt(connectedTimeStr.slice(8, 10), 10);
     const second = parseInt(connectedTimeStr.slice(10, 12), 10);
-  
+
     const date = new Date(year, month, day, hour, minute, second);
-  
+
     if (isNaN(date.getTime())) {
       return null;
     }
@@ -127,13 +129,13 @@ const Card = ({
         setIsRingConnected(false);
       }
     };
-  
+
     checkRingConnection();
-  
+
     const checkInterval = Math.max((disconnectInterval * 60 * 1000) / 5, 300 * 1000);
-  
+
     const intervalId = setInterval(checkRingConnection, checkInterval);
-  
+
     return () => {
       clearInterval(intervalId);
     };
@@ -380,7 +382,8 @@ const Card = ({
       className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
         status === 'warning' ? 'border-4 border-yellow-500' : ''
       } ${
-        status === 'danger' ? 'border-4 border-red-500 animate-blink' : ''
+        // 'animate-blink' 클래스 제거하여 카드가 더 이상 깜빡이지 않도록 함
+        status === 'danger' ? 'border-4 border-red-500' : ''
       }`}
       style={{
         width: '350px',
@@ -391,6 +394,15 @@ const Card = ({
       onClick={navigateToUserDetail}
     >
       <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
+        {/* 위험 상태일 때 알람 아이콘 추가 */}
+        {status === 'danger' && (
+          <PiSirenFill
+            className="text-red-500 animate-blink mr-2" // animate-blink 클래스만 아이콘에 적용
+            size={22}
+            aria-label="위험 상태 알람"
+          />
+        )}
+
         {/* 즐겨찾기 버튼 */}
         <button
           style={{
@@ -409,7 +421,7 @@ const Card = ({
           />
         </button>
 
-        {/* **링 변경 버튼 추가** */}
+        {/* 링 변경 버튼 추가 */}
         <button
           style={{
             padding: '5px',
@@ -431,18 +443,19 @@ const Card = ({
         </button>
         {menuOpen && (
           <div
-    className="absolute right-0 mt-12 translate-y-2 py-2 w-48 bg-white border rounded shadow-lg z-50"
-  >            <button
+            className="absolute right-0 mt-12 translate-y-2 py-2 w-48 bg-white border rounded shadow-lg z-50"
+          >
+            <button
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
               onClick={openThresholdModal}
             >
-              위험도 수정
+              심박수 위험도 수정
             </button>
             <button
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
               onClick={openEditModalHandler}
             >
-              정보 수정
+              사용자 정보 수정
             </button>
             <button
               className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
@@ -767,36 +780,36 @@ const Card = ({
         </Modal>
       )}
 
-{showRingDisconnectModal && (
-  <Modal onClose={() => setShowRingDisconnectModal(false)} ref={modalRef}>
-    <div onClick={(e) => e.stopPropagation()}> {/* 이벤트 전파 중지 */}
-      <h2 className="text-xl font-semibold mb-4">링 해제</h2>
-      <p>링을 해제하시겠습니까?</p>
-      <div className="flex justify-end mt-4">
-        <button
-          onClick={() => setShowRingDisconnectModal(false)}
-          className="px-4 py-2 bg-gray-300 text-black rounded-md mr-2"
-        >
-          취소
-        </button>
-        <button
-          onClick={() => {
-            const updatedUser = {
-              ...user,
-              ring: null,
-              macAddr: '',
-            };
-            updateUser(updatedUser, true);
-            setShowRingDisconnectModal(false);
-          }}
-          className="px-4 py-2 bg-red-500 text-white rounded-md"
-        >
-          확인
-        </button>
-      </div>
-    </div>
-  </Modal>
-)}
+      {showRingDisconnectModal && (
+        <Modal onClose={() => setShowRingDisconnectModal(false)} ref={modalRef}>
+          <div onClick={(e) => e.stopPropagation()}> {/* 이벤트 전파 중지 */}
+            <h2 className="text-xl font-semibold mb-4">링 해제</h2>
+            <p>링을 해제하시겠습니까?</p>
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowRingDisconnectModal(false)}
+                className="px-4 py-2 bg-gray-300 text-black rounded-md mr-2"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  const updatedUser = {
+                    ...user,
+                    ring: null,
+                    macAddr: '',
+                  };
+                  updateUser(updatedUser, true);
+                  setShowRingDisconnectModal(false);
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded-md"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Edit User Modal */}
       {showEditModal && (

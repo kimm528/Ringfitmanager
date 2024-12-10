@@ -1,6 +1,7 @@
 // src/components/Login.js
 
 import React, { useState, useCallback } from "react";
+import Cookies from 'js-cookie'; // js-cookie 임포트
 
 export default function Login({ setIsLoggedIn, setSiteId }) {
   // State for login
@@ -19,20 +20,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
 
   const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
   //const url = 'http://14.47.20.111:7201'
-  const url = 'https://fitlife.dotories.com';
-
-  // 세션 스토리지 관련 헬퍼 함수
-  const loadFromSessionStorage = (key, defaultValue) => {
-    if (key === 'users') return defaultValue;
-    const stored = sessionStorage.getItem(key);
-    if (!stored) return defaultValue;
-    try {
-      return JSON.parse(stored);
-    } catch (error) {
-      console.error(`Error parsing sessionStorage key "${key}":`, error);
-      return defaultValue;
-    }
-  };
+  const url = 'https://fit.dotories.com';
 
   const formattedTime = (date) => {
     const pad = (n) => n.toString().padStart(2, '0');
@@ -88,12 +76,27 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         // siteId 추출 및 저장
         const siteId = data.Header?.SiteId || data.Data?.[0]?.SiteId || "";
         setSiteId(siteId);
-        sessionStorage.setItem("siteId", siteId);
 
-        // 기타 정보 저장
-        sessionStorage.setItem("adminId", username);
-        sessionStorage.setItem("isLoggedIn", JSON.stringify(true));
-        alert("로그인 성공");
+        // 세션 쿠키에 저장 (도메인, sameSite, secure 설정 추가)
+        Cookies.set("isLoggedIn", "true", { 
+          domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
+          path: '/', 
+          sameSite: 'None',       // 교차 사이트 요청에서도 전송 가능
+          secure: true            // HTTPS에서만 전송
+        });
+        Cookies.set("siteId", siteId, { 
+          domain: '.dotories.com', 
+          path: '/', 
+          sameSite: 'None', 
+          secure: true 
+        });
+        Cookies.set("adminId", username, { 
+          domain: '.dotories.com', 
+          path: '/', 
+          sameSite: 'None', 
+          secure: true 
+        });
+
         setUsername("");
         setPassword("");
         setLoginErrorMessage("");
@@ -176,7 +179,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
 
       if (response.ok) {
         // 서버에서 status 필드로 중복 여부 반환
-        if (true) { 
+        if (data.status !== "ExistsId") { 
           alert("회원가입이 성공적으로 완료되었습니다.");
           setIsSignUpModalOpen(false);
           setSignUpSiteId("");
@@ -185,8 +188,8 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           setSignUpName("");
           setSignUpErrorMessage("");
         } else {
-          // 기타 오류 처리
-          setSignUpErrorMessage("회원가입에 실패했습니다. 다시 시도하세요.");
+          // 아이디 중복 오류 처리
+          setSignUpErrorMessage("아이디가 이미 존재합니다. 다른 아이디를 사용해주세요.");
         }
       } else {
         // response.ok가 false일 때, 오류 응답을 파싱하여 처리
@@ -204,15 +207,15 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   }, [signUpSiteId, signUpAdminId, signUpPassword, signUpName, credentials]);
 
   return (
-    <section className="h-screen">
-      <div className="container h-full px-6 py-24">
+    <section className="h-screen flex justify-center items-center bg-gray-50">
+      <div className="container h-full px-6 py-24 flex justify-center items-center">
         <div className="g-6 flex h-full flex-wrap items-center justify-center lg:justify-between">
           {/* Left column container with background */}
           <div className="mb-12 md:mb-0 md:w-8/12 lg:w-6/12">
             <img
-              src={`${process.env.PUBLIC_URL}/health_illustration.png`}
+              src={`${process.env.PUBLIC_URL}/AiFitManagerIcon_RoundType.png`}
               className="w-full"
-              alt="Health Care Illustration"
+              alt="aiFitManager"
             />
           </div>
 
@@ -220,56 +223,79 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           <div className="md:w-8/12 lg:ml-6 lg:w-5/12">
             {/* Login Title */}
             <div className="text-center mb-6">
-              <h2 className="text-3xl font-bold">로그인</h2>
+              <h2 className="text-4xl font-bold">로그인</h2> {/* 글씨 크기 키움 */}
             </div>
 
             <form onSubmit={handleLogin}>
               {/* Username Input */}
               <input
                 type="text"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-5 rounded-lg w-full text-2xl" 
                 placeholder="아이디를 입력하세요"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 aria-label="아이디 입력"
-                disabled={isLoading} // 로딩 중일 때 입력 비활성화 (선택 사항)
+                disabled={isLoading}
               />
 
               {/* Password Input */}
               <input
                 type="password"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-5 rounded-lg w-full text-2xl" 
                 placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-label="비밀번호 입력"
-                disabled={isLoading} // 로딩 중일 때 입력 비활성화 (선택 사항)
+                disabled={isLoading}
               />
 
               {/* Login Button */}
               <button
                 type="submit"
-                className={`inline-flex items-center justify-center w-full rounded-lg px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out relative ${
+                className={`inline-flex items-center justify-center w-full rounded-lg px-10 py-5 text-xl font-semibold text-white shadow-md transition duration-150 ease-in-out relative ${
                   isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
                 }`}
-                style={{ zIndex: 10 }}
-                disabled={isLoading} // 로딩 중일 때 버튼 비활성화
+                disabled={isLoading}
               >
-                {isLoading ? '로그인 중...' : '로그인'}
+                {isLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4zm2 5.29V12H2a8 8 0 008 8v-2.71A5.96 5.96 0 016 17.29z"
+                      ></path>
+                    </svg>
+                    로그인 중...
+                  </>
+                ) : (
+                  '로그인'
+                )}
               </button>
 
               {/* Sign Up Button */}
               <button
                 type="button"
                 onClick={() => setIsSignUpModalOpen(true)}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 mt-4 relative"
-                style={{ zIndex: 10 }}
-                disabled={isLoading} // 로딩 중일 때 버튼 비활성화 (선택 사항)
+                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-10 py-5 text-2xl font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 mt-4"
+                disabled={isLoading}
               >
                 회원가입
               </button>
 
-              {/* Login Error Message */}
               {loginErrorMessage && (
                 <div className="text-red-500 mt-4">
                   {loginErrorMessage}
@@ -280,69 +306,61 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         </div>
       </div>
 
-      {/* Sign Up Modal */}
       {isSignUpModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <h2 className="text-2xl font-semibold text-center mb-4">회원가입</h2>
 
             <form onSubmit={handleSignUp}>
-              {/* siteId Input */}
               <input
                 type="text"
-                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
                 placeholder="siteId를 입력하세요"
                 value={signUpSiteId}
                 onChange={(e) => setSignUpSiteId(e.target.value)}
                 aria-label="siteId 입력"
               />
 
-              {/* AdminId Input */}
               <input
                 type="text"
-                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
                 placeholder="관리자 아이디를 입력하세요"
                 value={signUpAdminId}
                 onChange={(e) => setSignUpAdminId(e.target.value)}
                 aria-label="관리자 아이디 입력"
               />
 
-              {/* Password Input */}
               <input
                 type="password"
-                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
                 placeholder="비밀번호를 입력하세요"
                 value={signUpPassword}
                 onChange={(e) => setSignUpPassword(e.target.value)}
                 aria-label="비밀번호 입력"
               />
 
-              {/* Name Input */}
               <input
                 type="text"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full"
+                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
                 placeholder="이름을 입력하세요"
                 value={signUpName}
                 onChange={(e) => setSignUpName(e.target.value)}
                 aria-label="이름 입력"
               />
 
-              {/* Sign Up Button */}
               <button
                 type="submit"
-                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-10 py-5 text-xl font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600"
               >
                 회원가입
               </button>
 
-              {/* Sign Up Error Message */}
               {signUpErrorMessage && (
                 <div className="text-red-500 mt-4">
                   {signUpErrorMessage}
                 </div>
               )}
 
-              {/* Close Modal Button */}
               <button
                 type="button"
                 onClick={() => {
@@ -353,7 +371,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                   setSignUpName("");
                   setSignUpErrorMessage("");
                 }}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-7 py-3 text-lg font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 mt-4"
+                className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-10 py-5 text-xl font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 mt-4"
               >
                 닫기
               </button>

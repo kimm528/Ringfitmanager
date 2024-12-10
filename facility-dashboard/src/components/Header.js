@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import fitLogo from '../assets/Fitmon_logo.svg';
-import { VscGraph } from "react-icons/vsc";  // VscGraph 아이콘 임포트
-import { CiBoxList } from "react-icons/ci";  // CiBoxList 아이콘 임포트
+import { VscGraph } from "react-icons/vsc";  
+import { CiBoxList } from "react-icons/ci";  
 import { RiUserAddFill } from "react-icons/ri";
-import { AiOutlineClose } from "react-icons/ai"; // 닫기 아이콘 임포트
-import { useNavigate, useLocation } from 'react-router-dom'; // useNavigate 훅
-import { motion } from 'framer-motion'; // framer-motion 임포트
+import { AiOutlineClose } from "react-icons/ai"; 
+import { FaMap } from 'react-icons/fa'; 
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { motion } from 'framer-motion'; 
 
-const Header = ({ setShowModal, setSearchQuery }) => {
+const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => {
   const [localSearch, setLocalSearch] = useState('');
-  const navigate = useNavigate(); // useNavigate 훅
-  const location = useLocation(); // useLocation 훅
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const sortOptions = ['심박수 순', '즐겨찾기 순', '이름 순', '최근 등록순'];
 
   const handleSearchChange = useCallback(
     (event) => {
@@ -31,7 +33,6 @@ const Header = ({ setShowModal, setSearchQuery }) => {
     };
   }, [localSearch, setSearchQuery]);
 
-  // DataGridView 버튼 클릭 시 토글 애니메이션
   const handleDataGridViewClick = () => {
     if (location.pathname === '/datagridview') {
       navigate('/'); // 홈 화면으로 이동
@@ -40,22 +41,45 @@ const Header = ({ setShowModal, setSearchQuery }) => {
     }
   };
 
-  // 검색 입력 초기화 함수
   const clearSearch = () => {
     setLocalSearch('');
     setSearchQuery('');
   };
 
   return (
-    <header className="header flex justify-between items-center p-4 bg-white shadow-md fixed top-0 z-50 right-0 w-full">
+    <header className="header flex items-center p-4 bg-white shadow-md border-b-2 border-gray-500 fixed top-0 z-50 right-0 w-full">
+      {/* 왼쪽: 로고 */}
       <div className="flex items-center">
-        {/* 로고 이미지 */}
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <img src={fitLogo} alt="Home Icon" className="w-12 h-12 mr-4 cursor-pointer" onClick={() => navigate('/')} />
+        <motion.div
+          className="w-16 h-12 overflow-hidden flex items-center justify-center cursor-pointer"
+          whileHover={{ scale: 1.2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/')}
+        >
+          <img
+            src={`${process.env.PUBLIC_URL}/AiFitLogoBgRmv.png`}
+            alt="Home Icon"
+            className="w-18 h-18 object-contain"
+          />
         </motion.div>
       </div>
-      <div className="flex items-center">
-        {/* 검색 입력창과 닫기 아이콘을 감싸는 컨테이너 */}
+
+      {/* 오른쪽 영역 */}
+      <div className="flex items-center ml-auto space-x-4">
+        {/* 정렬 옵션 버튼들 */}
+        <div className="flex space-x-2">
+          {sortOptions.map((option) => (
+            <button
+              key={option}
+              className={`px-4 py-2 ${sortOption === option ? 'font-bold text-black' : 'text-gray-500'}`}
+              onClick={() => setSortOption(option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+
+        {/* 검색창 */}
         <div className="relative">
           <input
             type="text"
@@ -77,28 +101,39 @@ const Header = ({ setShowModal, setSearchQuery }) => {
           )}
         </div>
 
-        {/* 화면에 맞는 버튼만 표시 */}
+        {/* 센터 현황 버튼 (GridView 전환 버튼 왼쪽에 배치) */}
+        <Link to="/floorplan">
+          <motion.button
+            className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
+            aria-label="센터 현황 보기"
+            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+            title="센터 현황"
+          >
+            <FaMap className="text-2xl mr-2" />
+          </motion.button>
+        </Link>
+
+        {/* 화면 전환 버튼 (GridView <-> ListView) */}
         {location.pathname === '/' ? (
-          // 홈 화면일 때는 리스트 보기 버튼만 표시
           <motion.button
             onClick={handleDataGridViewClick}
             className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
             aria-label="리스트 보기"
             whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
             whileTap={{ scale: 0.95 }}
-            title="리스트 보기" // 툴팁 추가
+            title="리스트 보기"
           >
             <CiBoxList className="text-2xl mr-2" />
           </motion.button>
         ) : (
-          // 그리드 화면일 때는 홈 화면 보기 버튼만 표시
           <motion.button
             onClick={handleDataGridViewClick}
             className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
             aria-label="홈 화면 보기"
             whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
             whileTap={{ scale: 0.95 }}
-            title="카드 보기" // 툴팁 추가
+            title="카드 보기"
           >
             <VscGraph className="text-2xl mr-2" />
           </motion.button>
@@ -107,11 +142,11 @@ const Header = ({ setShowModal, setSearchQuery }) => {
         {/* 사용자 추가 버튼 */}
         <motion.button
           onClick={() => setShowModal(true)}
-          className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center ml-3"
+          className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
           aria-label="사용자 추가"
           whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
           whileTap={{ scale: 0.95 }}
-          title="사용자 추가" // 툴팁 추가
+          title="사용자 추가"
         >
           <RiUserAddFill className="text-2xl mr-2" /> 
         </motion.button>

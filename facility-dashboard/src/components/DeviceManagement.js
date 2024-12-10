@@ -304,10 +304,12 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
 
   // Filtered ring lists based on search terms
   const filteredConnectableDevices = useMemo(() => {
-    return sortedConnectableDevices.filter(ring =>
-      ring.Name?.toLowerCase().includes(connectableSearchTerm.toLowerCase())
-    );
+    return sortedConnectableDevices.filter(ring => {
+      const ringName = ring.Name || '이름 없음';
+      return ringName.toLowerCase().includes(connectableSearchTerm.toLowerCase());
+    });
   }, [sortedConnectableDevices, connectableSearchTerm]);
+  
 
   const filteredAssignedDevices = useMemo(() => {
     const lowerSearchTerm = assignedSearchTerm.toLowerCase();

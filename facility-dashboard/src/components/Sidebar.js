@@ -13,8 +13,7 @@ import {
 import './Sidebar.css';
 import Modal from './Modal';
 import { openDB } from 'idb'; // IndexedDB를 위한 idb 라이브러리
-import fitLogo from '../assets/Fitmon_logo.svg';
-
+import Cookies from 'js-cookie'; // js-cookie 임포트
 
 const Sidebar = ({
   isSidebarOpen,
@@ -52,20 +51,24 @@ const Sidebar = ({
     }
   }, [siteId]);
 
-  // 로그아웃 처리 함수
- const handleLogout = useCallback(async () => {
-  // 세션 스토리지에서 모든 데이터 제거
-  sessionStorage.clear();
+  const handleLogout = useCallback(async () => {
+    // 쿠키에서 로그인 관련 데이터 삭제 (domain 속성 추가)
+    Cookies.remove("isLoggedIn", { domain: '.dotories.com' });
+    Cookies.remove("siteId", { domain: '.dotories.com' });
+    Cookies.remove("adminId", { domain: '.dotories.com' });
 
-  // 캐시 삭제 (clearFloorPlanCache가 제대로 작동하는지 확인)
-  await clearFloorPlanCache();
+    // 캐시 삭제
+    if (siteId) {
+      await clearFloorPlanCache();
+    }
 
-  // 로그인 상태 업데이트
-  setIsLoggedIn(false);
+    // 로그인 상태 업데이트
+    setIsLoggedIn(false);
 
-  // 홈 화면으로 리다이렉트
-  navigate('/');
-}, [setIsLoggedIn, navigate, clearFloorPlanCache]);
+    // 홈 화면으로 리다이렉트
+    navigate('/');
+  }, [setIsLoggedIn, navigate, clearFloorPlanCache, siteId]);
+
   // 정렬된 사용자 리스트
   const sortedUsers = useMemo(() => {
     let sorted = [...users].filter(user => user && user.name);
@@ -102,6 +105,10 @@ const Sidebar = ({
 
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+  
+  const handleLogoClick = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
 
   const handleUserClick = useCallback((userId) => {
     navigate(`/users/${userId}`);
@@ -144,16 +151,25 @@ const Sidebar = ({
         } bg-gray-800 text-white flex flex-col justify-between`} // 상단에만 2rem 패딩 추가
         style={{ height: '100vh', overflowY: 'auto' }} // height 고정 및 스크롤 설정
       >
-         {/* 로고 이미지 */}
-         <div className={`bg-white p-2 h-20 ${isSidebarOpen ? 'mr-0' : 'mr-0'}`}>
-            <img src={fitLogo} alt="Home Icon" className="w-12 h-12 m-2"></img>
-          </div>
+        {/* 로고 이미지 */}
+        <div
+          className={`bg-white p-2 h-20 cursor-pointer`}
+          onClick={handleLogoClick}
+        >
+          <img
+            src={`${process.env.PUBLIC_URL}/AiFitLogoBgRmv.png`}
+            alt="Home Icon"
+            className="w-16 h-16 ml-2"
+          />
+        </div>
+
         {/* 상단 메뉴 버튼 */}
         <div
-  className={`flex items-center justify-between ${
-    isSidebarOpen ? 'h-16' : 'h-12'
-  } bg-gray-900 px-4`} // 사이드바가 열리면 높이를 4rem로, 축소되면 3rem로 설정
->        <span className={`text-xl font-bold ${isSidebarOpen ? 'block' : 'hidden'} mt-5 mb-5 flex items-center`}>
+          className={`flex items-center justify-between ${
+            isSidebarOpen ? 'h-16' : 'h-12'
+          } bg-gray-900 px-4`} // 사이드바가 열리면 높이를 4rem로, 축소되면 3rem로 설정
+        >
+          <span className={`text-xl font-bold ${isSidebarOpen ? 'block' : 'hidden'} mt-5 mb-5 flex items-center`}>
             MENU
           </span>
           <button
@@ -186,6 +202,16 @@ const Sidebar = ({
                 <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>기기 관리</span>
               </Link>
             </li>
+            <li className={`${isSidebarOpen ? 'mb-4' : 'mb-4 ml-4'}`}>
+              <a
+                href="https://botfit.dotories.com" // 외부 URL로 변경
+                rel="noopener noreferrer" // 보안 및 성능 향상
+                className="flex items-center space-x-2 text-blue-500 underline hover:text-blue-700"
+              >
+                <DeviceTabletIcon className="w-12 h-8" />
+                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>BotFit</span>
+              </a>
+            </li>
           </ul>
 
           {/* 정렬 옵션 */}
@@ -214,27 +240,27 @@ const Sidebar = ({
 
           {/* 사용자 리스트 */}
           <div
-  className={`mt-4 sidebar-scroll ${isSidebarOpen ? 'overflow-y-auto' : 'hide-scrollbar'}`}
-  style={{ maxHeight: 'calc(80vh - 350px)', overflowY: 'auto' }}
->
-  {sortedUsers.map((user) => (
-    <div
-      key={user.id}
-      onClick={() => handleUserClick(user.id)}
-      className="flex items-center p-2 cursor-pointer hover:bg-gray-700 rounded-lg"
-      aria-label={`사용자 ${user.name} 프로필 보기`}
-    >
-      <div className="block">
-        <p className="text-sm">{user.name}</p>
-        {isSidebarOpen && (
-          <p className="text-xs text-gray-400">
-            {user.gender === 0 ? '남성' : '여성'}, {user.age}세
-          </p>
-        )}
-      </div>
-    </div>
-  ))}
-</div>
+            className={`mt-4 sidebar-scroll ${isSidebarOpen ? 'overflow-y-auto' : 'hide-scrollbar'}`}
+            style={{ maxHeight: 'calc(80vh - 350px)', overflowY: 'auto' }}
+          >
+            {sortedUsers.map((user) => (
+              <div
+                key={user.id}
+                onClick={() => handleUserClick(user.id)}
+                className="flex items-center p-2 cursor-pointer hover:bg-gray-700 rounded-lg"
+                aria-label={`사용자 ${user.name} 프로필 보기`}
+              >
+                <div className="block">
+                  <p className="text-sm">{user.name}</p>
+                  {isSidebarOpen && (
+                    <p className="text-xs text-gray-400">
+                      {user.gender === 0 ? '남성' : '여성'}, {user.age}세
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </nav>
 
         {/* 하단 네비게이션: 설정 및 로그아웃 */}

@@ -4,7 +4,7 @@ import Modal from './Modal'; // 모달 컴포넌트
 import axios from 'axios'; // axios 임포트
 import Tooltip from '@mui/material/Tooltip'; 
 import { Link } from 'react-router-dom'; // 사용자 상세 페이지로 이동하기 위한 Link
-import { calculateUserStatus } from './CalculateUserStatus_2'; // calculateUserStatus 함수 임포트
+import { calculateUserStatus } from './CalculateUserStatus'; // calculateUserStatus 함수 임포트
 import './FloorPlan.css'; // CSS 파일 임포트 (대소문자 정확히 일치)
 import DeviceIcon from './DeviceIcon'; // 새로 만든 컴포넌트
 

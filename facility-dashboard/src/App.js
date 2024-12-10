@@ -5,6 +5,8 @@ import axios from 'axios';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import isEqual from 'lodash/isEqual';
 import { produce } from 'immer'; // 명명된 임포트
+import Cookies from 'js-cookie'; // js-cookie 임포트
+import './index.css'; // 반드시 임포트되어야 합니다.
 
 // 컴포넌트 임포트
 import Header from './components/Header.js';
@@ -24,13 +26,14 @@ const MemoizedUserDetail = memo(UserDetail);
 const MemoizedSettings = memo(Settings);
 const MemoizedFloorPlan = memo(FloorPlan);
 const MemoizedDeviceManagement = memo(DeviceManagement);
+
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 //const url = 'http://14.47.20.111:7201'
 const url = 'https://fitlife.dotories.com'
 
 // 세션 스토리지 관련 헬퍼 함수 (floorPlanImage만 처리하도록 수정)
 const loadFromSessionStorage = (key, defaultValue) => {
-  if (key !== 'floorPlanImage') {
+  if (key !== `floorPlanImage_${Cookies.get('siteId')}`) { // siteId 기반으로 변경
     return defaultValue;
   }
 
@@ -38,7 +41,7 @@ const loadFromSessionStorage = (key, defaultValue) => {
   if (!stored) return defaultValue;
 
   try {
-    const parsed = stored; // floorPlanImage는 문자열(base64)이므로 JSON.parse 불필요
+    const parsed = stored; 
     return parsed;
   } catch (error) {
     console.error(`Error parsing sessionStorage key "${key}":`, error);
@@ -47,7 +50,7 @@ const loadFromSessionStorage = (key, defaultValue) => {
 };
 
 const saveToSessionStorage = (key, value) => {
-  if (key !== 'floorPlanImage') return; // floorPlanImage만 저장
+  if (key !== `floorPlanImage_${Cookies.get('siteId')}`) return; // floorPlanImage만 저장
 
   if (typeof value === 'object') {
     sessionStorage.setItem(key, JSON.stringify(value));
@@ -84,45 +87,24 @@ const getLastNonZero = (arr) => {
 
 const formatDateYYMMDD = (date) => {
   const year = String(date.getFullYear()).slice(-2); // 마지막 두 자리
-  const month = (`0${date.getMonth() + 1}`).slice(-2); // 월은 0부터 시작하므로 +1
+  const month = (`0${date.getMonth() + 1}`).slice(-2); // 월 (0부터 시작하므로 +1)
   const day = (`0${date.getDate()}`).slice(-2);
   return `${year}${month}${day}`;
 };
 
-// UserItem 컴포넌트 정의 및 메모이제이션
-const UserItem = memo(({ user }) => {
-  return (
-    <div className="user-item">
-      <p>{user.name}</p>
-      {/* 기타 사용자 정보 */}
-    </div>
-  );
-});
-
-// UserList 컴포넌트 정의 및 메모이제이션
-const UserList = memo(({ users }) => {
-  return (
-    <div>
-      {users.map(user => (
-        <UserItem key={user.id} user={user} />
-      ))}
-    </div>
-  );
-});
-
 function App() {
   // 상태 변수들
-  const [isLoggedIn, setIsLoggedIn] = useState(loadFromSessionStorage('isLoggedIn', false));
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // 초기값 false로 설정
   const [showModal, setShowModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]); // sessionStorage에서 로드하지 않음
-  const [sortOption, setSortOption] = useState('name');
+  const [sortOption, setSortOption] = useState('이름 순');
   const [availableRings, setAvailableRings] = useState([]); // sessionStorage에서 로드하지 않음
   const [successMessage, setSuccessMessage] = useState('');
   const [disconnectInterval, setDisconnectInterval] = useState(5);
   const [siteId, setSiteId] = useState(''); // sessionStorage에서 로드하지 않음
-  const [floorPlanImage, setFloorPlanImage] = useState(loadFromSessionStorage('floorPlanImage', null));
+  const [floorPlanImage, setFloorPlanImage] = useState(null); // floorPlanImage는 별도로 관리
   const [devices, setDevices] = useState([]); // sessionStorage에서 로드하지 않음
   const [isLoading, setIsLoading] = useState(false); // isLoading 상태 추가
 
@@ -138,7 +120,6 @@ function App() {
   // Ref for interval to prevent multiple intervals
   const intervalRef = useRef(null);
 
-
   // PathListener 컴포넌트 정의: 현재 경로를 App의 상태로 전달
   const PathListener = React.memo(({ setCurrentPath }) => {
     const location = useLocation();
@@ -148,6 +129,18 @@ function App() {
 
     return null;
   });
+
+  // 로그인 상태 초기화: 컴포넌트 마운트 시 쿠키에서 값을 읽어와 상태 설정
+  useEffect(() => {
+    const loggedIn = Cookies.get('isLoggedIn') === 'true';
+    const storedSiteId = Cookies.get('siteId') || '';
+    const storedAdminId = Cookies.get('adminId') || '';
+
+    setIsLoggedIn(loggedIn);
+    setSiteId(storedSiteId);
+    // adminId가 필요하면 추가로 상태에 저장
+    // 예: setAdminId(storedAdminId);
+  }, []);
 
   // 건강 데이터 fetching 함수
   const fetchHealthData = useCallback(async (userId, date) => {
@@ -227,11 +220,11 @@ function App() {
         );
       });
     } catch (error) {
+      console.error('건강 데이터 fetching 오류:', error);
     }
   },
   [siteId, url, credentials]
   );
-
 
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
@@ -239,7 +232,7 @@ function App() {
       console.warn('siteId가 설정되지 않았습니다.');
       return;
     }
-
+  
     try {
       const userResponse = await axios.get(
         `${url}/api/user?siteId=${siteId}`,
@@ -250,13 +243,13 @@ function App() {
           },
         }
       );
-
+  
       const jsonData = typeof userResponse.data === 'string' ? JSON.parse(userResponse.data) : userResponse.data;
       const userData = jsonData.Data || [];
-
+  
       // 링 데이터 가져오기
       const ringUrl = `${url}/api/ring?siteId=${siteId}`;
-
+  
       let ringData = [];
       try {
         const ringResponse = await axios.get(ringUrl, {
@@ -265,127 +258,136 @@ function App() {
             Authorization: `Basic ${credentials}`,
           },
         });
-
+  
         const jsonRing = typeof ringResponse.data === 'string' ? JSON.parse(ringResponse.data) : ringResponse.data;
         ringData = jsonRing.Data || [];
       } catch (ringError) {
         console.warn('링 데이터 가져오기 실패:', ringError.message);
         ringData = [];
       }
-
-      // 링 데이터를 상태에 저장 (세션 스토리지에 저장하지 않음)
+  
+      // 링 데이터를 상태에 저장
       setAvailableRings(ringData);
-      // saveToSessionStorage('availableRings', ringData); // 제거
-
+  
       const ringMap = new Map();
       ringData.forEach(ring => {
         ringMap.set(ring.MacAddr, ring);
       });
-
-      const updatedUsers = userData.map((user) => {
-        // LifeLogs 처리
-        const lifeLogs = (user.LifeLogs || []).map((log, index) => {
-          const logDateTime = log.LogDateTime || '';
-          const dateTimeParts = logDateTime.split('T');
-          const date = dateTimeParts[0] || '';
-          const timePart = dateTimeParts[1] || '';
-          const time = timePart.substring(0, 5) || '';
-
-          return {
-            id: index + 1,
-            medicine: log.LogContent,
-            date: date,
-            time: time,
-            dose: log.Description,
-            taken: log.IsChecked,
-          };
-        });
-
-        // 사용자와 링 연결
-        const userRing = ringMap.get(user.MacAddr) || {}; // 변경: null 대신 빈 객체로 설정
-
-        return {
-          id: user.Id,
-          name: user.Name,
-          gender: user.Gender,
-          age: user.Age,
-          address: user.Address,
-          stepTarget: user.StepTarget || 10000,
-          kcalTarget: user.KcalTarget || 2000,
-          kmTarget: user.KmTarget || 5,
-          macAddr: user.MacAddr || '',
-          lifeLogs: lifeLogs,
-          ring: userRing, // 링 데이터 연결 (null 대신 객체)
-          isFavorite: user.Favorite || false,
-          CreateDateTime: user.CreateDateTime,
-          data: {
-            bpm: 0,
-            oxygen: 0,
-            stress: 0,
-            sleep: 0,
-            steps: 0,
-            calories: 0,
-            distance: 0,
-            heartRateArr: [],
-            pressureArr: [],
-            oxygenArr: [],
-            hourlyData: {
-              steps: [],
-              calories: [],
-              distance: [],
-            },
-          },
-          thresholds: {
-            heartRateWarningLow: user.WarningHeartRate ? user.WarningHeartRate[0] : 80,
-            heartRateWarningHigh: user.WarningHeartRate ? user.WarningHeartRate[1] : 120,
-            heartRateDangerLow: user.DangersHeartRate ? user.DangersHeartRate[0] : 70,
-            heartRateDangerHigh: user.DangersHeartRate ? user.DangersHeartRate[1] : 140,
-          },
-        };
-      });
-
-      // 변경 감지 및 상태 업데이트
+  
+      // 이전 사용자 맵 생성
       setUsers((prevUsers) => {
         try {
           const prevUsersMap = new Map(prevUsers.map(user => [user.id, user]));
+  
+          const updatedUsers = userData.map((user) => {
+            const prevUser = prevUsersMap.get(user.Id);
+  
+            // 기존 data 필드가 있으면 사용하고, 없으면 초기값 설정
+            const data = prevUser ? prevUser.data : {
+              bpm: 0,
+              oxygen: 0,
+              stress: 0,
+              sleep: 0,
+              steps: 0,
+              calories: 0,
+              distance: 0,
+              heartRateArr: [],
+              pressureArr: [],
+              oxygenArr: [],
+              hourlyData: {
+                steps: [],
+                calories: [],
+                distance: [],
+              },
+            };
+  
+            // LifeLogs 처리
+            const lifeLogs = (user.LifeLogs || []).map((log, index) => {
+              const logDateTime = log.LogDateTime || '';
+              const dateTimeParts = logDateTime.split('T');
+              const date = dateTimeParts[0] || '';
+              const timePart = dateTimeParts[1] || '';
+              const time = timePart.substring(0, 5) || '';
+  
+              return {
+                id: index + 1,
+                medicine: log.LogContent,
+                date: date,
+                time: time,
+                dose: log.Description,
+                taken: log.IsChecked,
+              };
+            });
+  
+            // 사용자와 링 연결
+            const userRing = ringMap.get(user.MacAddr) || {};
+  
+            return {
+              id: user.Id,
+              name: user.Name,
+              gender: user.Gender,
+              age: user.Age,
+              address: user.Address,
+              stepTarget: user.StepTarget || 10000,
+              kcalTarget: user.KcalTarget || 2000,
+              kmTarget: user.KmTarget || 5,
+              macAddr: user.MacAddr || '',
+              lifeLogs: lifeLogs,
+              ring: userRing,
+              isFavorite: user.Favorite || false,
+              CreateDateTime: user.CreateDateTime,
+              data: data, // 기존 데이터 사용 또는 초기값 설정
+              thresholds: {
+                heartRateWarningLow: user.WarningHeartRate ? user.WarningHeartRate[0] : 80,
+                heartRateWarningHigh: user.WarningHeartRate ? user.WarningHeartRate[1] : 120,
+                heartRateDangerLow: user.DangersHeartRate ? user.DangersHeartRate[0] : 70,
+                heartRateDangerHigh: user.DangersHeartRate ? user.DangersHeartRate[1] : 140,
+              },
+            };
+          });
+  
+          // 변경 감지 및 상태 업데이트
           const changedUsers = [];
-      
+  
           const mergedUsers = updatedUsers.map(user => {
             const prevUser = prevUsersMap.get(user.id);
             if (!prevUser) {
               changedUsers.push(user);
               return user;
             }
-      
-            const { ring: prevRing, ...prevUserRest } = prevUser;
-            const { ring: newRing, ...newUserRest } = user;
-      
+  
+            const { ring: prevRing, data: prevData, ...prevUserRest } = prevUser;
+            const { ring: newRing, data: newData, ...newUserRest } = user;
+  
+            let isChanged = false;
+  
             if ((prevRing == null && newRing != null) || (prevRing != null && newRing == null)) {
-              // 링이 추가되었거나 제거된 경우
-              changedUsers.push(user);
-              return user;
-            }
-      
-            if (prevRing && newRing) {
-              // 링이 변경된 경우 (ConnectedTime 제외)
+              isChanged = true;
+            } else if (prevRing && newRing) {
               const { ConnectedTime: _, ...prevRingRest } = prevRing;
               const { ConnectedTime: __, ...newRingRest } = newRing;
-      
-              if (!isEqual(prevUserRest, newUserRest) || !isEqual(prevRingRest, newRingRest)) {
-                changedUsers.push(user);
-                return user;
-              }
-            } else {
-              // 링이 없는 상태에서 사용자 데이터만 비교
-              if (!isEqual(prevUserRest, newUserRest)) {
-                changedUsers.push(user);
-                return user;
+  
+              if (!isEqual(prevRingRest, newRingRest)) {
+                isChanged = true;
               }
             }
-      
-            return prevUser; // 동일한 객체 참조 유지
+  
+            if (!isEqual(prevUserRest, newUserRest)) {
+              isChanged = true;
+            }
+  
+            if (isChanged) {
+              const updatedUser = {
+                ...user,
+                data: prevData, // 기존 data 유지
+              };
+              changedUsers.push(updatedUser);
+              return updatedUser;
+            }
+  
+            return prevUser; // 변경되지 않은 경우 기존 객체 반환
           });
-      
+  
           if (changedUsers.length > 0) {
             return mergedUsers;
           } else {
@@ -396,11 +398,11 @@ function App() {
           return prevUsers; // 오류 발생 시 기존 상태 유지
         }
       });
-
+  
       const today = new Date(); // 오늘 날짜로 설정
       fetchHealthData(0, today);
-     
-       } catch (error) {
+  
+    } catch (error) {
       console.error('사용자 데이터 가져오기 실패:', error.response || error.message);
     }
   }, [siteId, credentials, url, fetchHealthData, isEqual]);
@@ -511,29 +513,15 @@ function App() {
     };
   }, [currentPath, fetchUsersAndRingData, handleLoadFloorPlan, fetchHealthData, isLoggedIn, siteId, isLocked]);
 
-  // 사용자 데이터 변경 시 세션 스토리지에 저장하는 useEffect 제거
-
-  // 건강 데이터 변경 시 세션 스토리지에 저장하는 useEffect 제거
-
-  // 사이트 ID 변경 시 세션 스토리지에 저장하는 useEffect 제거
-
-  // 디바이스 데이터 변경 시 세션 스토리지에 저장하는 useEffect 제거
-
-  // 배치도 이미지 변경 시 세션 스토리지에 저장하는 useEffect 유지
   useEffect(() => {
-    if (floorPlanImage && floorPlanImage.src) {
+    if (floorPlanImage && floorPlanImage.src && siteId) {
       saveToSessionStorage(`floorPlanImage_${siteId}`, floorPlanImage.src);
     }
   }, [floorPlanImage, siteId]);
 
-  // availableRings 변경 시 세션 스토리지에 저장하는 useEffect 제거
-
   // 초기 로그인 시 사용자 데이터 로드 수정
   useEffect(() => {
     if (isLoggedIn && siteId) {
-      // const storedUsers = loadFromSessionStorage('users', []); // 제거
-      // if (storedUsers.length > 0) { // 제거
-      //   setUsers(storedUsers); // 제거
 
           // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있는 경우에만)
       users.forEach(user => { // 변경: storedUsers 대신 users
@@ -568,6 +556,7 @@ function App() {
     }
     return newId;
   }, []);
+
   const formatCreateDateTime = () => {
     const now = new Date();
     const year = String(now.getFullYear()).slice(-2); // 마지막 두 자리 연도
@@ -579,6 +568,7 @@ function App() {
   
     return `${year}${month}${day}${hour}${minute}${second}`;
   };
+
   // 사용자 추가 함수 수정: 세션 스토리지 관련 코드 제거
   const handleAddUser = useCallback(
     async (newUser) => {
@@ -663,8 +653,7 @@ function App() {
             },
           };
 
-
-          setUsers((prevUsers) => [...prevUsers, newUser]);
+          setUsers((prevUsers) => [...prevUsers, createdUser]); // 수정: newUser 대신 createdUser
           setShowModal(false);
 
           // 성공 메시지 설정
@@ -941,9 +930,14 @@ function App() {
                     path="/"
                     element={
                       <>
-                        <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
+                        <Header
+                          setShowModal={setShowModal}
+                          setSearchQuery={setSearchQuery}
+                          sortOption={sortOption}
+                          setSortOption={setSortOption}
+                        />
                         <main className="p-4 flex-1">
-                          <Dashboard
+                          <MemoizedDashboard
                             showModal={showModal}
                             setShowModal={setShowModal}
                             users={users}
@@ -951,9 +945,8 @@ function App() {
                             searchQuery={searchQuery}
                             handleAddUser={handleAddUser}
                             updateUser={updateUser}
-                            deleteUser={deleteUser}
                             sortOption={sortOption}
-                            setSortOption={setSortOption}
+                            deleteUser={deleteUser}
                             toggleFavorite={toggleFavorite}
                             availableRings={availableRings}
                             disconnectInterval={disconnectInterval}

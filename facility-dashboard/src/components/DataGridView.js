@@ -1,24 +1,21 @@
-// src/components/DataGridView.js
-
 import React, { useEffect, useState } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import BarCellRenderer from './BarCellRenderer';
-import { PiSirenFill, PiPlugsConnectedBold } from 'react-icons/pi'; // 아이콘 임포트
+import { PiSirenFill, PiPlugsConnectedBold } from 'react-icons/pi';
 import { TbPlugConnected } from "react-icons/tb";
-import Header from './Header';
-import Modal from './Modal';
 
-
-const DataGridView = ({ users }) => { // 'users'를 props로 받음
+const DataGridView = ({ users }) => {
   const [rowData, setRowData] = useState([]);
-  const [showModal, setShowModal] = useState(false); // 모달 상태 관리
 
   useEffect(() => {
     if (users && users.length > 0) {
+      // 새로운 formattedData 생성
       const formattedData = users.map((user) => {
-        const bpm = user.data.bpm || 0;
+        const bpm = user.data.bpm !== undefined ? user.data.bpm : 0;
+        const oxygen = user.data.oxygen !== undefined ? user.data.oxygen : 0;
+        const stress = user.data.stress !== undefined ? user.data.stress : 0;
         const thresholds = user.thresholds || {};
 
         let riskLevel = 'Moderate';
@@ -32,36 +29,52 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
         }
 
         return {
-          id: user.id, // 고유 ID 추가
+          id: user.id,
           name: user.name,
           ring: user.ring?.ConnectedTime ? 'Connected' : 'Disconnected',
-          ringName: user.ring?.Name || 'Unknown Ring', // 링 이름 추가 (필요 시 수정)
+          ringName: user.ring?.Name || 'Unknown Ring',
           heartRate: bpm,
-          oxygenSaturation: user.data.oxygen || 0,
-          stressLevel: user.data.stress || 0,
+          oxygenSaturation: oxygen,
+          stressLevel: stress,
           riskLevel,
-          thresholds: user.thresholds, // 정렬 및 렌더링에 필요한 thresholds 추가
+          thresholds: user.thresholds,
         };
       });
-      setRowData(formattedData);
-      console.log('Formatted Data:', formattedData); // 디버깅용 로그
+
+      setRowData((prevRowData) => {
+        // 기존 rowData를 Map으로 변환하여 빠른 조회 가능하게 함
+        const rowDataMap = new Map(prevRowData.map(row => [row.id, row]));
+
+        // formattedData를 순회하며 업데이트
+        formattedData.forEach(newRow => {
+          if (rowDataMap.has(newRow.id)) {
+            const existingRow = rowDataMap.get(newRow.id);
+
+            // 필요한 필드만 업데이트 (여기서는 모든 필드를 업데이트)
+            rowDataMap.set(newRow.id, { ...existingRow, ...newRow });
+          } else {
+            // 새로운 사용자가 추가된 경우
+            rowDataMap.set(newRow.id, newRow);
+          }
+        });
+
+        // Map을 다시 배열로 변환
+        return Array.from(rowDataMap.values());
+      });
+
     } else {
-      setRowData([]); // 사용자 데이터가 없으면 빈 배열 설정
+      // users가 없으면 빈 배열로 설정
+      setRowData([]);
     }
-  }, [users]); // 'users'가 변경될 때마다 실행
+  }, [users]);
 
   const defaultColDef = {
     sortable: true,
-    resizable: true, // 열 크기 조정 활성화
+    resizable: true,
   };
 
   const columnDefs = [
-    { 
-      field: 'name', 
-      headerName: '이름', 
-      sortable: true,  
-      cellStyle: { fontSize: '16px' } // 헤더 폰트 크기 설정
-    },
+    { field: 'name', headerName: '이름', sortable: true, cellStyle: { fontSize: '16px' } },
     {
       field: 'heartRate',
       headerName: '심박수',
@@ -74,28 +87,14 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
           <BarCellRenderer
             value={params.value}
             max={150}
-            thresholds={{
-              low: 90, // 90 미만 위험
-              high: 95, // 95 이상 정상
-            }}
+            thresholds={{ low: thresholds.heartRateWarningLow, high: thresholds.heartRateWarningHigh }}
             showValue
             riskLevel={params.data.riskLevel}
             type="heartRate"
           />
         );
       },
-      cellStyle: { fontSize: '16px'},
-      comparator: (a, b, nodeA, nodeB, isDescending) => {
-        if (a === b) {
-          if(isDescending) {
-            return -nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-          else {
-            return nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-        }
-        return a - b;
-      },
+      cellStyle: { fontSize: '16px' },
     },
     {
       field: 'oxygenSaturation',
@@ -104,26 +103,12 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
         <BarCellRenderer
           value={params.value}
           max={100}
-          thresholds={{
-            low: 90, // 90 미만 위험
-            high: 95, // 95 이상 정상
-          }}
+          thresholds={{ low: 90, high: 95 }}
           showValue
           type={'oxygenSaturation'}
         />
       ),
       cellStyle: { fontSize: '16px' },
-      comparator: (a, b, nodeA, nodeB, isDescending) => {
-        if (a === b) {
-          if(isDescending) {
-            return -nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-          else {
-            return nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-        }
-        return a - b;
-      },
     },
     {
       field: 'stressLevel',
@@ -132,45 +117,18 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
         <BarCellRenderer
           value={params.value}
           max={100}
-          thresholds={{
-            low: 33, // 33 이하 정상
-            high: 66, // 66 이상 위험
-          }}
+          thresholds={{ low: 33, high: 66 }}
           showValue
           type={'stressLevel'}
         />
       ),
       cellStyle: { fontSize: '16px' },
-      comparator: (a, b, nodeA, nodeB, isDescending) => {
-        if (a === b) {
-          if(isDescending) {
-            return -nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-          else {
-            return nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-        }
-        return a - b;
-      },
     },
     {
       field: 'riskLevel',
       headerName: '위험도',
-      sortable: true,
-      comparator: (a, b, nodeA, nodeB, isDescending) => {
-        if (a === b) {
-          if(isDescending) {
-            return -nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-          else {
-            return nodeA.data.name.localeCompare(nodeB.data.name);
-          }
-        }
-        const riskOrder = { High: 1, Moderate: 2, Low: 3 };
-        return riskOrder[a] - riskOrder[b];
-      },
       cellRenderer: (params) => {
-        const isHighRisk = params.value === 'High' || (params.data.oxygenSaturation === 0 ? false : (params.data.oxygenSaturation < 90)); // 위험한 경우
+        const isHighRisk = params.value === 'High' || (params.data.oxygenSaturation < 90 && params.data.oxygenSaturation > 0);
         const style = {
           display: 'flex',
           justifyContent: 'center',
@@ -188,8 +146,8 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
         );
       },
       cellStyle: { fontSize: '16px' },
-      width: 100,  // 이 부분에서 `width`를 설정합니다.
-      resizable: false // 크기 조정 비활성화
+      width: 100,
+      resizable: false
     },
     {
       field: 'ring',
@@ -211,8 +169,8 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
         );
       },
       cellStyle: { fontSize: '16px' },
-      width: 200,  // 링 이름을 표시하기 위해 너비 조정
-      resizable: false // 크기 조정 비활성화
+      width: 200,
+      resizable: false
     },
   ];
 
@@ -220,19 +178,19 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
     <div
       className="ag-theme-alpine"
       style={{
-        height: '100vh', // 그리드의 전체 높이
+        height: '100vh',
         width: '100%',
-        overflow: 'auto', // 스크롤 가능
+        overflow: 'auto',
         paddingTop: '80px',
       }}
     >
       <style>
         {`
           .ag-header {
-            position: sticky; /* 헤더를 고정 */
-            top: 0; /* 화면 상단에 고정 */
-            z-index: 2; /* 다른 요소 위로 설정 */
-            background-color: white; /* 배경색 */
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background-color: white;
           }
           @keyframes blink {
             0% { opacity: 1; }
@@ -244,13 +202,13 @@ const DataGridView = ({ users }) => { // 'users'를 props로 받음
       <AgGridReact
         rowData={rowData}
         columnDefs={columnDefs}
-        defaultColDef={defaultColDef} // 수정: defaultColDef를 변수로 정의
+        defaultColDef={defaultColDef}
         animateRows={true}
         pagination={true}
         paginationPageSize={100}
-        domLayout="normal" // 레이아웃을 고정으로 설정
-        getRowNodeId={(data) => data.id} // 고유 ID로 행을 식별
-        deltaRowDataMode={true} // 데이터 변경 시 필요한 부분만 업데이트
+        domLayout="normal"
+        getRowNodeId={(data) => data.id}
+        deltaRowDataMode={true}
       />
     </div>
   );

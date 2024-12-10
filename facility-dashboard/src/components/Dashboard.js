@@ -3,10 +3,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import Modal from './Modal';
-import { calculateUserStatus } from './CalculateUserStatus_2';
+import { calculateUserStatus } from './CalculateUserStatus';
 import { motion } from 'framer-motion';
-import { FaMap } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
 import { Grid, AutoSizer } from 'react-virtualized';
 
 const Dashboard = ({
@@ -21,14 +19,13 @@ const Dashboard = ({
   toggleFavorite,
   disconnectInterval,
   getNewId,
+  sortOption
 }) => {
   const [newUser, setNewUser] = useState({
     name: '',
     gender: '',
     age: '',
   });
-
-  const [sortOption, setSortOption] = useState('이름 순');
 
   const parseCreateDateTime = (createDateTime) => {
     if (!createDateTime || createDateTime.length !== 12) return new Date(0); // 기본 날짜
@@ -44,20 +41,40 @@ const Dashboard = ({
   
   const sortByOption = useCallback((a, b) => {
     switch (sortOption) {
-      case '심박수 순':
-        return (b.data?.bpm || 0) - (a.data?.bpm || 0);
-      case '즐겨찾기 순':
-        return (b.isFavorite === true ? 1 : 0) - (a.isFavorite === true ? 1 : 0);
-      case '최근 등록순':
+      case '심박수 순': {
+        const diff = (b.data?.bpm || 0) - (a.data?.bpm || 0);
+        if (diff !== 0) {
+          return diff; // 심박수가 다르면 심박수 기준 정렬
+        } else {
+          // 심박수가 같다면 이름순으로 정렬
+          return (a.name || '').localeCompare(b.name || '', 'ko');
+        }
+      }
+      case '즐겨찾기 순': {
+        const diff = (b.isFavorite === true ? 1 : 0) - (a.isFavorite === true ? 1 : 0);
+        if (diff !== 0) {
+          return diff; // 즐겨찾기 여부가 다르면 그 기준으로 정렬
+        } else {
+          // 즐겨찾기 상태가 같다면 이름순으로 정렬
+          return (a.name || '').localeCompare(b.name || '', 'ko');
+        }
+      }
+      case '최근 등록순': {
         const aDate = parseCreateDateTime(a.CreateDateTime);
         const bDate = parseCreateDateTime(b.CreateDateTime);
-        return bDate - aDate; // 최신 날짜가 먼저 오도록
+        const diff = bDate - aDate;
+        if (diff !== 0) {
+          return diff; // 등록순이 다르면 등록 시간 기준
+        } else {
+          // 등록시간이 같다면 이름순 정렬
+          return (a.name || '').localeCompare(b.name || '', 'ko');
+        }
+      }
       case '이름 순':
       default:
         return (a.name || '').localeCompare(b.name || '', 'ko');
     }
-  }, [sortOption]);
-  
+  }, [sortOption, parseCreateDateTime]);
 
   // Filter and Sort Users using useMemo for performance
   const sortedUsers = useMemo(() => {
@@ -119,59 +136,27 @@ const Dashboard = ({
   
       await handleAddUser(userToAdd); // 사용자 추가 완료를 기다림
       setNewUser({ name: '', gender: '', age: '' });
-      setSortOption('최근 등록순'); // 정렬 옵션을 '최근 등록순'으로 설정
       setShowModal(false);
     } catch (error) {
       console.error('사용자 추가 실패:', error);
       alert('사용자 추가 중 오류가 발생했습니다.');
     }
-  }, [newUser, handleAddUser, setShowModal, formatDateTime]);
+  }, [newUser, handleAddUser, setShowModal, formatDateTime, users, getNewId]);
 
   return (
-    <div className="min-h-screen">
-      {/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
+<div className="h-full flex flex-col overflow-hidden">
+{/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
       <div className="flex justify-between items-center pt-20">
-        {/* 좌측 상단: 센터 현황 버튼 with framer-motion */}
-        <Link to="/floorplan">
-          <motion.button
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center"
-            aria-label="센터 현황 보기"
-            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
-            <FaMap className="mr-2" /> 센터 현황
-          </motion.button>
-        </Link>
-
-        {/* 우측 상단: 정렬 버튼 */}
-        <div className="flex space-x-2">
-          {['심박수 순', '즐겨찾기 순', '이름 순', '최근 등록순'].map((option) => (
-            <button
-              key={option}
-              className={`px-4 py-2 ${
-                sortOption === option ? 'font-bold text-black' : 'text-gray-500'
-              }`}
-              onClick={() => setSortOption(option)}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </div>
+      </div> 
 
       {/* 카드 리스트 - Wrap Panel with Virtualization */}
       <div
-        className="dashboard-container"
-        style={{ width: '100%', height: '100vh', overflow: 'auto' }}
+        className="dashboard-container flex-grow overflow-auto"
       >
         <AutoSizer>
           {({ height, width }) => {
             const margin = 10; // 각 셀의 마진 (px 단위)
-            const minColumnWidth = 350; // 최소 카드 너비
+            const minColumnWidth = 400; // 최소 카드 너비
             const columnCount = Math.max(
               1,
               Math.floor(width / (minColumnWidth + margin * 2))
