@@ -29,7 +29,7 @@ const MemoizedDeviceManagement = memo(DeviceManagement);
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 //const url = 'http://14.47.20.111:7201'
-const url = 'https://fitlife.dotories.com'
+const url = 'https://fitlife.dotories.com';
 
 // 세션 스토리지 관련 헬퍼 함수 (floorPlanImage만 처리하도록 수정)
 const loadFromSessionStorage = (key, defaultValue) => {
@@ -481,12 +481,12 @@ function App() {
 
   useEffect(() => {
     if (!isLoggedIn || !siteId || !isLocked) return;
-  
+
     if (!intervalRef.current) {
       // 초기 데이터 로드
       fetchUsersAndRingData();
       handleLoadFloorPlan();
-  
+
       intervalRef.current = setInterval(() => {
         console.log('30초마다 사용자 및 링 데이터 가져오기');
         
@@ -504,7 +504,7 @@ function App() {
       }, 30000); // 30초
 
     }
-  
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -568,6 +568,21 @@ function App() {
   
     return `${year}${month}${day}${hour}${minute}${second}`;
   };
+
+  // 상태 초기화 함수 추가
+  const resetState = useCallback(() => {
+    setUsers([]);
+    setDevices([]);
+    setAvailableRings([]);
+    setFloorPlanImage(null);
+    setHealthData({});
+    setSortOption('이름 순');
+    setSearchQuery('');
+    setSuccessMessage('');
+    setDisconnectInterval(5);
+    setIsLocked(true);
+    // 추가적인 상태가 있다면 여기서 초기화
+  }, []);
 
   // 사용자 추가 함수 수정: 세션 스토리지 관련 코드 제거
   const handleAddUser = useCallback(
@@ -894,6 +909,7 @@ function App() {
     [siteId, credentials, url]
   );
 
+
   return (
     <Router>
       {isLoggedIn ? (
@@ -923,6 +939,7 @@ function App() {
                 siteId={siteId}
                 users={users}
                 devices={devices}
+                resetState={resetState} // resetState 전달
               />
               <div className="flex-1 overflow-y-auto flex flex-col">
                 <Routes>

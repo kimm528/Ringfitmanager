@@ -6,6 +6,7 @@ import Modal from './Modal';
 import { calculateUserStatus } from './CalculateUserStatus';
 import { motion } from 'framer-motion';
 import { Grid, AutoSizer } from 'react-virtualized';
+import 'react-virtualized/styles.css'; // react-virtualized 기본 스타일 임포트
 
 const Dashboard = ({
   showModal,
@@ -115,6 +116,7 @@ const Dashboard = ({
       padZero(date.getSeconds())
     );
   };
+
   // Handle User Addition
   const handleSubmit = useCallback(async () => {
     if (!newUser.name || !newUser.gender || !newUser.age) {
@@ -144,27 +146,33 @@ const Dashboard = ({
   }, [newUser, handleAddUser, setShowModal, formatDateTime, users, getNewId]);
 
   return (
-<div className="h-full flex flex-col overflow-hidden">
-{/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
       <div className="flex justify-between items-center pt-20">
+        {/* 상단 요소가 필요하면 추가 */}
       </div> 
 
       {/* 카드 리스트 - Wrap Panel with Virtualization */}
       <div
-        className="dashboard-container flex-grow overflow-auto"
+        className="dashboard-container flex-grow overflow-auto p-4" // 패딩 추가
       >
         <AutoSizer>
           {({ height, width }) => {
             const margin = 10; // 각 셀의 마진 (px 단위)
             const minColumnWidth = 400; // 최소 카드 너비
+
+            // 컬럼 수 계산 (화면 너비와 최소 컬럼 너비를 고려)
             const columnCount = Math.max(
               1,
-              Math.floor(width / (minColumnWidth + margin * 2))
-            ); // 화면 너비에 따라 컬럼 수 계산
+              Math.floor((width + margin) / (minColumnWidth + margin))
+            );
+
+            // 컬럼 너비 계산 (전체 너비에서 총 마진을 빼고 컬럼 수로 나눔)
             const columnWidth = Math.floor(
-              (width - margin * 2 * columnCount) / columnCount
-            ); // 동적으로 계산된 컬럼 너비
-            const rowHeight = 500 + margin * 2; // Card 높이 + 상하 마진
+              (width - margin * (columnCount + 1)) / columnCount
+            );
+
+            const rowHeight = 500 + margin; // Card 높이 + 상단 마진
             const rowCount = Math.ceil(sortedUsers.length / columnCount); // 총 행 수
 
             // react-virtualized의 Cell 렌더러 함수
@@ -175,7 +183,16 @@ const Dashboard = ({
               }
               const user = sortedUsers[index];
               return (
-                <div key={key} style={{ ...style, padding: margin }}>
+                <div
+                  key={key}
+                  style={{
+                    ...style,
+                    left: style.left + margin, // 왼쪽 마진 추가
+                    top: style.top + margin,   // 상단 마진 추가
+                    width: columnWidth,        // 컬럼 너비 설정
+                    height: rowHeight - margin, // 행 높이 설정 (마진 제외)
+                  }}
+                >
                   <motion.div layout>
                     <Card
                       user={user}
@@ -195,7 +212,7 @@ const Dashboard = ({
               <Grid
                 cellRenderer={cellRenderer}
                 columnCount={columnCount}
-                columnWidth={columnWidth + margin * 2}
+                columnWidth={columnWidth}
                 height={height}
                 rowCount={rowCount}
                 rowHeight={rowHeight}

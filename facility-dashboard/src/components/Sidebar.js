@@ -10,7 +10,7 @@ import {
   ArrowRightOnRectangleIcon,
   DeviceTabletIcon // 추가된 아이콘
 } from "@heroicons/react/24/outline";
-import './Sidebar.css';
+// import './Sidebar.css'; // 제거 또는 필요 시 유지
 import Modal from './Modal';
 import { openDB } from 'idb'; // IndexedDB를 위한 idb 라이브러리
 import Cookies from 'js-cookie'; // js-cookie 임포트
@@ -23,6 +23,7 @@ const Sidebar = ({
   sortOption,
   setSortOption,
   siteId, // siteId prop
+  resetState, // resetState prop 추가
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,12 +63,15 @@ const Sidebar = ({
       await clearFloorPlanCache();
     }
 
+    // 상태 초기화
+    resetState(); // 상태 초기화 호출
+
     // 로그인 상태 업데이트
     setIsLoggedIn(false);
 
     // 홈 화면으로 리다이렉트
     navigate('/');
-  }, [setIsLoggedIn, navigate, clearFloorPlanCache, siteId]);
+  }, [setIsLoggedIn, navigate, clearFloorPlanCache, siteId, resetState]);
 
   // 정렬된 사용자 리스트
   const sortedUsers = useMemo(() => {

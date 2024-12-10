@@ -78,22 +78,28 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         setSiteId(siteId);
 
         Cookies.set("isLoggedIn", "true", { 
-          domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
+          //domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
           path: '/', 
           sameSite: 'None',       // 교차 사이트 요청에서도 전송 가능
           secure: true            // HTTPS에서만 전송
         });
         Cookies.set("siteId", siteId, { 
-          domain: '.dotories.com', 
+          //domain: '.dotories.com', 
           path: '/', 
           sameSite: 'None', 
           secure: true 
         });
         Cookies.set("adminId", username, { 
-          domain: '.dotories.com', 
+          //domain: '.dotories.com', 
           path: '/', 
           sameSite: 'None', 
           secure: true 
+        });
+
+        console.log('쿠키가 설정되었습니다:', {
+          isLoggedIn: Cookies.get('isLoggedIn'),
+          siteId: Cookies.get('siteId'),
+          adminId: Cookies.get('adminId'),
         });
 
         setUsername("");
