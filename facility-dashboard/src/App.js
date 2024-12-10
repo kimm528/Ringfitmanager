@@ -909,7 +909,6 @@ function App() {
     [siteId, credentials, url]
   );
 
-
   return (
     <Router>
       {isLoggedIn ? (

@@ -16,8 +16,10 @@ const DataGridView = ({ users }) => {
         const bpm = user.data.bpm !== undefined ? user.data.bpm : 0;
         const oxygen = user.data.oxygen !== undefined ? user.data.oxygen : 0;
         const stress = user.data.stress !== undefined ? user.data.stress : 0;
+        const temperature = user.data.temperature !== undefined ? user.data.temperature : 0; // 체온
+        const bloodPressure = user.data.bloodPressure || { systolic: 0, diastolic: 0 }; // 혈압
         const thresholds = user.thresholds || {};
-
+  
         let riskLevel = 'Moderate';
         if (bpm > 0) {
           if ((bpm >= thresholds.heartRateWarningHigh) || (bpm <= thresholds.heartRateWarningLow)) {
@@ -27,7 +29,7 @@ const DataGridView = ({ users }) => {
             riskLevel = 'High';
           }
         }
-
+  
         return {
           id: user.id,
           name: user.name,
@@ -36,20 +38,22 @@ const DataGridView = ({ users }) => {
           heartRate: bpm,
           oxygenSaturation: oxygen,
           stressLevel: stress,
+          temperature, // 체온 추가
+          bloodPressure, // 혈압 추가
           riskLevel,
           thresholds: user.thresholds,
         };
       });
-
+  
       setRowData((prevRowData) => {
         // 기존 rowData를 Map으로 변환하여 빠른 조회 가능하게 함
         const rowDataMap = new Map(prevRowData.map(row => [row.id, row]));
-
+  
         // formattedData를 순회하며 업데이트
         formattedData.forEach(newRow => {
           if (rowDataMap.has(newRow.id)) {
             const existingRow = rowDataMap.get(newRow.id);
-
+  
             // 필요한 필드만 업데이트 (여기서는 모든 필드를 업데이트)
             rowDataMap.set(newRow.id, { ...existingRow, ...newRow });
           } else {
@@ -57,11 +61,11 @@ const DataGridView = ({ users }) => {
             rowDataMap.set(newRow.id, newRow);
           }
         });
-
+  
         // Map을 다시 배열로 변환
         return Array.from(rowDataMap.values());
       });
-
+  
     } else {
       // users가 없으면 빈 배열로 설정
       setRowData([]);
@@ -75,6 +79,48 @@ const DataGridView = ({ users }) => {
 
   const columnDefs = [
     { field: 'name', headerName: '이름', sortable: true, cellStyle: { fontSize: '16px' } },
+    // 체온 컬럼 추가
+  {
+    field: 'temperature',
+    headerName: '체온 (°C)',
+    cellRenderer: (params) => (
+      <BarCellRenderer
+        value={params.value}
+        max={50} // 체온의 최대값 설정 (예: 50°C)
+        thresholds={{ low: 35, high: 38 }} // 예시 임계값
+        showValue
+        type="temperature"
+      />
+    ),
+    cellStyle: { fontSize: '16px' },
+    width: 150,
+  },
+  
+  // 혈압 컬럼 추가
+  {
+    field: 'bloodPressure',
+    headerName: '혈압 (mmHg)',
+    cellRenderer: (params) => {
+      const { systolic, diastolic } = params.value;
+      const isHigh = systolic >= 140 || diastolic >= 90;
+      const isLow = systolic < 90 || diastolic < 60;
+      let color = 'green';
+
+      if (isHigh) {
+        color = 'red';
+      } else if (isLow) {
+        color = 'orange';
+      }
+
+      return (
+        <div style={{ color, fontSize: '16px' }}>
+          {systolic}/{diastolic}
+        </div>
+      );
+    },
+    cellStyle: { fontSize: '16px' },
+    width: 150,
+  },
     {
       field: 'heartRate',
       headerName: '심박수',
