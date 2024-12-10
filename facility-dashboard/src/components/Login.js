@@ -20,7 +20,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
 
   const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
   //const url = 'http://14.47.20.111:7201'
-  const url = 'https://fit.dotories.com';
+  const url = 'https://fitlife.dotories.com';
 
   const formattedTime = (date) => {
     const pad = (n) => n.toString().padStart(2, '0');
@@ -77,7 +77,6 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         const siteId = data.Header?.SiteId || data.Data?.[0]?.SiteId || "";
         setSiteId(siteId);
 
-        // 세션 쿠키에 저장 (도메인, sameSite, secure 설정 추가)
         Cookies.set("isLoggedIn", "true", { 
           domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
           path: '/', 
@@ -213,7 +212,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
           {/* Left column container with background */}
           <div className="mb-12 md:mb-0 md:w-8/12 lg:w-6/12">
             <img
-              src={`${process.env.PUBLIC_URL}/AiFitManagerIcon_RoundType.png`}
+              src={`${process.env.PUBLIC_URL}/AiFit Manager Icon_Round Type.png`}
               className="w-full"
               alt="aiFitManager"
             />
