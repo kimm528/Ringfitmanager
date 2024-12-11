@@ -9,7 +9,8 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   DeviceTabletIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  AdjustmentsHorizontalIcon
 } from "@heroicons/react/24/outline";
 import { LiaRingSolid } from "react-icons/lia";
 import { GiRobotLeg } from "react-icons/gi";
@@ -163,7 +164,7 @@ const Sidebar = ({
           <img
             src={`${process.env.PUBLIC_URL}/AiFitLogoBgRmv.png`}
             alt="Home Icon"
-            className="w-16 h-16 ml-2"
+            className={`w-16 h-16 ml-2 transition-transform duration-300 ${!isSidebarOpen ? 'scale-75' : ''}`}
           />
         </div>
 
@@ -201,7 +202,7 @@ const Sidebar = ({
                   </li>
                   <li>
                     <a href="https://botfit.dotories.com/setting-training" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <InformationCircleIcon className="w-5 h-5" />
+                      <AdjustmentsHorizontalIcon className="w-5 h-5" />
                       <span className="ml-3">운동 프로그램 관리</span>
                     </a>
                   </li>

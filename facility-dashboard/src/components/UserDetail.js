@@ -21,6 +21,9 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { MdHealthAndSafety, MdMonitorHeart } from 'react-icons/md';
 import { GiHeartBeats } from 'react-icons/gi';
+import { format } from 'date-fns';
+import ko from 'date-fns/locale/ko';
+import { RiHeartPulseLine, RiHeartPulseFill } from 'react-icons/ri';
 
 // 상수 데이터 정의 (컴포넌트 외부)
 const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => 
@@ -696,12 +699,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
               value={`${user?.data?.temperature || 0}°C`}
             />
             <InfoCard
-              icon={<MdHealthAndSafety className="text-red-500" size={28} />}
+              icon={<RiHeartPulseLine className="text-red-500" size={28} />}
               title="수축기 혈압"
               value={`${user?.data?.bloodPressure?.systolic || 0} mmHg`}
             />
             <InfoCard
-              icon={<MdMonitorHeart className="text-blue-500" size={28} />}
+              icon={<RiHeartPulseFill className="text-blue-500" size={28} />}
               title="이완기 혈압"
               value={`${user?.data?.bloodPressure?.diastolic || 0} mmHg`}
             />

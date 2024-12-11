@@ -58,7 +58,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
 
     console.log('classifyDevices 호출:', { availableRings, users });
 
-    // 사용자들의 MacAddr 목록 수집
+    // ���들의 MacAddr 목록 수집
     const userMacAddrs = users.map(user => user.macAddr).filter(mac => mac);
 
     // 기기 상태에 따라 분류
@@ -99,7 +99,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
   const filteredUsers = useMemo(() => {
     const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
     return users
-      .filter(user => !user.macAddr) // 링이 없는 사용자만 포함
+      .filter(user => !user.macAddr) // 링이 없는 사용자 포함
       .filter(user => user?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
       .sort((a, b) => collator.compare(a.name, b.name)); // 이름순 정렬
   }, [users, searchTerm]);
@@ -323,10 +323,9 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     });
   }, [sortedAssignedDevices, assignedSearchTerm, users]);
   return (
-    <div className="flex flex-col h-screen">
+    <div className="h-full flex flex-col overflow-hidden">
       <Header setShowModal={() => {}} setSearchQuery={setSearchTerm} />
-
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1">
         {/* 사용자 리스트 */}
         <div className="w-full sm:w-1/3 pr-4 flex flex-col mt-4 px-4">
           <h2 className="text-xl font-semibold mb-4">사용자 목록</h2>
@@ -350,15 +349,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
               </button>
             )}
           </div>
-          {/* 사용자 목록 */}
-          <div
-            ref={userListRef}
-            className="flex-1 overflow-y-scroll custom-scrollbar cursor-grab"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
+          <div className="flex-1 overflow-y-auto">
             {filteredUsers.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <p>사용자 목록이 없습니다.</p>
@@ -379,16 +370,12 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
                       }
                     }}
                   >
-                    <div className="w-10 h-10 bg-blue-500 text-white rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-                      {user.name?.charAt(0) || 'U'}
-                    </div>
                     <div className="flex-1">
                       <p className="font-medium">{user.name || '이름 없음'}</p>
                       <p className="text-sm text-gray-600">
                         {user.gender === 0 ? '남성' : '여성'}, {user.age}세
                       </p>
                     </div>
-                    {/* "할당된 링" 정보 제거 */}
                   </li>
                 ))}
               </ul>
@@ -419,7 +406,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]"> {/* 스크롤 추가 */}
+          <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
             {isLoadingDevices ? (
               <div className="flex items-center justify-center h-full">
                 <p>링 목록 로딩 중...</p>
@@ -430,12 +417,10 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
                   key={ring.MacAddr}
                   className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
                   onClick={() => handleDeviceClick(ring, false)}
-                  title={`MAC 주소: ${ring.MacAddr}`} // title 속성 추가
+                  title={`MAC 주소: ${ring.MacAddr}`}
                 >
                   <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center mr-4">
-                      <FaGem className="text-gray-600" size={24} /> {/* FaGem 아이콘 사용 */}
-                    </div>
+                    <FaGem className="text-gray-600 mr-4" size={24} />
                     <div className="flex-1">
                       {editingDeviceMacAddr === ring.MacAddr ? (
                         <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
@@ -504,45 +489,53 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
               className="p-2 border border-gray-300 rounded-md w-full"
               aria-label="연결된 링 검색 입력"
             />
-             {assignedSearchTerm && (
-        <button
-          onClick={() => setAssignedSearchTerm('')}
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-          aria-label="검색어 지우기"
-        >
-          ×
-        </button>
-      )}
-    </div>
-    <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-      {isLoadingDevices ? (
-        <div className="flex items-center justify-center h-full">
-          <p>링 목록 로딩 중...</p>
+            {assignedSearchTerm && (
+              <button
+                onClick={() => setAssignedSearchTerm('')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                aria-label="검색어 지우기"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+            {isLoadingDevices ? (
+              <div className="flex items-center justify-center h-full">
+                <p>링 목록 로딩 중...</p>
+              </div>
+            ) : (
+              filteredAssignedDevices.map(ring => {
+                const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
+                return (
+                  <div
+                    key={ring.MacAddr}
+                    className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => handleDeviceClick(ring, true)}
+                  >
+                    <div className="flex items-center">
+                      <FaGem className="text-gray-600 mr-4" size={24} />
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <h3 className="text-lg font-medium flex-1">
+                            {ring.Name || '이름 없음'}{' '}
+                            {assignedUser && (
+                              <span className="text-sm text-gray-600">
+                                {`${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
+                                  assignedUser.age || '알 수 없음'
+                                }세)`}
+                              </span>
+                            )}
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      ) : (
-        filteredAssignedDevices.map(ring => {
-          const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
-          return (
-            <div
-              key={ring.MacAddr}
-              className="p-4 bg-gray-200 rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer flex items-center"
-              onClick={() => handleDeviceClick(ring, true)}
-            >
-              <FaGem className="text-gray-600 mr-4" size={24} /> {/* 링 아이콘 */}
-              <p className="text-md font-medium">
-                {ring.Name || '이름 없음'}{' '}
-                {assignedUser
-                  ? `${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
-                      assignedUser.age || '알 수 없음'
-                    }세)`
-                  : '사용자 없음'}
-              </p>
-            </div>
-          );
-        })
-      )}
-    </div>
-  </div>
       </div>
 
       {/* 확인 모달 */}
