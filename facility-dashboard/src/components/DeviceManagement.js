@@ -323,7 +323,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     });
   }, [sortedAssignedDevices, assignedSearchTerm, users]);
   return (
-    <div className="flex flex-col h-screen pt-20">
+    <div className="flex flex-col h-screen">
       <Header setShowModal={() => {}} setSearchQuery={setSearchTerm} />
 
       <div className="flex flex-1 overflow-hidden">

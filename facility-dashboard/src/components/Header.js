@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { VscGraph } from "react-icons/vsc";  
 import { CiBoxList } from "react-icons/ci";  
 import { RiUserAddFill } from "react-icons/ri";
 import { AiOutlineClose } from "react-icons/ai"; 
-import { FaMap } from 'react-icons/fa'; 
+import { FaMap } from 'react-icons/fa';
+import { Bars3Icon } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { motion } from 'framer-motion'; 
+import { motion } from 'framer-motion';
 
-const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => {
-  const [localSearch, setLocalSearch] = useState('');
-  const navigate = useNavigate();
+const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption, toggleSidebar }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [localSearch, setLocalSearch] = useState('');
 
   const sortOptions = ['심박수 순', '즐겨찾기 순', '이름 순', '최근 등록순'];
+  const isHomePage = location.pathname === '/';
 
   const handleSearchChange = useCallback(
     (event) => {
@@ -35,9 +37,9 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => 
 
   const handleDataGridViewClick = () => {
     if (location.pathname === '/datagridview') {
-      navigate('/'); // 홈 화면으로 이동
+      navigate('/');
     } else {
-      navigate('/datagridview'); // DataGridView로 이동
+      navigate('/datagridview');
     }
   };
 
@@ -48,8 +50,14 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => 
 
   return (
     <header className="header flex items-center p-4 bg-white shadow-md border-b-2 border-gray-500 fixed top-0 z-50 right-0 w-full">
-      {/* 왼쪽: 로고 */}
+      {/* 왼쪽: 토글 버튼과 로고 */}
       <div className="flex items-center">
+        <button
+          onClick={toggleSidebar}
+          className="p-2 rounded-md hover:bg-gray-100 mr-2"
+        >
+          <Bars3Icon className="h-6 w-6 text-gray-600" />
+        </button>
         <motion.div
           className="w-16 h-12 overflow-hidden flex items-center justify-center cursor-pointer"
           whileHover={{ scale: 1.2 }}
@@ -62,22 +70,25 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => 
             className="w-18 h-18 object-contain"
           />
         </motion.div>
+        <span className="ml-3 text-black font-semibold text-xl">AiFit Manager</span>
       </div>
 
       {/* 오른쪽 영역 */}
       <div className="flex items-center ml-auto space-x-4">
-        {/* 정렬 옵션 버튼들 */}
-        <div className="flex space-x-2">
-          {sortOptions.map((option) => (
-            <button
-              key={option}
-              className={`px-4 py-2 ${sortOption === option ? 'font-bold text-black' : 'text-gray-500'}`}
-              onClick={() => setSortOption(option)}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
+        {/* 정렬 옵션 버튼들 - 홈페이지에서만 표시 */}
+        {isHomePage && (
+          <div className="flex space-x-2">
+            {sortOptions.map((option) => (
+              <button
+                key={option}
+                className={`px-4 py-2 ${sortOption === option ? 'font-bold text-black' : 'text-gray-500'}`}
+                onClick={() => setSortOption(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 검색창 */}
         <div className="relative">
@@ -101,7 +112,7 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => 
           )}
         </div>
 
-        {/* 센터 현황 버튼 (GridView 전환 버튼 왼쪽에 배치) */}
+        {/* 센터 현황 버튼 */}
         <Link to="/floorplan">
           <motion.button
             className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
@@ -114,7 +125,7 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => 
           </motion.button>
         </Link>
 
-        {/* 화면 전환 버튼 (GridView <-> ListView) */}
+        {/* 화면 전환 버튼 */}
         {location.pathname === '/' ? (
           <motion.button
             onClick={handleDataGridViewClick}
@@ -148,7 +159,7 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption }) => 
           whileTap={{ scale: 0.95 }}
           title="사용자 추가"
         >
-          <RiUserAddFill className="text-2xl mr-2" /> 
+          <RiUserAddFill className="text-2xl mr-2" />
         </motion.button>
       </div>
     </header>

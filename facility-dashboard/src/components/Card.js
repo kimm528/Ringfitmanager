@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStar, FaEllipsisV, FaExchangeAlt } from 'react-icons/fa';
+import { FaStar, FaEllipsisV, FaExchangeAlt, FaThermometerHalf, FaHeartbeat } from 'react-icons/fa';
 import {
   BarChart,
   ReferenceArea,
@@ -204,6 +204,22 @@ const Card = ({
     return 'normal';
   }, []);
 
+  // 체온 상태 계산 함수
+  const getTemperatureStatus = useCallback((value) => {
+    if (!value || value === 0) return 'normal';
+    if (value < 35 || value > 38) return 'danger';
+    if (value < 36 || value > 37.5) return 'warning';
+    return 'normal';
+  }, []);
+
+  // 혈압 상태 계산 함수
+  const getBloodPressureStatus = useCallback((systolic, diastolic) => {
+    if (!systolic || !diastolic || systolic === 0 || diastolic === 0) return 'normal';
+    if (systolic > 140 || systolic < 90 || diastolic > 90 || diastolic < 60) return 'danger';
+    if (systolic > 130 || systolic < 100 || diastolic > 85 || diastolic < 65) return 'warning';
+    return 'normal';
+  }, []);
+
   const barChartData = [
     {
       name: '심박수',
@@ -216,7 +232,7 @@ const Card = ({
       dangerHigh: thresholds.heartRateDangerHigh,
     },
     {
-      name: '산소포화도',
+      name: '산소',
       xValue: 2,
       value: oxygen,
       status: getOxygenStatus(oxygen),
@@ -234,6 +250,26 @@ const Card = ({
       warningLow: 33,
       warningHigh: 0,
       dangerHigh: 0,
+    },
+    {
+      name: '체온',
+      xValue: 4,
+      value: user.data?.temperature ? user.data.temperature : 0,
+      status: getTemperatureStatus(user.data?.temperature),
+      dangerLow: 35 ,
+      warningLow: 36 ,
+      warningHigh: 37.5 ,
+      dangerHigh: 38 ,
+    },
+    {
+      name: '혈압',
+      xValue: 5,
+      value: user.data?.bloodPressure?.systolic || 0,
+      valueLow: user.data?.bloodPressure?.diastolic || 0,
+      status: getBloodPressureStatus(
+        user.data?.bloodPressure?.systolic,
+        user.data?.bloodPressure?.diastolic
+      ),
     },
   ];
 
@@ -344,12 +380,12 @@ const Card = ({
   }, [user, editedName, editedGender, editedAge, updateUser]);
 
   const renderCustomLabel = useCallback((props) => {
-    const { x, y, width, value } = props;
+    const { x, y, width, value } = props;  // payload 추가
     if (value !== 0 && value != null) {
       return (
         <text
           x={x + width / 2}
-          y={y - 5}
+          y={props?.name === '혈압' ? y - 10 : y - 5}  // 옵셔널 체이닝 추가
           fill="#000"
           textAnchor="middle"
           fontSize={16}
@@ -382,11 +418,10 @@ const Card = ({
       className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
         status === 'warning' ? 'border-4 border-yellow-500' : ''
       } ${
-        // 'animate-blink' 클래스 제거하여 카드가 더 이상 깜빡이지 않도록 함
         status === 'danger' ? 'border-4 border-red-500' : ''
       }`}
       style={{
-        width: '350px',
+        width: '360px',
         margin: '10px',
         fontFamily: 'Nanum Gothic, sans-serif',
         minHeight: '400px',
@@ -487,75 +522,75 @@ const Card = ({
               dataKey="xValue"
               type="number"
               xAxisId="x"
-              ticks={[1, 2, 3]} // 틱 위치 지정
+              ticks={[1, 2, 3, 4, 5]}
               tickFormatter={(value) => {
                 const entry = barChartData.find((item) => item.xValue === value);
                 return entry ? entry.name : '';
               }}
-              domain={[0.5, 3.5]}
+              domain={[0.5, 5.5]}
               allowDuplicatedCategory={false}
             />
-            <YAxis domain={[0, 180]} ticks={[0, 30, 60, 90, 120, 150, 180]} />
+            <YAxis 
+              domain={[0, 180]} 
+              ticks={[0, 30, 60, 90, 120, 150, 180]} 
+              tickFormatter={(value) => {
+                return value;
+              }}
+            />
 
             {/* ReferenceArea에 마진 적용 */}
             {barChartData.map((entry, index) => (
               <React.Fragment key={`reference-${index}`}>
                 {(() => {
-                  const margin = 0.2; // 마진 값 (0보다 크고 0.5보다 작은 값)
+                  const margin = 0.2;
                   return (
                     <>
-                      {/* 심박수와 산소포화도 그래프 */}
                       {entry.name !== '스트레스' && (
                         <>
-                          {/* 위험 하한 영역 */}
                           <ReferenceArea
                             x1={entry.xValue - 0.5 + margin}
                             x2={entry.xValue + 0.5 - margin}
                             y1={0}
-                            y2={entry.dangerLow}
+                            y2={entry.name === '혈압' ? 90 : entry.dangerLow}
                             xAxisId="x"
                             fill="#f44336"
                             fillOpacity={0.2}
                           />
-                          {/* 경고 하한 영역 */}
                           <ReferenceArea
                             x1={entry.xValue - 0.5 + margin}
                             x2={entry.xValue + 0.5 - margin}
-                            y1={entry.dangerLow}
-                            y2={entry.warningLow}
+                            y1={entry.name === '혈압' ? 90 : entry.dangerLow}
+                            y2={entry.name === '혈압' ? 100 : entry.warningLow}
                             xAxisId="x"
                             fill="#ff9800"
                             fillOpacity={0.2}
                           />
-                          {/* 정상 영역 */}
                           <ReferenceArea
                             x1={entry.xValue - 0.5 + margin}
                             x2={entry.xValue + 0.5 - margin}
-                            y1={entry.warningLow}
-                            y2={entry.warningHigh || entry.warningLow}
+                            y1={entry.name === '혈압' ? 100 : entry.warningLow}
+                            y2={entry.name === '혈압' ? 130 : (entry.warningHigh || entry.warningLow)}
                             xAxisId="x"
                             fill="#4caf50"
                             fillOpacity={0.2}
                           />
-                          {/* 경고 상한 영역 */}
-                          {entry.warningHigh && (
+                          {(entry.warningHigh || entry.name === '혈압') && (
                             <ReferenceArea
                               x1={entry.xValue - 0.5 + margin}
                               x2={entry.xValue + 0.5 - margin}
-                              y1={entry.warningHigh}
-                              y2={entry.dangerHigh || entry.warningHigh}
+                              y1={entry.name === '혈압' ? 130 : entry.warningHigh}
+                              y2={entry.name === '혈압' ? 140 : entry.dangerHigh}
                               xAxisId="x"
                               fill="#ff9800"
                               fillOpacity={0.2}
                             />
                           )}
-                          {/* 위험 상한 영역 */}
-                          {entry.dangerHigh && (
+                          {(entry.dangerHigh || entry.name === '혈압') && (
                             <ReferenceArea
                               x1={entry.xValue - 0.5 + margin}
                               x2={entry.xValue + 0.5 - margin}
-                              y1={entry.dangerHigh}
-                              y2={180} // Y축 최대값에 맞게 조정
+                              y1={entry.name === '혈압' ? 140 : entry.dangerHigh}
+                              y2={180}
                               xAxisId="x"
                               fill="#f44336"
                               fillOpacity={0.2}
@@ -564,10 +599,8 @@ const Card = ({
                         </>
                       )}
 
-                      {/* 스트레스 그래프 */}
                       {entry.name === '스트레스' && (
                         <>
-                          {/* 정상 영역 (0 ~ 33) */}
                           <ReferenceArea
                             x1={entry.xValue - 0.5 + margin}
                             x2={entry.xValue + 0.5 - margin}
@@ -577,7 +610,6 @@ const Card = ({
                             fill="#4caf50"
                             fillOpacity={0.2}
                           />
-                          {/* 경고 영역 (34 ~ 66) */}
                           <ReferenceArea
                             x1={entry.xValue - 0.5 + margin}
                             x2={entry.xValue + 0.5 - margin}
@@ -587,7 +619,6 @@ const Card = ({
                             fill="#ff9800"
                             fillOpacity={0.2}
                           />
-                          {/* 위험 영역 (67 ~ 100) */}
                           <ReferenceArea
                             x1={entry.xValue - 0.5 + margin}
                             x2={entry.xValue + 0.5 - margin}
@@ -606,11 +637,61 @@ const Card = ({
             ))}
 
             {/* 실제 값 표시를 위한 Bar */}
-            <Bar dataKey="value" isAnimationActive={false} xAxisId="x" barSize={30}>
+            <Bar 
+              dataKey={(data) => {
+                if (data.name === '혈압' && data.valueLow) {
+                  return data.value;  // 수축기 값 그대로 반환
+                }
+                if (data.name === '체온') {
+                  return data.value;  // 체온 실제 값 그대로 반환
+                }
+                return data.value;
+              }} 
+              isAnimationActive={false} 
+              xAxisId="x" 
+              barSize={30}
+              shape={(props) => {
+                const { fill, x, width, y, height } = props;
+                if (props.payload.name === '혈압' && props.payload.valueLow) {
+                  const maxValue = 180;  // Y축 최대값
+                  const minValue = 10;   // Y축 최소값
+                  const chartHeight = 160;  // 실제 차트 높이
+                  const startY = chartHeight - (chartHeight * (props.payload.valueLow - minValue) / (maxValue - minValue));  // 이완기 위치
+                  const endY = chartHeight - (chartHeight * (props.payload.value - minValue) / (maxValue - minValue));  // 수축기 위치
+                  
+                  return (
+                    <rect 
+                      x={x} 
+                      y={endY}  // 수축기 위치(위쪽)
+                      width={width} 
+                      height={startY - endY}  // 이완기 위치까지의 높이
+                      fill={fill} 
+                    />
+                  );
+                }
+                return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+              }}
+            >
               {barChartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.status]} />
+                <Cell 
+                  key={`cell-${index}`}
+                  fill={STATUS_COLORS[entry.status]}
+                />
               ))}
-              <LabelList dataKey="value" content={renderCustomLabel} />
+              <LabelList
+                dataKey={(data) => {
+                  if (data.name === '혈압' && data.valueLow) {
+                    return `${data.value}/${data.valueLow}`;
+                  }
+                  if (data.name === '체온') {
+                    return `${(data.value).toFixed(1)}`;
+                  }
+                  return data.value;
+                }}
+                position={(data) => data.name === '혈압' ? 'top' : 'inside'}
+                offset={data => data.name === '혈압' ? 10 : 0}
+                content={renderCustomLabel}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -621,7 +702,7 @@ const Card = ({
         {[
           {
             icon: <MdDirectionsWalk size={24} color="#3b82f6" />,
-            label: '걸음수',
+            label: '걸수',
             value: `${processedSteps}보`,
           },
           {

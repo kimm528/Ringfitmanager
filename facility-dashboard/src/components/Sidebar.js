@@ -5,30 +5,33 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeIcon,
   Cog6ToothIcon,
-  ChevronDoubleLeftIcon,
-  ChevronDoubleRightIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
   ArrowRightOnRectangleIcon,
-  DeviceTabletIcon // 추가된 아이콘
+  DeviceTabletIcon,
+  InformationCircleIcon
 } from "@heroicons/react/24/outline";
-// import './Sidebar.css'; // 제거 또는 필요 시 유지
+import { LiaRingSolid } from "react-icons/lia";
+import { GiRobotLeg } from "react-icons/gi";
+import './Sidebar.css';
 import Modal from './Modal';
-import { openDB } from 'idb'; // IndexedDB를 위한 idb 라이브러리
-import Cookies from 'js-cookie'; // js-cookie 임포트
+import { openDB } from 'idb';
+import Cookies from 'js-cookie';
 
 const Sidebar = ({
   isSidebarOpen,
-  setIsSidebarOpen,
   users,
   setIsLoggedIn,
   sortOption,
-  setSortOption,
-  siteId, // siteId prop
-  resetState, // resetState prop 추가
+  siteId,
+  resetState,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [botfitExpanded, setBotfitExpanded] = useState(false);
+  const [ringExpanded, setRingExpanded] = useState(false);
 
   // 캐시 삭제 함수
   const clearFloorPlanCache = useCallback(async () => {
@@ -69,7 +72,7 @@ const Sidebar = ({
     // 로그인 상태 업데이트
     setIsLoggedIn(false);
 
-    // 홈 화면으로 리다이렉트
+    // 홈 화면으로 다이렉트
     navigate('/');
   }, [setIsLoggedIn, navigate, clearFloorPlanCache, siteId, resetState]);
 
@@ -134,14 +137,12 @@ const Sidebar = ({
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-red-500 text-white rounded-md mr-2"
-              aria-label="로그아웃 확인 버튼"
             >
               로그아웃
             </button>
             <button
               onClick={() => setShowLogoutModal(false)}
               className="px-4 py-2 bg-gray-300 rounded-md"
-              aria-label="로그아웃 취소 버튼"
             >
               취소
             </button>
@@ -152,12 +153,11 @@ const Sidebar = ({
       <aside
         className={`transition-all duration-300 ${
           isSidebarOpen ? 'w-64' : 'w-30 sidebar-minimized'
-        } bg-gray-800 text-white flex flex-col justify-between`} // 상단에만 2rem 패딩 추가
-        style={{ height: '100vh', overflowY: 'auto' }} // height 고정 및 스크롤 설정
+        } bg-gray-50 text-gray-700 flex flex-col shadow-lg h-screen overflow-hidden`}
       >
         {/* 로고 이미지 */}
         <div
-          className={`bg-white p-2 h-20 cursor-pointer`}
+          className="bg-gray-50 p-2 h-20 cursor-pointer border-b border-gray-200 flex-shrink-0"
           onClick={handleLogoClick}
         >
           <img
@@ -167,97 +167,109 @@ const Sidebar = ({
           />
         </div>
 
-        {/* 상단 메뉴 버튼 */}
-        <div
-          className={`flex items-center justify-between ${
-            isSidebarOpen ? 'h-16' : 'h-12'
-          } bg-gray-900 px-4`} // 사이드바가 열리면 높이를 4rem로, 축소되면 3rem로 설정
-        >
-          <span className={`text-xl font-bold ${isSidebarOpen ? 'block' : 'hidden'} mt-5 mb-5 flex items-center`}>
-            MENU
-          </span>
-          <button
-            onClick={() => {
-              setIsSidebarOpen(!isSidebarOpen);
-            }}
-            aria-label={isSidebarOpen ? "사이드바 축소 버튼" : "사이드바 확장 버튼"}
-          >
-            {isSidebarOpen ? (
-              <ChevronDoubleLeftIcon className="w-8 h-8" />
-            ) : (
-              <ChevronDoubleRightIcon className="w-12 h-8 ml-4" />
-            )}
-          </button>
-        </div>
-
-        {/* 네비게이션 링크 */}
-        <nav className="flex-1 p-4">
-          <ul>
-            <li className={`${isSidebarOpen ? 'mb-4' : 'mb-4 ml-4'}`}>
-              <Link to="/" className="flex items-center space-x-2">
-                <HomeIcon className="w-12 h-8" />
-                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>Home</span>
-              </Link>
-            </li>
-            {/* 새로운 "기기 관리" 탭 추가 */}
-            <li className={`${isSidebarOpen ? 'mb-4' : 'mb-4 ml-4'}`}>
-              <Link to="/devices" className="flex items-center space-x-2">
-                <DeviceTabletIcon className="w-12 h-8" />
-                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>기기 관리</span>
-              </Link>
-            </li>
-            <li className={`${isSidebarOpen ? 'mb-4' : 'mb-4 ml-4'}`}>
-              <a
-                href="https://botfit.dotories.com" // 외부 URL로 변경
-                rel="noopener noreferrer" // 보안 및 성능 향상
-                className="flex items-center space-x-2 text-blue-500 underline hover:text-blue-700"
+        {/* 네인 컨텐츠 영역 */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* 트리 메뉴 영역 */}
+          <div className="p-4 flex-shrink-0">
+            {/* BotFit 섹션 */}
+            <div className="mb-4 border-b border-gray-200 pb-2">
+              <div
+                onClick={() => setBotfitExpanded(!botfitExpanded)}
+                className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
-                <DeviceTabletIcon className="w-12 h-8" />
-                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>BotFit</span>
-              </a>
-            </li>
-          </ul>
-
-          {/* 정렬 옵션 */}
-          {isSidebarOpen && (
-            <div className="p-4">
-              <label
-                htmlFor="sortOptions"
-                className="block text-sm font-medium text-gray-300 mb-2"
-              >
-                정렬 옵션
-              </label>
-              <select
-                id="sortOptions"
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-                className="block w-full p-2 rounded-lg bg-gray-700 text-white
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="score">운동 점수 순</option>
-                <option value="bpm">현재 심박수 순</option>
-                <option value="age">나이 순</option>
-                <option value="name">이름 순</option>
-              </select>
+                <div className="flex items-center">
+                  <GiRobotLeg className="w-6 h-6" />
+                  {isSidebarOpen && <span className="ml-3">BotFit</span>}
+                </div>
+                {isSidebarOpen && (
+                  botfitExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
+                )}
+              </div>
+              {botfitExpanded && isSidebarOpen && (
+                <ul className="ml-8 mt-2 space-y-2">
+                  <li>
+                    <a href="https://botfit.dotories.com" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                      <HomeIcon className="w-5 h-5" />
+                      <span className="ml-3">Home</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://botfit.dotories.com/detail/" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                      <InformationCircleIcon className="w-5 h-5" />
+                      <span className="ml-3">상세 정보</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://botfit.dotories.com/setting-training" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                      <InformationCircleIcon className="w-5 h-5" />
+                      <span className="ml-3">운동 프로그램 관리</span>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="https://botfit.dotories.com/botfit-management" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                      <DeviceTabletIcon className="w-5 h-5" />
+                      <span className="ml-3">기기 관리</span>
+                    </a>
+                  </li>
+                </ul>
+              )}
             </div>
-          )}
 
-          {/* 사용자 리스트 */}
-          <div
-            className={`mt-4 sidebar-scroll ${isSidebarOpen ? 'overflow-y-auto' : 'hide-scrollbar'}`}
-            style={{ maxHeight: 'calc(80vh - 350px)', overflowY: 'auto' }}
-          >
+            {/* Ring 섹션 */}
+            <div className="mb-4 border-b border-gray-200 pb-2">
+              <div
+                onClick={() => setRingExpanded(!ringExpanded)}
+                className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
+              >
+                <div className="flex items-center">
+                  <LiaRingSolid className="w-6 h-6" />
+                  {isSidebarOpen && <span className="ml-3">Ring</span>}
+                </div>
+                {isSidebarOpen && (
+                  ringExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
+                )}
+              </div>
+              {ringExpanded && isSidebarOpen && (
+                <ul className="ml-8 mt-2 space-y-2">
+                  <li>
+                    <button
+                      onClick={() => navigate('/')}
+                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                        location.pathname === '/' ? 'text-[#594AE2]' : ''
+                      }`}
+                    >
+                      <HomeIcon className="w-5 h-5" />
+                      <span className="ml-3">Home</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => navigate('/devices')}
+                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                        location.pathname === '/devices' ? 'text-[#594AE2]' : ''
+                      }`}
+                    >
+                      <DeviceTabletIcon className="w-5 h-5" />
+                      <span className="ml-3">기기 관리</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* 사용자 리스트 영역 */}
+          <div className="flex-1 overflow-auto px-4 sidebar-scroll">
             {sortedUsers.map((user) => (
               <div
                 key={user.id}
                 onClick={() => handleUserClick(user.id)}
-                className="flex items-center p-2 cursor-pointer hover:bg-gray-700 rounded-lg"
-                aria-label={`사용자 ${user.name} 프로필 보기`}
+                className="flex items-center p-2 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors duration-200 mb-2"
               >
                 <div className="block">
                   <p className="text-sm">{user.name}</p>
                   {isSidebarOpen && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-500">
                       {user.gender === 0 ? '남성' : '여성'}, {user.age}세
                     </p>
                   )}
@@ -265,29 +277,29 @@ const Sidebar = ({
               </div>
             ))}
           </div>
-        </nav>
+        </div>
 
-        {/* 하단 네비게이션: 설정 및 로그아웃 */}
-        <nav className="p-4">
-          <ul>
-            <li className={`${isSidebarOpen ? 'mb-4' : 'mb-4 ml-4'}`}>
-              <Link to="/settings" className="flex items-center space-x-2">
-                <Cog6ToothIcon className="w-12 h-8" />
-                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>Settings</span>
-              </Link>
-            </li>
-            <li className={`${isSidebarOpen ? 'mb-4' : 'mb-4 ml-4'}`}>
-              <button
-                onClick={() => setShowLogoutModal(true)}
-                className="flex items-center space-x-2"
-                aria-label="로그아웃 버튼"
-              >
-                <ArrowRightOnRectangleIcon className="w-12 h-8" />
-                <span className={`${isSidebarOpen ? 'block' : 'hidden'}`}>Logout</span>
-              </button>
-            </li>
-          </ul>
-        </nav>
+        {/* 하단 버튼 영역 */}
+        <div className="p-4 border-t border-gray-200 flex-shrink-0">
+          <button
+            onClick={() => navigate('/settings')}
+            className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
+              location.pathname === '/settings'
+                ? 'bg-blue-50 text-blue-600'
+                : 'hover:bg-gray-100'
+            }`}
+          >
+            <Cog6ToothIcon className="w-6 h-6" />
+            {isSidebarOpen && <span className="ml-3">설정</span>}
+          </button>
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 text-gray-700"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {isSidebarOpen && <span className="ml-3">로그아웃</span>}
+          </button>
+        </div>
       </aside>
     </>
   );

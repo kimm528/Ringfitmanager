@@ -1,6 +1,6 @@
 // src/components/Dashboard.js
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import Card from './Card';
 import Modal from './Modal';
 import { calculateUserStatus } from './CalculateUserStatus';
@@ -67,7 +67,7 @@ const Dashboard = ({
         if (diff !== 0) {
           return diff; // 등록순이 다르면 등록 시간 기준
         } else {
-          // 등록시간이 같다면 이름순 정렬
+          // 등록간이 같다면 이름순 정렬
           return (a.name || '').localeCompare(b.name || '', 'ko');
         }
       }
@@ -145,21 +145,51 @@ const Dashboard = ({
     }
   }, [newUser, handleAddUser, setShowModal, formatDateTime, users, getNewId]);
 
+  const gridRef = useRef();
+  const [gridKey, setGridKey] = useState(0);
+
+  // 그리드 강제 업데이트 함수
+  const forceGridUpdate = useCallback(() => {
+    if (gridRef.current) {
+      gridRef.current.recomputeGridSize();
+      setGridKey(prev => prev + 1);
+    }
+  }, []);
+
+  // 창 크기 변경 이벤트 리스너
+  useEffect(() => {
+    const handleResize = () => {
+      requestAnimationFrame(() => {
+        forceGridUpdate();
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [forceGridUpdate]);
+
+  // AutoSizer의 onResize 핸들러
+  const handleAutoSizerResize = useCallback(() => {
+    requestAnimationFrame(() => {
+      forceGridUpdate();
+    });
+  }, [forceGridUpdate]);
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* 상단 레이아웃: 센터 현황 버튼과 정렬 버튼 */}
-      <div className="flex justify-between items-center pt-20">
+      <div className="flex justify-between items-center">
         {/* 상단 요소가 필요하면 추가 */}
       </div> 
 
       {/* 카드 리스트 - Wrap Panel with Virtualization */}
       <div
-        className="dashboard-container flex-grow overflow-auto p-4" // 패딩 추가
+        className="dashboard-container flex-grow overflow-y-auto overflow-x-hidden" // 패딩 추가
       >
-        <AutoSizer>
-          {({ height, width }) => {
-            const margin = 10; // 각 셀의 마진 (px 단위)
-            const minColumnWidth = 400; // 최소 카드 너비
+        <AutoSizer onResize={handleAutoSizerResize}>
+          {({ width, height }) => {
+            const margin = 5; // 각 셀의 마진 (px 단위)
+            const minColumnWidth = 380; // 최소 카드 너비
 
             // 컬럼 수 계산 (화면 너비와 최소 컬럼 너비를 고려)
             const columnCount = Math.max(
@@ -179,7 +209,7 @@ const Dashboard = ({
             const cellRenderer = ({ columnIndex, key, rowIndex, style }) => {
               const index = rowIndex * columnCount + columnIndex;
               if (index >= sortedUsers.length) {
-                return null; // 빈 셀 처리
+                return null;
               }
               const user = sortedUsers[index];
               return (
@@ -187,13 +217,28 @@ const Dashboard = ({
                   key={key}
                   style={{
                     ...style,
-                    left: style.left + margin, // 왼쪽 마진 추가
-                    top: style.top + margin,   // 상단 마진 추가
-                    width: columnWidth,        // 컬럼 너비 설정
-                    height: rowHeight - margin, // 행 높이 설정 (마진 제외)
+                    left: style.left + margin,
+                    top: style.top + margin,
+                    width: columnWidth,
+                    height: rowHeight - margin,
+                    padding: '8px',  // 패딩 추가
                   }}
                 >
-                  <motion.div layout>
+                  <motion.div
+                    layout
+                    whileHover={{ 
+                      scale: 1.02,
+                      transition: { duration: 0.2 }
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                      height: '100%',  // 높이 100% 설정
+                      display: 'flex',  // flex 설정
+                      flexDirection: 'column'  // 세로 방향 정렬
+                    }}
+                  >
                     <Card
                       user={user}
                       toggleFavorite={toggleFavorite}
@@ -210,6 +255,8 @@ const Dashboard = ({
 
             return (
               <Grid
+                key={gridKey}
+                ref={gridRef}
                 cellRenderer={cellRenderer}
                 columnCount={columnCount}
                 columnWidth={columnWidth}

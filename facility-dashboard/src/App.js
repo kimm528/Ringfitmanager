@@ -94,11 +94,11 @@ const formatDateYYMMDD = (date) => {
 
 function App() {
   // 상태 변수들
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // 초기값 false로 설정
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState([]); // sessionStorage에서 로드하지 않음
+  const [users, setUsers] = useState([]);
   const [sortOption, setSortOption] = useState('이름 순');
   const [availableRings, setAvailableRings] = useState([]); // sessionStorage에서 로드하지 않음
   const [successMessage, setSuccessMessage] = useState('');
@@ -142,6 +142,19 @@ function App() {
     // 예: setAdminId(storedAdminId);
   }, []);
 
+  const getRandomTemperature = useCallback(() => {
+    // 체온 범위: 34.8°C ~ 38.2°C
+    return parseFloat((Math.random() * (38.2 - 34.8) + 34.8).toFixed(1));
+  }, []);
+
+  // 랜덤 혈압 생성 함수
+  const getRandomBloodPressure = useCallback(() => {
+    // 혈압 범위: 수축기 88~142 mmHg, 이완기 58~92 mmHg
+    const systolic = Math.floor(Math.random() * (142 - 88 + 1) + 88); // 88 ~ 142 mmHg
+    const diastolic = Math.floor(Math.random() * (92 - 58 + 1) + 58); // 58 ~ 92 mmHg
+    return { systolic, diastolic };
+  }, []);
+
   // 건강 데이터 fetching 함수
   const fetchHealthData = useCallback(async (userId, date) => {
     if (!siteId) {
@@ -170,20 +183,20 @@ function App() {
 
         // 기존 데이터와 비교하여 변경된 경우에만 업데이트
         setHealthData((prevData) => {
-          const existingData = prevData[userId]?.[date];
+          const existingData = prevData[userId]?.[formattedDate];
           if (!isEqual(existingData, healthItem)) {
             return {
               ...prevData,
               [userId]: {
                 ...(prevData[userId] || {}),
-                [date]: healthItem,
+                [formattedDate]: healthItem,
               },
             };
           }
           return prevData; // 변경되지 않았으므로 상태 업데이트하지 않음
         });
 
-        // users 배열에서 해당 ID를 가진 사용자 객체를 찾아 데이터 업데이트
+        // users 배열에 해당 ID를 가진 사용자 객체를 찾아 데이터 업데이트
         setUsers((prevUsers) =>
           produce(prevUsers, (draft) => {
             const userDraft = draft.find((u) => u.id === userId);
@@ -299,8 +312,10 @@ function App() {
                 calories: [],
                 distance: [],
               },
+              temperature: getRandomTemperature(), // 체온 초기값
+              bloodPressure: getRandomBloodPressure(), // 혈압 초기값
             };
-  
+
             // LifeLogs 처리
             const lifeLogs = (user.LifeLogs || []).map((log, index) => {
               const logDateTime = log.LogDateTime || '';
@@ -421,7 +436,7 @@ function App() {
         const img = new Image();
         img.onload = () => {
           setFloorPlanImage(img);
-          // 캔버스 크기 조정은 FloorPlan 컴포넌트에서 처리
+          // 캔버스 크기 조정은 FloorPlan 컴포넌트에서 처리리
         };
         img.src = cachedImageData;
       } else {
@@ -430,7 +445,7 @@ function App() {
           headers: {
             Authorization: `Basic ${credentials}`,
           },
-          responseType: 'blob', // 이미지 데이터 타입 설정
+          responseType: 'blob', // 이미지 이터 타입 설정
         });
 
         if (imageResponse.status === 200) {
@@ -523,7 +538,7 @@ function App() {
   useEffect(() => {
     if (isLoggedIn && siteId) {
 
-          // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있는 경우에만)
+          // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있 경우에만)
       users.forEach(user => { // 변경: storedUsers 대신 users
         if (user.macAddr) {
           const today = new Date();
@@ -659,6 +674,8 @@ function App() {
                 calories: [],
                 distance: [],
               },
+              temperature: getRandomTemperature(), // 체온 초기값
+              bloodPressure: getRandomBloodPressure(), // 혈압 초기값
             },
             thresholds: {
               heartRateWarningLow: 80,
@@ -696,7 +713,7 @@ function App() {
         alert('사용자 추가 중 오류가 발생했습니다.');
       }
     },
-    [users, siteId, credentials, fetchHealthData, getNewId, url]
+    [users, siteId, credentials, fetchHealthData, getNewId, url, getRandomTemperature, getRandomBloodPressure]
   );
 
   // 사용자 업데이트 함수 수정: 세션 스토리지 관련 코드 제거
@@ -755,6 +772,8 @@ function App() {
                   updatedUser.thresholds.heartRateDangerHigh,
                 ],
                 Favorite: updatedUser.isFavorite,
+                Temperature: updatedUser.temperature, // 체온 포함
+                BloodPressure: updatedUser.bloodPressure, // 혈압 포함
               },
             }),
           });
@@ -824,7 +843,7 @@ function App() {
           }, 3000);
         } else {
           console.error('서버에서 사용자 삭제 실패.');
-          alert('서버에서 사용자 삭제에 실패했습니다.');
+          alert('서버에서 사용자를 삭제에 실패했습니다.');
         }
       } catch (error) {
         console.error('사용자 삭제 오류:', error);
@@ -909,71 +928,60 @@ function App() {
     [siteId, credentials, url]
   );
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
     <Router>
       {isLoggedIn ? (
         <SidebarController setIsSidebarOpen={setIsSidebarOpen}>
-          {/* PathListener를 통해 현재 경로 추적 */}
           <PathListener setCurrentPath={setCurrentPath} />
           <div className="flex h-screen bg-gray-100">
-            {/* 성공 메시지 모달 */}
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 flex flex-col space-y-2 z-50">
-              {successMessage && (
-                <div className="bg-green-500 text-white px-4 py-2 rounded shadow">
-                  {successMessage}
-                </div>
+            <div className="fixed left-0 top-0 h-full z-10">
+              {isSidebarOpen && (
+                <MemoizedSidebar
+                  isSidebarOpen={isSidebarOpen}
+                  setIsSidebarOpen={setIsSidebarOpen}
+                  users={users}
+                  setIsLoggedIn={setIsLoggedIn}
+                  sortOption={sortOption}
+                  siteId={siteId}
+                  resetState={resetState}
+                />
               )}
             </div>
-
-            {/* 사이드바와 메인 콘텐츠 */}
-            <div className="flex flex-1">
-              <MemoizedSidebar
-                isSidebarOpen={isSidebarOpen}
-                setIsSidebarOpen={setIsSidebarOpen}
-                setIsLoggedIn={setIsLoggedIn}
+            <div className={`flex-1 flex flex-col ${isSidebarOpen ? 'ml-64' : 'ml-0'} transition-all duration-300`}>
+              <Header 
+                setShowModal={setShowModal}
+                setSearchQuery={setSearchQuery}
                 sortOption={sortOption}
                 setSortOption={setSortOption}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                siteId={siteId}
-                users={users}
-                devices={devices}
-                resetState={resetState} // resetState 전달
+                toggleSidebar={toggleSidebar}
               />
-              <div className="flex-1 overflow-y-auto flex flex-col">
+              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 mt-16 p-4">
                 <Routes>
                   <Route
                     path="/"
                     element={
-                      <>
-                        <Header
-                          setShowModal={setShowModal}
-                          setSearchQuery={setSearchQuery}
-                          sortOption={sortOption}
-                          setSortOption={setSortOption}
-                        />
-                        <main className="p-4 flex-1">
-                          <MemoizedDashboard
-                            showModal={showModal}
-                            setShowModal={setShowModal}
-                            users={users}
-                            setUsers={setUsers}
-                            searchQuery={searchQuery}
-                            handleAddUser={handleAddUser}
-                            updateUser={updateUser}
-                            sortOption={sortOption}
-                            deleteUser={deleteUser}
-                            toggleFavorite={toggleFavorite}
-                            availableRings={availableRings}
-                            disconnectInterval={disconnectInterval}
-                            devices={devices}
-                            getNewId={getNewId}
-                          />
-                        </main>
-                      </>
+                      <MemoizedDashboard
+                        showModal={showModal}
+                        setShowModal={setShowModal}
+                        users={users}
+                        setUsers={setUsers}
+                        searchQuery={searchQuery}
+                        handleAddUser={handleAddUser}
+                        updateUser={updateUser}
+                        sortOption={sortOption}
+                        deleteUser={deleteUser}
+                        toggleFavorite={toggleFavorite}
+                        availableRings={availableRings}
+                        disconnectInterval={disconnectInterval}
+                        devices={devices}
+                        getNewId={getNewId}
+                      />
                     }
                   />
-                  {/* UserDetail Route */}
                   <Route
                     path="/users/:userId"
                     element={
@@ -1032,13 +1040,12 @@ function App() {
                     path="/datagridview"
                     element={
                       <>
-                        <Header setShowModal={setShowModal} setSearchQuery={setSearchQuery} />
                         <DataGridView users={users} />
                       </>
                     }
                   />
                 </Routes>
-              </div>
+              </main>
             </div>
           </div>
         </SidebarController>

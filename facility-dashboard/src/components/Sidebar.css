@@ -7,32 +7,36 @@
 /* 모바일 환경에서 사이드바 숨기기 */
 @media (max-width: 768px) {
   .sidebar {
-    display: none !important; /* 모바일 화면에서 사이드바 숨김 */
+    display: none !important;
   }
 }
 
 /* 기본 스크롤 스타일 */
 .sidebar-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: #4A5568 #2D3748;
-  }
-  
-  /* 스크롤바 디자인 */
-  .sidebar-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .sidebar-scroll::-webkit-scrollbar-thumb {
-    background-color: #4A5568;
-    border-radius: 10px;
-  }
-  
-  /* 사이드바 최소화 시 스크롤바 숨김 */
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .hide-scrollbar {
-    scrollbar-width: none; /* Firefox */
-  }
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 #f8fafc;
+}
+
+/* 스크롤바 디자인 */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 10px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #cbd5e1;
+}
+
+/* 사이드바 최소화 시 스크롤바 숨김 */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
   

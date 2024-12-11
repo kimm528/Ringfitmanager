@@ -4,8 +4,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   FaEdit, FaPlus, FaHeartbeat, FaBed, 
-  FaSmile, FaTint, FaWalking, FaFireAlt, FaRoute 
+  FaSmile, FaTint, FaWalking, FaFireAlt, FaRoute,
+  FaTemperatureHigh
 } from 'react-icons/fa';
+import { BsArrowUpCircleFill, BsArrowDownCircleFill } from 'react-icons/bs';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Legend 
@@ -17,6 +19,8 @@ import axios from 'axios';
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 사용
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { MdHealthAndSafety, MdMonitorHeart } from 'react-icons/md';
+import { GiHeartBeats } from 'react-icons/gi';
 
 // 상수 데이터 정의 (컴포넌트 외부)
 const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => 
@@ -28,7 +32,7 @@ const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) =>
 
 const BPM_OXYGEN_LEGEND_ITEMS = [
   { dataKey: 'bpm', value: '심박수 (BPM)', color: 'red' },
-  { dataKey: 'oxygen', value: '혈중 산소포화도 (%)', color: '#1e88e5' },
+  { dataKey: 'oxygen', value: '혈중 산소 (%)', color: '#1e88e5' },
   { dataKey: 'stress', value: '스트레스 지수', color: '#FFD700' },
 ];
 
@@ -36,6 +40,13 @@ const ACTIVITY_LEGEND_ITEMS = [
   { dataKey: 'steps', value: '걸음수', color: '#82ca9d' },
   { dataKey: 'calories', value: '소모 칼로리 (kcal)', color: '#ff9800' },
   { dataKey: 'distance', value: '이동거리 (km)', color: '#4caf50' },
+];
+
+// 상수 데이터에 활력징후 범례 항목 추가
+const VITAL_SIGNS_LEGEND_ITEMS = [
+  { dataKey: 'temperature', value: '체온 (°C)', color: '#ff7300' },
+  { dataKey: 'systolic', value: '수축기 혈압 (mmHg)', color: '#8884d8' },
+  { dataKey: 'diastolic', value: '이완기 혈압 (mmHg)', color: '#82ca9d' },
 ];
 
 // Helper Function to get the last non-zero value
@@ -167,7 +178,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       deepsleepduration = 0,
       awakeduration = 0,
       shallowsleepduration = 0,
-    } = normalizeData(userData); // 정규화된 데이터 사용
+    } = normalizeData(userData); // 규화된 데이터 사용
 
     if (
       sleep > 0 &&
@@ -212,6 +223,13 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     distance: true,
   });
 
+  // 상태 변수에 visibleVitalSigns 추가
+  const [visibleVitalSigns, setVisibleVitalSigns] = useState({
+    temperature: true,
+    systolic: true,
+    diastolic: true,
+  });
+
   // isToday 함수를 useCallback으로 메모이제이션
   const isToday = useCallback((someDate) => {
     const today = new Date();
@@ -245,7 +263,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       setIsLoading(true);
       setError(null); // 에러 상태 초기화
   
-      // 새로운 데이터 fetch 전에 tempHealthData를 기본값으로 초기화
+      // 새로운 데이터 fetch 전 tempHealthData를 기본값으로 초기화
       setTempHealthData(normalizeData(null));
   
       if (!isToday(date)) {
@@ -278,7 +296,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           setTempHealthData(normalizeData(latestHealthData)); // normalizeData 적용
           console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
         } else {
-          // 데이터가 없는 경우 기본값 설정
+          // 데이터가 없는 경우 본값 설정
           setTempHealthData(normalizeData(null));
           console.log(`사용자 ${userId}의 건강 데이터가 없습니다. 기본값으로 설정합니다.`);
         }
@@ -576,6 +594,61 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   console.log('dailyLineChartData:', dailyLineChartData);
   console.log('activityLineChartData:', activityLineChartData);
 
+  // 활력징후 데이터 준비
+  const vitalSignsData = useMemo(() => {
+    const baseTemp = user?.data?.temperature || 36.5;
+    const baseSystolic = user?.data?.bloodPressure?.systolic || 120;
+    const baseDiastolic = user?.data?.bloodPressure?.diastolic || 80;
+
+    // 랜덤 데이터 생성 함수
+    const getRandomTemp = () => {
+      return parseFloat((Math.random() * (38.2 - 34.8) + 34.8).toFixed(1));
+    };
+
+    const getRandomBP = () => {
+      const systolic = Math.floor(Math.random() * (142 - 88 + 1) + 88);
+      const diastolic = Math.floor(Math.random() * (92 - 58 + 1) + 58);
+      return { systolic, diastolic };
+    };
+
+    return Array.from({ length: 144 }, (_, i) => {
+      const hour = Math.floor(i / 6);
+      const minute = (i % 6) * 10;
+      const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      
+      // 시간에 따른 변동 계수 (0시에서 12시까지 약간 증가했다가 다시 감소)
+      const variation = Math.sin((hour * 60 + minute) * Math.PI / (24 * 60)) * 0.5 + 0.5;
+      
+      // 기본 랜덤 값 생성
+      const randomTemp = getRandomTemp();
+      const randomBP = getRandomBP();
+
+      // 변동 계수를 적용하여 최종 값 계산
+      const temperature = baseTemp + (randomTemp - baseTemp) * variation * 0.3;
+      const systolic = baseSystolic + (randomBP.systolic - baseSystolic) * variation * 0.3;
+      const diastolic = baseDiastolic + (randomBP.diastolic - baseDiastolic) * variation * 0.3;
+
+      return {
+        time,
+        temperature: Number(temperature.toFixed(1)),
+        systolic: Math.round(systolic),
+        diastolic: Math.round(diastolic),
+      };
+    });
+  }, [user]);
+
+  // 활력징후 범례 아이템 준비
+  const vitalSignsLegend = useMemo(() => 
+    VITAL_SIGNS_LEGEND_ITEMS.map(item => ({
+      ...item,
+      show: visibleVitalSigns[item.dataKey],
+      toggle: () => setVisibleVitalSigns(prev => ({
+        ...prev,
+        [item.dataKey]: !prev[item.dataKey],
+      })),
+    }))
+  , [visibleVitalSigns]);
+
   return (
     <div className="p-4">
       {/* User Profile Header */}
@@ -615,6 +688,113 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             </div>
           )}
 
+          {/* 활력징후 카드 섹션 추가 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <InfoCard
+              icon={<FaTemperatureHigh className="text-orange-500" />}
+              title="체온"
+              value={`${user?.data?.temperature || 0}°C`}
+            />
+            <InfoCard
+              icon={<MdHealthAndSafety className="text-red-500" size={28} />}
+              title="수축기 혈압"
+              value={`${user?.data?.bloodPressure?.systolic || 0} mmHg`}
+            />
+            <InfoCard
+              icon={<MdMonitorHeart className="text-blue-500" size={28} />}
+              title="이완기 혈압"
+              value={`${user?.data?.bloodPressure?.diastolic || 0} mmHg`}
+            />
+          </div>
+
+          {/* 활력징후 그래프 섹션 추가 */}
+          <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+            <h3 className="text-xl font-bold mb-4">활력징후 데이터</h3>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={vitalSignsData}>
+                <CartesianGrid 
+                  strokeDasharray="3 3" 
+                  vertical={false}
+                  verticalPoints={[72]} // 144/2 = 72 (12시 위치)
+                  verticalFill={['none', 'none']}
+                  verticalStroke="#666"
+                  verticalStrokeDasharray="3 3"
+                />
+                <XAxis 
+                  dataKey="time"
+                  interval={71} // 144/2 - 1 = 71 (0시와 12시만 표시)
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(tick) => tick}
+                />
+                <YAxis 
+                  yAxisId="temp"
+                  orientation="left"
+                  domain={[34, 40]}
+                  ticks={[35, 36, 37, 38, 39, 40, 41]}
+                  label={{ 
+                    value: '체온 (°C)', 
+                    position: 'insideLeft',
+                    angle: -90,
+                    offset: 10
+                  }}
+                />
+                <YAxis 
+                  yAxisId="pressure"
+                  orientation="right"
+                  domain={[60, 160]}
+                  label={{ 
+                    value: '혈압 (mmHg)', 
+                    position: 'insideRight',
+                    angle: 90,
+                    offset: 10
+                  }}
+                />
+                <Tooltip />
+                <Legend 
+                  verticalAlign="top" 
+                  height={36}
+                  content={<CustomLegend legendItems={vitalSignsLegend} />}
+                />
+                {visibleVitalSigns.temperature && (
+                  <Line
+                    yAxisId="temp"
+                    type="monotone"
+                    dataKey="temperature"
+                    stroke="#ff7300"
+                    name="체온 (°C)"
+                    dot={false}
+                    strokeWidth={2}
+                    connectNulls={true}
+                  />
+                )}
+                {visibleVitalSigns.systolic && (
+                  <Line
+                    yAxisId="pressure"
+                    type="monotone"
+                    dataKey="systolic"
+                    stroke="#8884d8"
+                    name="수축기 혈압 (mmHg)"
+                    dot={false}
+                    strokeWidth={2}
+                    connectNulls={true}
+                  />
+                )}
+                {visibleVitalSigns.diastolic && (
+                  <Line
+                    yAxisId="pressure"
+                    type="monotone"
+                    dataKey="diastolic"
+                    stroke="#82ca9d"
+                    name="이완기 혈압 (mmHg)"
+                    dot={false}
+                    strokeWidth={2}
+                    connectNulls={true}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
           {/* 건강 정보 카드 */}
           <div className="info-boxes grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <InfoCard
@@ -652,11 +832,17 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             ) : (
               <ResponsiveContainer key={`${userId}-${formatDateYYYYMMDD(selectedDate)}`} width="100%" height={400}>
                 <LineChart data={dailyLineChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    vertical={false}
+                    verticalPoints={[144]} // 288 데이터 포인트 중 12시 위치 (144)
+                    verticalFill={['none', 'none']}
+                    verticalStroke="#666"
+                    verticalStrokeDasharray="3 3"
+                  />
                   <XAxis 
-                    dataKey="time" 
-                    ticks={xAxisTicks} 
-                    interval={11} // Show ticks at every 2 hours (0, 2, 4, ..., 22)
+                    dataKey="time"
+                    interval={143} // 0시, 12시만 표시
                     tick={{ fontSize: 12 }}
                     tickFormatter={(tick) => tick}
                   />
@@ -733,7 +919,14 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             ) : (
               <ResponsiveContainer key={`${userId}-${formatDateYYYYMMDD(selectedDate)}-activity`} width="100%" height={400}>
                 <LineChart data={activityLineChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid 
+                    strokeDasharray="3 3" 
+                    vertical={false}
+                    verticalPoints={[12]} // 24시간 데이터 중 12시 위치 (12)
+                    verticalFill={['none', 'none']}
+                    verticalStroke="#666"
+                    verticalStrokeDasharray="3 3"
+                  />
                   <XAxis 
                     dataKey="time" 
                     ticks={xAxisTicks} 
@@ -920,7 +1113,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   <button
                     className="bg-blue-500 text-white py-2 px-4 rounded-lg"
                     onClick={handleAddItem}
-                    aria-label="Life 로그 추가 버튼"
+                    aria-label="Life 로 추가 버튼"
                   >
                     추가
                   </button>
