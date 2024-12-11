@@ -286,11 +286,9 @@ const DataGridView = ({ users }) => {
 
   return (
     <div
-      className="ag-theme-alpine"
+      className="h-full flex flex-col overflow-hidden ag-theme-alpine"
       style={{
-        height: '100vh',
         width: '100%',
-        overflow: 'auto',
         paddingTop: '10px',
       }}
     >
