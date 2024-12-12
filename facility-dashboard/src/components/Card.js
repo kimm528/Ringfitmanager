@@ -222,8 +222,28 @@ const Card = ({
 
   const barChartData = [
     {
-      name: '심박수',
+      name: '체온',
       xValue: 1,
+      value: user.data?.temperature ? user.data.temperature : 0,
+      status: getTemperatureStatus(user.data?.temperature),
+      dangerLow: 35,
+      warningLow: 36,
+      warningHigh: 37.5,
+      dangerHigh: 38,
+    },
+    {
+      name: '혈압',
+      xValue: 2,
+      value: user.data?.bloodPressure?.systolic || 0,
+      valueLow: user.data?.bloodPressure?.diastolic || 0,
+      status: getBloodPressureStatus(
+        user.data?.bloodPressure?.systolic,
+        user.data?.bloodPressure?.diastolic
+      ),
+    },
+    {
+      name: '심박수',
+      xValue: 3,
       value: bpm,
       status: getHeartRateStatus(bpm),
       dangerLow: thresholds.heartRateDangerLow,
@@ -233,7 +253,7 @@ const Card = ({
     },
     {
       name: '산소',
-      xValue: 2,
+      xValue: 4,
       value: oxygen,
       status: getOxygenStatus(oxygen),
       dangerLow: OXYGEN_DANGER_THRESHOLD,
@@ -243,33 +263,13 @@ const Card = ({
     },
     {
       name: '스트레스',
-      xValue: 3,
+      xValue: 5,
       value: stress,
       status: getStressStatus(stress),
-      dangerLow: 66,
+      dangerLow: 0,
       warningLow: 33,
-      warningHigh: 0,
-      dangerHigh: 0,
-    },
-    {
-      name: '체온',
-      xValue: 4,
-      value: user.data?.temperature ? user.data.temperature : 0,
-      status: getTemperatureStatus(user.data?.temperature),
-      dangerLow: 35 ,
-      warningLow: 36 ,
-      warningHigh: 37.5 ,
-      dangerHigh: 38 ,
-    },
-    {
-      name: '혈압',
-      xValue: 5,
-      value: user.data?.bloodPressure?.systolic || 0,
-      valueLow: user.data?.bloodPressure?.diastolic || 0,
-      status: getBloodPressureStatus(
-        user.data?.bloodPressure?.systolic,
-        user.data?.bloodPressure?.diastolic
-      ),
+      warningHigh: 66,
+      dangerHigh: 100,
     },
   ];
 
@@ -380,18 +380,24 @@ const Card = ({
   }, [user, editedName, editedGender, editedAge, updateUser]);
 
   const renderCustomLabel = useCallback((props) => {
-    const { x, y, width, value } = props;  // payload 추가
+    const { x, y, width, value, name } = props;
+    
     if (value !== 0 && value != null) {
+      const getValueWithUnit = () => {
+        if (['스트레스', '산소'].includes(name)) return `${value}%`;
+        if (name === '체온') return `${value}°C`;
+        return value;
+      };
+  
       return (
         <text
           x={x + width / 2}
-          y={props?.name === '혈압' ? y - 10 : y - 5}  // 옵셔널 체이닝 추가
+          y={name === '혈압' ? y - 13 : y - 8}
           fill="#000"
           textAnchor="middle"
-          fontSize={16}
-          style={{ pointerEvents: 'none' }}
+          dominantBaseline="middle"
         >
-          {value}
+          {getValueWithUnit()}
         </text>
       );
     }
@@ -494,7 +500,7 @@ const Card = ({
         </button>
 
         {/* 메뉴 버튼 */}
-        <button onClick={toggleMenu} aria-label="메뉴 열기">
+        <button onClick={toggleMenu} aria-label="메뉴 보기">
           <FaEllipsisV size={20} />
         </button>
         {menuOpen && (
@@ -723,7 +729,7 @@ const Card = ({
         {[
           {
             icon: <MdDirectionsWalk size={24} color="#3b82f6" />,
-            label: '걸수',
+            label: '걸음수',
             value: `${processedSteps}보`,
           },
           {

@@ -179,8 +179,10 @@ const Sidebar = ({
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-                  {isSidebarOpen && <span className="ml-3">BotFit Pro</span>}
-                </div>
+  {isSidebarOpen && (
+    <span className="ml-3 text-[18px] font-bold">BotFit Pro</span>
+  )}
+</div>
                 {isSidebarOpen && (
                   botfitExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
                 )}
@@ -216,7 +218,7 @@ const Sidebar = ({
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-                  {isSidebarOpen && <span className="ml-3">Ring</span>}
+                  {isSidebarOpen && <span className="ml-3 text-[18px] font-bold">Ring</span>}
                 </div>
                 {isSidebarOpen && (
                   ringExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
