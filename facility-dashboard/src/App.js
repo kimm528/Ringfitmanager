@@ -280,7 +280,6 @@ function App() {
         ringData = [];
       }
   
-      // 링 이터를 상태에 저장
       setAvailableRings(ringData);
   
       const ringMap = new Map();
@@ -431,7 +430,6 @@ function App() {
     }
     setIsLoading(true);
     try {
-      // 배치도 이미지 세션 스토리지에�� 로드 시도
       const cachedImageData = loadFromSessionStorage(`floorPlanImage_${siteId}`, null);
       if (cachedImageData) {
         const img = new Image();
@@ -464,7 +462,7 @@ function App() {
           };
           reader.readAsDataURL(blob);
         } else {
-          console.error('배치도 이미�� 로드 실패:', imageResponse.statusText);
+          console.error('배치도 이미지 로드 실패:', imageResponse.statusText);
         }
       }
 
@@ -576,7 +574,7 @@ function App() {
   const formatCreateDateTime = () => {
     const now = new Date();
     const year = String(now.getFullYear()).slice(-2); // 마지막 두 자리 연도
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // 월 (0부터 시작하���로 +1)
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // 월 (0부터 시작하로 +1)
     const day = String(now.getDate()).padStart(2, '0'); // 날짜
     const hour = String(now.getHours()).padStart(2, '0'); // 시
     const minute = String(now.getMinutes()).padStart(2, '0'); // 분
@@ -615,7 +613,6 @@ function App() {
 
         let newId = getNewId(users);
 
-        // 서버에 사용자 추가 요청
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
@@ -722,7 +719,7 @@ function App() {
     async (updatedUser, sendTo_server = false) => {
       console.log('사용자 업데이트:', updatedUser);
 
-      // 기존 사��자 데이터와 비교하여 변경된 경우에만 상태 업데이트
+      // 기존 사용자 데이터와 비교하여 변경된 경우에만 상태 업데이트
       setUsers((prevUsers) => {
         return produce(prevUsers, draft => {
           const user = draft.find(u => u.id === updatedUser.id);
@@ -876,7 +873,6 @@ function App() {
     [users, updateUser]
   );
 
-  // 관리자 정보 수정 함수 수정: 세션 스토리지 관련 코드 제거
   const handleUpdateAdminInfo = useCallback(
     async (updatedAdminInfo) => {
       if (!siteId) {
@@ -1070,7 +1066,7 @@ function App() {
                 setSortOption={setSortOption}
                 toggleSidebar={toggleSidebar}
               />
-              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 mt-16 p-4">
+              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 mt-[80px] p-4">
                 <Routes>
                   <Route
                     path="/"

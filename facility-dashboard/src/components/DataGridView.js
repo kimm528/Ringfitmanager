@@ -161,7 +161,7 @@ const DataGridView = ({ users, setShowModal }) => {
         <BarCellRenderer
           value={params.value}
           max={100} 
-          thresholds={{ low: 60, high: 90 }} // ��계값
+          thresholds={{ low: 60, high: 90 }} 
           showValue
           type="bloodPressureDiastolic"
         />

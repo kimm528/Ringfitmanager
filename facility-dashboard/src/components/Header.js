@@ -54,7 +54,7 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption, toggl
   };
 
   return (
-    <header className="header flex items-center p-4 bg-white shadow-md border-b-2 border-gray-500 fixed top-0 z-50 right-0 w-full">
+    <header className="header flex items-center p-4 bg-white shadow-md border-b-2 border-gray-500 fixed top-0 z-50 right-0 w-full h-[80px]">
       {/* 왼쪽: 토글 버튼과 로고 */}
       <div className="flex items-center">
         <button
