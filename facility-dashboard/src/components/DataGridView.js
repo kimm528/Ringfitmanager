@@ -7,19 +7,32 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import BarCellRenderer from './BarCellRenderer';
 import { PiSirenFill, PiPlugsConnectedBold } from 'react-icons/pi';
 import { TbPlugConnected } from "react-icons/tb";
+import { useNavigate } from 'react-router-dom';
 
-const DataGridView = ({ users }) => {
+const DataGridView = ({ users, setShowModal }) => {
   const [rowData, setRowData] = useState([]);
   const [gridApi, setGridApi] = useState(null);
   const [columnApi, setColumnApi] = useState(null);
+  const navigate = useNavigate();
+
+  // 테스트를 위한 버튼 추가
+  useEffect(() => {
+    console.log('DataGridView mounted, setShowModal is:', setShowModal);
+  }, [setShowModal]);
 
   const onGridReady = (params) => {
     setGridApi(params.api);
     setColumnApi(params.columnApi);
   };
 
+  // 이름 셀 더블클릭 핸들러
+  const handleNameCellDoubleClicked = (params) => {
+    const userId = params.data.id;
+    navigate(`/users/${userId}`);
+  };
+
   useEffect(() => {
-    if (users && users.length > 0 && gridApi) {
+    if (users && users.length > 0) {
       const formattedData = users.map((user) => ({
         id: user.id,
         name: user.name,
@@ -34,20 +47,9 @@ const DataGridView = ({ users }) => {
         thresholds: user.thresholds,
       }));
 
-      // 기존 데이터가 없을 때만 전체 데이터 설정
-      if (rowData.length === 0) {
-        setRowData(formattedData);
-      } else {
-        // 기존 데이터가 있으면 개별 행 업데이트
-        formattedData.forEach(newRow => {
-          const node = gridApi.getRowNode(newRow.id);
-          if (node) {
-            node.setData(newRow);
-          }
-        });
-      }
+      setRowData(formattedData);
     }
-  }, [users, gridApi]);
+  }, [users]);
 
   // 위험도 계산 함수
   const calculateRiskLevel = (user) => {
@@ -81,7 +83,7 @@ const DataGridView = ({ users }) => {
       }
     }
 
-    // 산소포화도 위험도 계산
+    // 산소포화 위험도 계산
     if (oxygen > 0 && oxygen < 90) {
       riskLevel = 'High';
     }
@@ -100,18 +102,19 @@ const DataGridView = ({ users }) => {
     { 
       field: 'name', 
       headerName: '이름', 
-      sortable: true, 
+      sortable: true,
+      onCellDoubleClicked: handleNameCellDoubleClicked,
       cellRenderer: (params) => (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
           <span
             style={{ 
               fontSize: '16px', 
               whiteSpace: 'nowrap', 
               overflow: 'hidden', 
               textOverflow: 'ellipsis',
-              maxWidth: '150px' // 최대 너비 설정
+              maxWidth: '150px'
             }}
-            title={params.value} // 툴팁을 위해 title 속성 추가
+            title={params.value}
           >
             {params.value}
           </span>
@@ -158,7 +161,7 @@ const DataGridView = ({ users }) => {
         <BarCellRenderer
           value={params.value}
           max={100} 
-          thresholds={{ low: 60, high: 90 }} // 임계값
+          thresholds={{ low: 60, high: 90 }} // ��계값
           showValue
           type="bloodPressureDiastolic"
         />
@@ -290,6 +293,8 @@ const DataGridView = ({ users }) => {
       style={{
         width: '100%',
         paddingTop: '10px',
+        position: 'relative',
+        zIndex: 1
       }}
     >
       <style>
@@ -299,6 +304,12 @@ const DataGridView = ({ users }) => {
             top: 0;
             z-index: 2;
             background-color: white;
+          }
+          .ag-root {
+            z-index: 1;
+          }
+          .ag-root-wrapper {
+            z-index: 1;
           }
           @keyframes blink {
             0% { opacity: 1; }

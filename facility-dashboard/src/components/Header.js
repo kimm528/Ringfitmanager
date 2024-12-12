@@ -13,8 +13,13 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption, toggl
   const navigate = useNavigate();
   const [localSearch, setLocalSearch] = useState('');
 
+  useEffect(() => {
+    console.log('Header mounted, setShowModal is:', setShowModal);
+  }, [setShowModal]);
+
   const sortOptions = ['심박수 순', '즐겨찾기 순', '이름 순', '최근 등록순'];
   const isHomePage = location.pathname === '/';
+  const isGridView = location.pathname === '/datagridview';
 
   const handleSearchChange = useCallback(
     (event) => {
@@ -59,18 +64,20 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption, toggl
           <Bars3Icon className="h-6 w-6 text-gray-600" />
         </button>
         <motion.div
-          className="w-16 h-12 overflow-hidden flex items-center justify-center cursor-pointer"
-          whileHover={{ scale: 1.2 }}
+          className="flex items-center cursor-pointer"
+          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => navigate('/')}
         >
-          <img
-            src={`${process.env.PUBLIC_URL}/AiFitLogoBgRmv.png`}
-            alt="Home Icon"
-            className="w-18 h-18 object-contain"
-          />
+          <div className="w-16 h-12 overflow-hidden flex items-center justify-center">
+            <img
+              src={`${process.env.PUBLIC_URL}/AiFitLogoBgRmv.png`}
+              alt="Home Icon"
+              className="w-18 h-18 object-contain"
+            />
+          </div>
+          <span className="ml-3 text-black font-semibold text-xl">AiFit Manager</span>
         </motion.div>
-        <span className="ml-3 text-black font-semibold text-xl">AiFit Manager</span>
       </div>
 
       {/* 오른쪽 영역 */}
@@ -90,27 +97,29 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption, toggl
           </div>
         )}
 
-        {/* 검색창 */}
-        <div className="relative">
-          <input
-            type="text"
-            value={localSearch}
-            onChange={handleSearchChange}
-            placeholder="이름 검색"
-            className="search-input border border-gray-300 rounded-full p-2 pr-8 pl-4"
-            style={{ backgroundColor: '#f4f4f4', color: '#333', width: '200px' }}
-            aria-label="이름 검색"
-          />
-          {localSearch && (
-            <button
-              onClick={clearSearch}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600 focus:outline-none"
-              aria-label="검색어 지우기"
-            >
-              <AiOutlineClose className="text-lg" />
-            </button>
-          )}
-        </div>
+        {/* 검색창 - 홈페이지에서만 표시 */}
+        {isHomePage && (
+          <div className="relative">
+            <input
+              type="text"
+              value={localSearch}
+              onChange={handleSearchChange}
+              placeholder="이름 검색"
+              className="search-input border border-gray-300 rounded-full p-2 pr-8 pl-4"
+              style={{ backgroundColor: '#f4f4f4', color: '#333', width: '200px' }}
+              aria-label="이름 검색"
+            />
+            {localSearch && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600 focus:outline-none"
+                aria-label="검색어 지우기"
+              >
+                <AiOutlineClose className="text-lg" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 센터 현황 버튼 */}
         <Link to="/floorplan">
@@ -150,17 +159,22 @@ const Header = ({ setShowModal, setSearchQuery, sortOption, setSortOption, toggl
           </motion.button>
         )}
 
-        {/* 사용자 추가 버튼 */}
-        <motion.button
-          onClick={() => setShowModal(true)}
-          className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
-          aria-label="사용자 추가"
-          whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
-          whileTap={{ scale: 0.95 }}
-          title="사용자 추가"
-        >
-          <RiUserAddFill className="text-2xl mr-2" />
-        </motion.button>
+        {/* 사용자 추가 버튼 - 홈페이지와 그리드뷰에서 표시 */}
+        {(isHomePage || isGridView) && (
+          <motion.button
+            onClick={() => {
+              console.log('사용자 추가 버튼 클릭됨');
+              setShowModal(true);
+            }}
+            className="bg-transparent hover:bg-gray text-black p-2 rounded-lg flex items-center"
+            aria-label="사용자 추가"
+            whileHover={{ scale: 1.05, boxShadow: "0px 0px 8px rgba(0, 0, 0, 0.3)" }}
+            whileTap={{ scale: 0.95 }}
+            title="사용자 추가"
+          >
+            <RiUserAddFill className="text-2xl mr-2" />
+          </motion.button>
+        )}
       </div>
     </header>
   );

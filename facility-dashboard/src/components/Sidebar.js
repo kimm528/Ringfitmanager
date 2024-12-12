@@ -180,7 +180,7 @@ const Sidebar = ({
               >
                 <div className="flex items-center">
                   <GiRobotLeg className="w-6 h-6" />
-                  {isSidebarOpen && <span className="ml-3">BotFit</span>}
+                  {isSidebarOpen && <span className="ml-3">BotFit Pro</span>}
                 </div>
                 {isSidebarOpen && (
                   botfitExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
@@ -195,12 +195,6 @@ const Sidebar = ({
                     </a>
                   </li>
                   <li>
-                    <a href="https://botfit.dotories.com/detail/" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <InformationCircleIcon className="w-5 h-5" />
-                      <span className="ml-3">상세 정보</span>
-                    </a>
-                  </li>
-                  <li>
                     <a href="https://botfit.dotories.com/setting-training" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
                       <AdjustmentsHorizontalIcon className="w-5 h-5" />
                       <span className="ml-3">운동 프로그램 관리</span>
@@ -209,7 +203,7 @@ const Sidebar = ({
                   <li>
                     <a href="https://botfit.dotories.com/botfit-management" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
                       <DeviceTabletIcon className="w-5 h-5" />
-                      <span className="ml-3">기기 관리</span>
+                      <span className="ml-3">봇핏 관리</span>
                     </a>
                   </li>
                 </ul>

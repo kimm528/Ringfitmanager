@@ -10,16 +10,20 @@ import { useLocation } from 'react-router-dom'; // useLocation 임포트
 
 const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveComponent, devices, availableRings }) => {
   const location = useLocation();
+  const initialSearchTerm = location.state?.searchTerm || '';
+  const initialSelectedUser = location.state?.selectedUser || null;
+  
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [selectedUser, setSelectedUser] = useState(initialSelectedUser);
+  const [userSearchTerm, setUserSearchTerm] = useState(initialSearchTerm);
 
   const [connectableDevices, setConnectableDevices] = useState([]);
   const [assignedDevices, setAssignedDevices] = useState([]);
   const [editingDeviceMacAddr, setEditingDeviceMacAddr] = useState(null);
   const [newDeviceName, setNewDeviceName] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [connectableSearchTerm, setConnectableSearchTerm] = useState('');
   const [assignedSearchTerm, setAssignedSearchTerm] = useState('');
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
-  const [selectedUser, setSelectedUser] = useState(null); // 기존 selectedUser 유지
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [modalAction, setModalAction] = useState('assign');
@@ -58,7 +62,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
 
     console.log('classifyDevices 호출:', { availableRings, users });
 
-    // ���들의 MacAddr 목록 수집
+    // 들의 MacAddr 목록 수집
     const userMacAddrs = users.map(user => user.macAddr).filter(mac => mac);
 
     // 기기 상태에 따라 분류
@@ -95,14 +99,26 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     };
   }, [setActiveComponent, classifyDevices, location.state]);
 
-  // 사용자 필터링 (링이 할당되지 않은 사용자만 표시) 및 이름순 정렬
+  // 사용자 필터링 및 정렬
   const filteredUsers = useMemo(() => {
     const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
-    return users
-      .filter(user => !user.macAddr) // 링이 없는 사용자 포함
-      .filter(user => user?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a, b) => collator.compare(a.name, b.name)); // 이름순 정렬
-  }, [users, searchTerm]);
+    let filtered = users
+      .filter(user => !user.macAddr) // 링이 없는 사용자만 포함
+      .filter(user => user?.name?.toLowerCase().includes(userSearchTerm.toLowerCase()));
+
+    // 선택된 사용자가 있으면 최상단으로 이동
+    if (selectedUser) {
+      filtered.sort((a, b) => {
+        if (a.id === selectedUser.id) return -1;
+        if (b.id === selectedUser.id) return 1;
+        return collator.compare(a.name, b.name);
+      });
+    } else {
+      filtered.sort((a, b) => collator.compare(a.name, b.name));
+    }
+
+    return filtered;
+  }, [users, userSearchTerm, selectedUser]);
 
   // 연결 가능한 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
   const sortedConnectableDevices = useMemo(() => {
@@ -128,7 +144,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     });
   }, [assignedDevices]);
 
-  // 드래그로 스크롤 기능
+  // 드래그로 스롤 기능
   const handleMouseDown = e => {
     isDragging.current = true;
     startY.current = e.pageY - userListRef.current.offsetTop;
@@ -175,13 +191,13 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
       });
 
       if (response.status === 200) {
-        // `fetchUsers`를 호출하여 최신 데이터를 가져옵니다.
+        // `fetchUsers`를 호출하여 최신 데이터 가져옵니다.
         if (fetchUsers) {
           await fetchUsers();
         }
         classifyDevices(); // 변경된 availableRings로 다시 분류
 
-        // 편집 모드 종료
+        // 편집 모달 종료
         setEditingDeviceMacAddr(null);
         setNewDeviceName('');
       } else {
@@ -298,7 +314,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
   };
 
   useEffect(() => {
-    console.log('availableRings 또는 users가 변경되었습니다:', { availableRings, users });
+    console.log('availableRings 또는 users 변경되었습니다:', { availableRings, users });
     classifyDevices();
   }, [availableRings, users, classifyDevices]);
 
@@ -322,6 +338,18 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
       return ringName.includes(lowerSearchTerm) || userName.includes(lowerSearchTerm);
     });
   }, [sortedAssignedDevices, assignedSearchTerm, users]);
+
+  // 컴포넌트 마운트 시 사용자 이름으로 검색 및 선택
+  useEffect(() => {
+    if (initialSearchTerm) {
+      setUserSearchTerm(initialSearchTerm);
+      setSearchTerm(initialSearchTerm);
+    }
+    if (initialSelectedUser) {
+      setSelectedUser(initialSelectedUser.name);
+    }
+  }, [initialSearchTerm, initialSelectedUser]);
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <Header setShowModal={() => {}} setSearchQuery={setSearchTerm} />
@@ -334,14 +362,20 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
             <input
               type="text"
               placeholder="사용자 검색..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              value={userSearchTerm}
+              onChange={e => {
+                setUserSearchTerm(e.target.value);
+                setSearchTerm(e.target.value);
+              }}
               className="p-2 border border-gray-300 rounded-md w-full"
               aria-label="사용자 검색 입력"
             />
-            {searchTerm && (
+            {userSearchTerm && (
               <button
-                onClick={() => setSearchTerm('')}
+                onClick={() => {
+                  setUserSearchTerm('');
+                  setSearchTerm('');
+                }}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 aria-label="검색어 지우기"
               >

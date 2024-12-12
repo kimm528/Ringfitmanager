@@ -18,6 +18,7 @@ import Settings from './components/Settings.js';
 import FloorPlan from './components/FloorPlan.js';
 import DeviceManagement from './components/DeviceManagement.js';
 import DataGridView from './components/DataGridView.js';
+import Modal from './components/Modal.js';
 
 // React.memo로 컴포넌트 래핑
 const MemoizedSidebar = memo(Sidebar);
@@ -59,7 +60,7 @@ const saveToSessionStorage = (key, value) => {
   }
 };
 
-// Sidebar 상태를 경로에 따라 제어하는 컴포넌트
+// Sidebar 상태를 로에 따라 제어하는 컴포넌트
 const SidebarController = ({ setIsSidebarOpen, children }) => {
   const location = useLocation();
 
@@ -279,7 +280,7 @@ function App() {
         ringData = [];
       }
   
-      // 링 데이터를 상태에 저장
+      // 링 이터를 상태에 저장
       setAvailableRings(ringData);
   
       const ringMap = new Map();
@@ -430,7 +431,7 @@ function App() {
     }
     setIsLoading(true);
     try {
-      // 배치도 이미지 세션 스토리지에서 로드 시도
+      // 배치도 이미지 세션 스토리지에�� 로드 시도
       const cachedImageData = loadFromSessionStorage(`floorPlanImage_${siteId}`, null);
       if (cachedImageData) {
         const img = new Image();
@@ -445,7 +446,7 @@ function App() {
           headers: {
             Authorization: `Basic ${credentials}`,
           },
-          responseType: 'blob', // 이미지 이터 타입 설정
+          responseType: 'blob', // 이미지 이 타입 설정
         });
 
         if (imageResponse.status === 200) {
@@ -463,7 +464,7 @@ function App() {
           };
           reader.readAsDataURL(blob);
         } else {
-          console.error('배치도 이미지 로드 실패:', imageResponse.statusText);
+          console.error('배치도 이미�� 로드 실패:', imageResponse.statusText);
         }
       }
 
@@ -575,7 +576,7 @@ function App() {
   const formatCreateDateTime = () => {
     const now = new Date();
     const year = String(now.getFullYear()).slice(-2); // 마지막 두 자리 연도
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // 월 (0부터 시작하므로 +1)
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // 월 (0부터 시작하���로 +1)
     const day = String(now.getDate()).padStart(2, '0'); // 날짜
     const hour = String(now.getHours()).padStart(2, '0'); // 시
     const minute = String(now.getMinutes()).padStart(2, '0'); // 분
@@ -688,7 +689,7 @@ function App() {
           setUsers((prevUsers) => [...prevUsers, createdUser]); // 수정: newUser 대신 createdUser
           setShowModal(false);
 
-          // 성공 메시지 설정
+          // 공 메시지 설정
           setSuccessMessage('사용자가 추가되었습니다.');
 
           // 3초 후 메시지 자동 제거
@@ -721,7 +722,7 @@ function App() {
     async (updatedUser, sendTo_server = false) => {
       console.log('사용자 업데이트:', updatedUser);
 
-      // 기존 사용자 데이터와 비교하여 변경된 경우에만 상태 업데이트
+      // 기존 사��자 데이터와 비교하여 변경된 경우에만 상태 업데이트
       setUsers((prevUsers) => {
         return produce(prevUsers, draft => {
           const user = draft.find(u => u.id === updatedUser.id);
@@ -853,7 +854,7 @@ function App() {
     [siteId, credentials, url]
   );
 
-  // 즐겨찾기 토글 함수 수정: 세션 스토리지 관련 코드 제거
+  // 즐겨찾 토글 함수 수정: 세션 스토리지 관련 코드 제거
   const toggleFavorite = useCallback(
     (userId) => {
       const userToUpdate = users.find((user) => user.id === userId);
@@ -932,11 +933,121 @@ function App() {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const formatDateTime = (date) => {
+    const padZero = (num) => num.toString().padStart(2, '0');
+    return (
+      date.getFullYear().toString().slice(-2) +
+      padZero(date.getMonth() + 1) +
+      padZero(date.getDate()) +
+      padZero(date.getHours()) +
+      padZero(date.getMinutes()) +
+      padZero(date.getSeconds())
+    );
+  };
+
+  const [newUser, setNewUser] = useState({
+    name: '',
+    gender: '',
+    age: '',
+  });
+
+  // Handle User Addition from Modal
+  const handleModalSubmit = useCallback(async () => {
+    if (!newUser.name || !newUser.gender || !newUser.age) {
+      alert('모든 필드를 입력하세요.');
+      return;
+    }
+  
+    try {
+      const gender = Number(newUser.gender);
+      const createDateTime = formatDateTime(new Date());
+  
+      let newId = getNewId(users);
+      const userToAdd = {
+        ...newUser,
+        id: newId,
+        gender: gender,
+        CreateDateTime: createDateTime,
+      };
+  
+      await handleAddUser(userToAdd);
+      setNewUser({ name: '', gender: '', age: '' });
+      setShowModal(false);
+    } catch (error) {
+      console.error('사용자 추가 실패:', error);
+      alert('사용자 추가 중 오류가 발생했습니다.');
+    }
+  }, [newUser, handleAddUser, formatDateTime, users, getNewId]);
+
   return (
     <Router>
       {isLoggedIn ? (
         <SidebarController setIsSidebarOpen={setIsSidebarOpen}>
           <PathListener setCurrentPath={setCurrentPath} />
+          {showModal && (
+            <Modal onClose={() => setShowModal(false)}>
+              <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
+                <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block">이름</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={newUser.name}
+                      onChange={(e) =>
+                        setNewUser({ ...newUser, name: e.target.value })
+                      }
+                      className="p-2 border border-gray-300 rounded w-full"
+                      placeholder="이름을 입력하세요"
+                    />
+                  </div>
+                  <div>
+                    <label className="block">성별</label>
+                    <select
+                      name="gender"
+                      value={newUser.gender !== '' ? newUser.gender : ''}
+                      onChange={(e) =>
+                        setNewUser({ ...newUser, gender: e.target.value })
+                      }
+                      className="p-2 border border-gray-300 rounded w-full"
+                    >
+                      <option value="">성별을 선택하세요</option>
+                      <option value="0">남성</option>
+                      <option value="1">여성</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block">나이</label>
+                    <input
+                      type="number"
+                      name="age"
+                      value={newUser.age}
+                      onChange={(e) =>
+                        setNewUser({ ...newUser, age: e.target.value })
+                      }
+                      className="p-2 border border-gray-300 rounded w-full"
+                      placeholder="나이를 입력하세요"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-between">
+                  <button
+                    onClick={handleModalSubmit}
+                    className="bg-blue-500 text-white py-2 px-4 rounded"
+                  >
+                    사용자 추가
+                  </button>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="bg-gray-300 text-black py-2 px-4 rounded"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </Modal>
+          )}
           <div className="flex h-screen bg-gray-100">
             <div className="fixed left-0 top-0 h-full z-10">
               {isSidebarOpen && (
@@ -1040,7 +1151,7 @@ function App() {
                     path="/datagridview"
                     element={
                       <>
-                        <DataGridView users={users} />
+                        <DataGridView users={users} setShowModal={setShowModal} />
                       </>
                     }
                   />

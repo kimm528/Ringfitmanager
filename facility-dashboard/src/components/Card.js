@@ -407,11 +407,32 @@ const Card = ({
         setShowRingDisconnectModal(true);
       } else {
         // 링이 연결되지 않은 사용자일 경우 DeviceManagement 페이지로 이동하면서 사용자 전달
-        navigate('/devices', { state: { selectedUser: user } });
+        navigate('/devices', { 
+          state: { 
+            selectedUser: user,
+            userName: user.name
+          } 
+        });
       }
     },
     [user, navigate]
   );
+
+  const handleRingAssign = () => {
+    if (user.macAddr) {
+      // 이미 링이 연결된 사용자일 경우 모달 표시
+      setShowRingModal(true);
+    } else {
+      // 링이 연결되지 않은 사용자일 경우 DeviceManagement 페이지로 이동하면서 사용자 전달
+      navigate('/devices', { 
+        state: { 
+          selectedUser: user,
+          userName: user.name,
+          searchTerm: user.name  // 검색어로 사용자 이름 추가
+        } 
+      });
+    }
+  };
 
   return (
     <div
@@ -713,7 +734,7 @@ const Card = ({
           {
             icon: <MdLocationOn size={24} color="#4caf50" />,
             label: '이동거리',
-            value: `${(processedDistance / 1000).toFixed(2)} km`, // 거리 단위를 km로 변환
+            value: `${(processedDistance / 1000).toFixed(2)} km`, // 리 단위를 km로 변환
           },
           {
             icon: <MdHotel size={24} color="#9c27b0" />,
