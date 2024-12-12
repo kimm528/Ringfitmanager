@@ -13,7 +13,7 @@ import {
   AdjustmentsHorizontalIcon
 } from "@heroicons/react/24/outline";
 import { LiaRingSolid } from "react-icons/lia";
-import { GiRobotLeg } from "react-icons/gi";
+import { GiRobotLeg, GiRobotGolem } from "react-icons/gi";
 import './Sidebar.css';
 import Modal from './Modal';
 import { openDB } from 'idb';
@@ -31,8 +31,8 @@ const Sidebar = ({
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [botfitExpanded, setBotfitExpanded] = useState(false);
-  const [ringExpanded, setRingExpanded] = useState(false);
+  const [botfitExpanded, setBotfitExpanded] = useState(true);
+  const [ringExpanded, setRingExpanded] = useState(true);
 
   // 캐시 삭제 함수
   const clearFloorPlanCache = useCallback(async () => {
@@ -179,7 +179,6 @@ const Sidebar = ({
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-                  <GiRobotLeg className="w-6 h-6" />
                   {isSidebarOpen && <span className="ml-3">BotFit Pro</span>}
                 </div>
                 {isSidebarOpen && (
@@ -202,7 +201,7 @@ const Sidebar = ({
                   </li>
                   <li>
                     <a href="https://botfit.dotories.com/botfit-management" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <DeviceTabletIcon className="w-5 h-5" />
+                      <GiRobotLeg className="w-5 h-5" />
                       <span className="ml-3">봇핏 관리</span>
                     </a>
                   </li>
@@ -217,7 +216,6 @@ const Sidebar = ({
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-                  <LiaRingSolid className="w-6 h-6" />
                   {isSidebarOpen && <span className="ml-3">Ring</span>}
                 </div>
                 {isSidebarOpen && (
@@ -244,7 +242,7 @@ const Sidebar = ({
                         location.pathname === '/devices' ? 'text-[#594AE2]' : ''
                       }`}
                     >
-                      <DeviceTabletIcon className="w-5 h-5" />
+                      <LiaRingSolid className="w-5 h-5" />
                       <span className="ml-3">기기 관리</span>
                     </button>
                   </li>
