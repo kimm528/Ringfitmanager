@@ -15,31 +15,25 @@
 }
 
 /* 스크롤바 스타일 */
-aside::-webkit-scrollbar,
-aside *::-webkit-scrollbar {
+aside::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
 
-aside::-webkit-scrollbar-track,
-aside *::-webkit-scrollbar-track {
+aside::-webkit-scrollbar-track {
   background: transparent;
 }
 
-aside::-webkit-scrollbar-thumb,
-aside *::-webkit-scrollbar-thumb {
+aside::-webkit-scrollbar-thumb {
   background-color: #e2e8f0;
   border-radius: 3px;
 }
 
-aside::-webkit-scrollbar-thumb:hover,
-aside *::-webkit-scrollbar-thumb:hover {
+aside::-webkit-scrollbar-thumb:hover {
   background-color: #cbd5e1;
 }
 
 /* Firefox 스크롤바 스타일 */
-aside,
-aside * {
+aside {
   scrollbar-width: thin;
   scrollbar-color: #e2e8f0 transparent;
 }
@@ -52,6 +46,37 @@ aside * {
 /* 모바일 오버레이 스타일 */
 .sidebar-overlay {
   transition: opacity 0.3s ease;
+}
+
+/* 사이드바 레이아웃 */
+aside {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+}
+
+aside > div {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* 트리 메뉴 영역 */
+aside > div > div:first-child {
+  flex-shrink: 0;
+}
+
+/* 사용자 리스트 영역 */
+aside > div > div:nth-child(2) {
+  flex: 1;
+}
+
+/* 하단 버튼 영역 */
+aside > div > div:last-child {
+  margin-top: auto;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  width: 100%;
 }
 
 /* 모바일 사이드바 스타일 */
@@ -67,35 +92,6 @@ aside * {
     bottom: 0;
     width: 256px !important;
     height: calc(100vh - 80px) !important;
-    -webkit-overflow-scrolling: touch; /* iOS 스크롤 개선 */
-  }
-
-  aside > div {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-
-  aside > div > div:first-child {
-    flex-shrink: 0;
-  }
-
-  aside > div > div:nth-child(2) {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-  }
-
-  aside > div > div:last-child {
-    flex-shrink: 0;
-    position: sticky;
-    bottom: 0;
-    background-color: #f9fafb;
-    border-top: 1px solid #e5e7eb;
-    padding: 1rem;
-    width: 100%;
-    z-index: 10;
   }
 
   .sidebar-overlay {
