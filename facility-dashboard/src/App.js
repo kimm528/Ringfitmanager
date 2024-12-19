@@ -97,7 +97,10 @@ function App() {
   // 상태 변수들
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    // 모바일 환경인 경우 기본값 false, 데스크톱인 경우 true
+    return window.innerWidth > 768;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [users, setUsers] = useState([]);
   const [sortOption, setSortOption] = useState('이름 순');
@@ -108,6 +111,7 @@ function App() {
   const [floorPlanImage, setFloorPlanImage] = useState(null); // floorPlanImage는 별도로 관리
   const [devices, setDevices] = useState([]); // sessionStorage에서 로드하지 않음
   const [isLoading, setIsLoading] = useState(false); // isLoading 상태 추가
+  const [activeComponent, setActiveComponent] = useState(''); // activeComponent 상태 추가
 
   // 잠금 상태를 App.js에서 관리하도록 추가
   const [isLocked, setIsLocked] = useState(true); // 잠금 상태 추가
@@ -135,7 +139,6 @@ function App() {
   useEffect(() => {
     const loggedIn = Cookies.get('isLoggedIn') === 'true';
     const storedSiteId = Cookies.get('siteId') || '';
-    const storedAdminId = Cookies.get('adminId') || '';
 
     setIsLoggedIn(loggedIn);
     setSiteId(storedSiteId);
@@ -409,7 +412,7 @@ function App() {
             return prevUsers;
           }
         } catch (e) {
-          console.error('사용자 데이터 변경 감지 오류:', e);
+          console.error('사용자 데이터 경 감지 오류:', e);
           return prevUsers; // 오류 발생 시 기존 상태 유지
         }
       });
@@ -858,7 +861,7 @@ function App() {
       if (userToUpdate) {
         const updatedUser = { ...userToUpdate, isFavorite: !userToUpdate.isFavorite };
 
-        // 서버에 업데이트
+        // 서버 업데이트
         updateUser(updatedUser, true);
 
         // 로컬 상태 업데이트
@@ -975,187 +978,202 @@ function App() {
     }
   }, [newUser, handleAddUser, formatDateTime, users, getNewId]);
 
+  // 화면 크기 변경 감지
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // 초기 실행
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <Router>
       {isLoggedIn ? (
-        <SidebarController setIsSidebarOpen={setIsSidebarOpen}>
-          <PathListener setCurrentPath={setCurrentPath} />
-          {showModal && (
-            <Modal onClose={() => setShowModal(false)}>
-              <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
-                <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block">이름</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={newUser.name}
-                      onChange={(e) =>
-                        setNewUser({ ...newUser, name: e.target.value })
-                      }
-                      className="p-2 border border-gray-300 rounded w-full"
-                      placeholder="이름을 입력하세요"
-                    />
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar
+            isSidebarOpen={isSidebarOpen}
+            users={users}
+            setIsLoggedIn={setIsLoggedIn}
+            sortOption={sortOption}
+            siteId={Cookies.get('siteId')}
+            resetState={resetState}
+          />
+          <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+            <Header
+              toggleSidebar={toggleSidebar}
+              isSidebarOpen={isSidebarOpen}
+              siteName={Cookies.get('siteId')}
+              userName={Cookies.get('adminId')}
+              setShowModal={setShowModal}
+              setSearchQuery={setSearchQuery}
+              sortOption={sortOption}
+              setSortOption={setSortOption}
+            />
+            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20">
+              {showModal && (
+                <Modal onClose={() => setShowModal(false)}>
+                  <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
+                    <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block">이름</label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={newUser.name}
+                          onChange={(e) =>
+                            setNewUser({ ...newUser, name: e.target.value })
+                          }
+                          className="p-2 border border-gray-300 rounded w-full"
+                          placeholder="이름을 입력하세요"
+                        />
+                      </div>
+                      <div>
+                        <label className="block">성별</label>
+                        <select
+                          name="gender"
+                          value={newUser.gender !== '' ? newUser.gender : ''}
+                          onChange={(e) =>
+                            setNewUser({ ...newUser, gender: e.target.value })
+                          }
+                          className="p-2 border border-gray-300 rounded w-full"
+                        >
+                          <option value="">성별을 선택하세요</option>
+                          <option value="0">남성</option>
+                          <option value="1">여성</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block">나이</label>
+                        <input
+                          type="number"
+                          name="age"
+                          value={newUser.age}
+                          onChange={(e) =>
+                            setNewUser({ ...newUser, age: e.target.value })
+                          }
+                          className="p-2 border border-gray-300 rounded w-full"
+                          placeholder="나이를 입력하세요"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-between">
+                      <button
+                        onClick={handleModalSubmit}
+                        className="bg-blue-500 text-white py-2 px-4 rounded"
+                      >
+                        사용자 추가
+                      </button>
+                      <button
+                        onClick={() => setShowModal(false)}
+                        className="bg-gray-300 text-black py-2 px-4 rounded"
+                      >
+                        닫기
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block">성별</label>
-                    <select
-                      name="gender"
-                      value={newUser.gender !== '' ? newUser.gender : ''}
-                      onChange={(e) =>
-                        setNewUser({ ...newUser, gender: e.target.value })
-                      }
-                      className="p-2 border border-gray-300 rounded w-full"
-                    >
-                      <option value="">성별을 선택하세요</option>
-                      <option value="0">남성</option>
-                      <option value="1">여성</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block">나이</label>
-                    <input
-                      type="number"
-                      name="age"
-                      value={newUser.age}
-                      onChange={(e) =>
-                        setNewUser({ ...newUser, age: e.target.value })
-                      }
-                      className="p-2 border border-gray-300 rounded w-full"
-                      placeholder="나이를 입력하세요"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-between">
-                  <button
-                    onClick={handleModalSubmit}
-                    className="bg-blue-500 text-white py-2 px-4 rounded"
-                  >
-                    사용자 추가
-                  </button>
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="bg-gray-300 text-black py-2 px-4 rounded"
-                  >
-                    닫기
-                  </button>
-                </div>
-              </div>
-            </Modal>
-          )}
-          <div className="flex h-screen bg-gray-100">
-            <div className="fixed left-0 top-0 h-full z-10">
-              {isSidebarOpen && (
-                <MemoizedSidebar
-                  isSidebarOpen={isSidebarOpen}
-                  setIsSidebarOpen={setIsSidebarOpen}
-                  users={users}
-                  setIsLoggedIn={setIsLoggedIn}
-                  sortOption={sortOption}
-                  siteId={siteId}
-                  resetState={resetState}
-                />
+                </Modal>
               )}
-            </div>
-            <div className={`flex-1 flex flex-col ${isSidebarOpen ? 'ml-64' : 'ml-0'} transition-all duration-300`}>
-              <Header 
-                setShowModal={setShowModal}
-                setSearchQuery={setSearchQuery}
-                sortOption={sortOption}
-                setSortOption={setSortOption}
-                toggleSidebar={toggleSidebar}
-              />
-              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 mt-[80px] p-4">
-                <Routes>
-                  <Route
-                    path="/"
-                    element={
-                      <MemoizedDashboard
-                        showModal={showModal}
-                        setShowModal={setShowModal}
-                        users={users}
-                        setUsers={setUsers}
-                        searchQuery={searchQuery}
-                        handleAddUser={handleAddUser}
-                        updateUser={updateUser}
-                        sortOption={sortOption}
-                        deleteUser={deleteUser}
-                        toggleFavorite={toggleFavorite}
-                        availableRings={availableRings}
-                        disconnectInterval={disconnectInterval}
-                        devices={devices}
-                        getNewId={getNewId}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/users/:userId"
-                    element={
-                      <MemoizedUserDetail
-                        users={users}
-                        updateUserLifeLog={updateUser}
-                        siteId={siteId}
-                        fetchHealthData={fetchHealthData}
-                        healthData={healthData}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <MemoizedSettings
-                        handleUpdateAdminInfo={handleUpdateAdminInfo}
-                        users={users}
-                        deleteUser={deleteUser}
-                        siteId={siteId}
-                        disconnectInterval={disconnectInterval}
-                        setDisconnectInterval={setDisconnectInterval}
-                        devices={devices}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/floorplan"
-                    element={
-                      <MemoizedFloorPlan
-                        ringData={availableRings}
-                        users={users}
-                        floorPlanImage={floorPlanImage}
-                        devices={devices}
-                        setDevices={setDevices}
-                        setFloorPlanImage={setFloorPlanImage}
-                        siteId={siteId}
-                        isLocked={isLocked}
-                        setIsLocked={setIsLocked}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/devices"
-                    element={
-                      <MemoizedDeviceManagement
-                        users={users}
-                        setUsers={setUsers}
-                        siteId={siteId}
-                        fetchUsers={fetchUsersAndRingData}
-                        availableRings={availableRings}
-                      />
-                    }
-                  />
-                  <Route
-                    path="/datagridview"
-                    element={
-                      <>
-                        <DataGridView users={users} setShowModal={setShowModal} />
-                      </>
-                    }
-                  />
-                </Routes>
-              </main>
-            </div>
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <MemoizedDashboard
+                      showModal={showModal}
+                      setShowModal={setShowModal}
+                      users={users}
+                      setUsers={setUsers}
+                      searchQuery={searchQuery}
+                      handleAddUser={handleAddUser}
+                      updateUser={updateUser}
+                      sortOption={sortOption}
+                      deleteUser={deleteUser}
+                      toggleFavorite={toggleFavorite}
+                      availableRings={availableRings}
+                      disconnectInterval={disconnectInterval}
+                      devices={devices}
+                      getNewId={getNewId}
+                    />
+                  }
+                />
+                <Route
+                  path="/users/:userId"
+                  element={
+                    <MemoizedUserDetail
+                      users={users}
+                      updateUserLifeLog={updateUser}
+                      siteId={siteId}
+                      fetchHealthData={fetchHealthData}
+                      healthData={healthData}
+                    />
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <MemoizedSettings
+                      handleUpdateAdminInfo={handleUpdateAdminInfo}
+                      users={users}
+                      deleteUser={deleteUser}
+                      siteId={siteId}
+                      disconnectInterval={disconnectInterval}
+                      setDisconnectInterval={setDisconnectInterval}
+                      devices={devices}
+                    />
+                  }
+                />
+                <Route
+                  path="/floorplan"
+                  element={
+                    <MemoizedFloorPlan
+                      ringData={availableRings}
+                      users={users}
+                      floorPlanImage={floorPlanImage}
+                      devices={devices}
+                      setDevices={setDevices}
+                      setFloorPlanImage={setFloorPlanImage}
+                      siteId={siteId}
+                      isLocked={isLocked}
+                      setIsLocked={setIsLocked}
+                    />
+                  }
+                />
+                <Route
+                  path="/devices"
+                  element={
+                    <DeviceManagement
+                      users={users}
+                      setUsers={setUsers}
+                      siteId={Cookies.get('siteId')}
+                      fetchUsers={fetchUsersAndRingData}
+                      setActiveComponent={setActiveComponent}
+                      devices={devices}
+                      availableRings={availableRings}
+                      toggleSidebar={toggleSidebar}
+                      isSidebarOpen={isSidebarOpen}
+                      userName={Cookies.get('adminId')}
+                    />
+                  }
+                />
+                <Route
+                  path="/datagridview"
+                  element={
+                    <>
+                      <DataGridView users={users} setShowModal={setShowModal} />
+                    </>
+                  }
+                />
+              </Routes>
+            </main>
           </div>
-        </SidebarController>
+        </div>
       ) : (
         <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
       )}

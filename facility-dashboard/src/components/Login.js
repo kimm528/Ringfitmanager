@@ -78,19 +78,19 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         setSiteId(siteId);
 
         Cookies.set("isLoggedIn", "true", { 
-          domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
+          //domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
           path: '/', 
           sameSite: 'None',       // 교차 사이트 요청에서도 전송 가능
           secure: true            // HTTPS에서만 전송
         });
         Cookies.set("siteId", siteId, { 
-          domain: '.dotories.com', 
+          //domain: '.dotories.com', 
           path: '/', 
           sameSite: 'None', 
           secure: true 
         });
         Cookies.set("adminId", username, { 
-          domain: '.dotories.com', 
+          //domain: '.dotories.com', 
           path: '/', 
           sameSite: 'None', 
           secure: true 
@@ -212,30 +212,30 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   }, [signUpSiteId, signUpAdminId, signUpPassword, signUpName, credentials]);
 
   return (
-    <section className="h-screen flex justify-center items-center bg-gray-50">
-      <div className="container h-full px-6 py-24 flex justify-center items-center">
-        <div className="g-6 flex h-full flex-wrap items-center justify-center lg:justify-between">
-          {/* Left column container with background */}
-          <div className="mb-12 md:mb-0 md:w-8/12 lg:w-6/12">
+    <section className="min-h-screen bg-gray-50 flex flex-col justify-center overflow-y-auto py-8">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+          {/* 로고 이미지 컨테이너 */}
+          <div className="w-full lg:w-5/12 flex justify-center">
             <img
               src={`${process.env.PUBLIC_URL}/AiFit Manager Icon_Round Type.png`}
-              className="w-full"
+              className="w-3/4 max-w-sm object-contain"
               alt="aiFitManager"
             />
           </div>
 
-          {/* Right column container with form */}
-          <div className="md:w-8/12 lg:ml-6 lg:w-5/12">
-            {/* Login Title */}
+          {/* 로그인 폼 컨테이너 */}
+          <div className="w-full lg:w-5/12">
+            {/* 로그인 타이틀 */}
             <div className="text-center mb-6">
-              <h2 className="text-4xl font-bold">로그인</h2> {/* 글씨 크기 키움 */}
+              <h2 className="text-3xl font-bold">로그인</h2>
             </div>
 
-            <form onSubmit={handleLogin}>
-              {/* Username Input */}
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* 아이디 입력 */}
               <input
                 type="text"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-5 rounded-lg w-full text-2xl" 
+                className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="아이디를 입력하세요"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -243,10 +243,10 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                 disabled={isLoading}
               />
 
-              {/* Password Input */}
+              {/* 비밀번호 입력 */}
               <input
                 type="password"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-5 rounded-lg w-full text-2xl" 
+                className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -254,18 +254,18 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                 disabled={isLoading}
               />
 
-              {/* Login Button */}
+              {/* 로그인 버튼 */}
               <button
                 type="submit"
-                className={`inline-flex items-center justify-center w-full rounded-lg px-10 py-5 text-xl font-semibold text-white shadow-md transition duration-150 ease-in-out relative ${
+                className={`w-full py-3 text-lg font-semibold text-white rounded-lg transition duration-150 ease-in-out ${
                   isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
                 }`}
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <>
+                  <div className="flex items-center justify-center">
                     <svg
-                      className="animate-spin h-5 w-5 mr-3 text-white"
+                      className="animate-spin h-5 w-5 mr-2 text-white"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -285,24 +285,24 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
                       ></path>
                     </svg>
                     로그인 중...
-                  </>
+                  </div>
                 ) : (
                   '로그인'
                 )}
               </button>
 
-              {/* Sign Up Button */}
+              {/* 회원가입 버튼 */}
               <button
                 type="button"
                 onClick={() => setIsSignUpModalOpen(true)}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-10 py-5 text-2xl font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600 mt-4"
+                className="w-full py-3 text-lg font-semibold text-white bg-purple-500 hover:bg-purple-600 rounded-lg transition duration-150 ease-in-out"
                 disabled={isLoading}
               >
                 회원가입
               </button>
 
               {loginErrorMessage && (
-                <div className="text-red-500 mt-4">
+                <div className="text-red-500 text-center mt-2 text-sm">
                   {loginErrorMessage}
                 </div>
               )}
@@ -311,76 +311,113 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         </div>
       </div>
 
+      {/* 회원가입 모달 */}
       {isSignUpModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-gray-900 bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h2 className="text-2xl font-semibold text-center mb-4">회원가입</h2>
-
-            <form onSubmit={handleSignUp}>
-              <input
-                type="text"
-                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
-                placeholder="siteId를 입력하세요"
-                value={signUpSiteId}
-                onChange={(e) => setSignUpSiteId(e.target.value)}
-                aria-label="siteId 입력"
-              />
-
-              <input
-                type="text"
-                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
-                placeholder="관리자 아이디를 입력하세요"
-                value={signUpAdminId}
-                onChange={(e) => setSignUpAdminId(e.target.value)}
-                aria-label="관리자 아이디 입력"
-              />
-
-              <input
-                type="password"
-                className="mb-4 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
-                placeholder="비밀번호를 입력하세요"
-                value={signUpPassword}
-                onChange={(e) => setSignUpPassword(e.target.value)}
-                aria-label="비밀번호 입력"
-              />
-
-              <input
-                type="text"
-                className="mb-6 focus:outline-none focus:ring-0 appearance-none border border-gray-300 p-3 rounded-lg w-full text-lg"
-                placeholder="이름을 입력하세요"
-                value={signUpName}
-                onChange={(e) => setSignUpName(e.target.value)}
-                aria-label="이름 입력"
-              />
-
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center w-full rounded-lg bg-purple-500 px-10 py-5 text-xl font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-purple-600"
-              >
-                회원가입
-              </button>
-
-              {signUpErrorMessage && (
-                <div className="text-red-500 mt-4">
-                  {signUpErrorMessage}
+        <div className="fixed inset-0 z-50 bg-gray-900 bg-opacity-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 py-8">
+            <div className="relative w-full max-w-md">
+              <div className="bg-white rounded-lg shadow-xl">
+                {/* 헤더 영역 */}
+                <div className="px-6 pt-5 pb-4 border-b border-gray-200">
+                  <h2 className="text-2xl font-semibold text-center">회원가입</h2>
                 </div>
-              )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSignUpModalOpen(false);
-                  setSignUpSiteId("");
-                  setSignUpAdminId("");
-                  setSignUpPassword("");
-                  setSignUpName("");
-                  setSignUpErrorMessage("");
-                }}
-                className="inline-flex items-center justify-center w-full rounded-lg bg-gray-500 px-10 py-5 text-xl font-semibold text-white shadow-md transition duration-150 ease-in-out hover:bg-gray-600 mt-4"
-              >
-                닫기
-              </button>
-            </form>
+                {/* 폼 영역 */}
+                <div className="px-6 py-4">
+                  <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          사이트 ID
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="siteId를 입력하세요"
+                          value={signUpSiteId}
+                          onChange={(e) => setSignUpSiteId(e.target.value)}
+                          aria-label="siteId 입력"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          관리자 ID
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="관리자 아이디를 입력하세요"
+                          value={signUpAdminId}
+                          onChange={(e) => setSignUpAdminId(e.target.value)}
+                          aria-label="관리자 아이디 입력"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          비밀번호
+                        </label>
+                        <input
+                          type="password"
+                          className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="비밀번호를 입력하세요"
+                          value={signUpPassword}
+                          onChange={(e) => setSignUpPassword(e.target.value)}
+                          aria-label="비밀번호 입력"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          이름
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-4 py-3 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="이름을 입력하세요"
+                          value={signUpName}
+                          onChange={(e) => setSignUpName(e.target.value)}
+                          aria-label="이름 입력"
+                        />
+                      </div>
+                    </div>
+
+                    {signUpErrorMessage && (
+                      <div className="text-red-500 text-center mt-4">
+                        {signUpErrorMessage}
+                      </div>
+                    )}
+                  </form>
+                </div>
+
+                {/* 버튼 영역 */}
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleSignUp}
+                    className="w-full py-3 text-base font-semibold text-white bg-purple-500 hover:bg-purple-600 rounded-lg transition duration-150 ease-in-out mb-3"
+                  >
+                    회원가입
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUpModalOpen(false);
+                      setSignUpSiteId("");
+                      setSignUpAdminId("");
+                      setSignUpPassword("");
+                      setSignUpName("");
+                      setSignUpErrorMessage("");
+                    }}
+                    className="w-full py-3 text-base font-semibold text-white bg-gray-500 hover:bg-gray-600 rounded-lg transition duration-150 ease-in-out"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -131,15 +131,14 @@ const Dashboard = ({
           {({ width, height }) => {
             const margin = 5;
             const minColumnWidth = 380;
+            const isMobile = width <= 768;
 
-            const columnCount = Math.max(
-              1,
-              Math.floor((width + margin) / (minColumnWidth + margin))
-            );
+            // 모바일일 때는 한 열로 표시하고 카드 너비를 화면에 맞게 조정
+            const columnCount = isMobile ? 1 : Math.max(1, Math.floor((width + margin) / (minColumnWidth + margin)));
 
-            const columnWidth = Math.floor(
-              (width - margin * (columnCount + 1)) / columnCount
-            );
+            const columnWidth = isMobile 
+              ? Math.min(minColumnWidth, width - (margin * 2)) // 모바일에서는 화면 너비에 맞춤
+              : Math.floor((width - margin * (columnCount + 1)) / columnCount);
 
             const rowHeight = 500 + margin;
             const rowCount = Math.ceil(sortedUsers.length / columnCount);
@@ -155,7 +154,7 @@ const Dashboard = ({
                   key={key}
                   style={{
                     ...style,
-                    left: style.left + margin,
+                    left: isMobile ? margin : style.left + margin,
                     top: style.top + margin,
                     width: columnWidth,
                     height: rowHeight - margin,

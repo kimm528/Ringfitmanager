@@ -8,7 +8,18 @@ import Header from './Header.js';
 import Modal from './Modal.js';
 import { useLocation } from 'react-router-dom'; // useLocation 임포트
 
-const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveComponent, devices, availableRings }) => {
+const DeviceManagement = ({ 
+  users, 
+  setUsers, 
+  siteId, 
+  fetchUsers, 
+  setActiveComponent, 
+  devices, 
+  availableRings,
+  toggleSidebar,
+  isSidebarOpen,
+  userName
+}) => {
   const location = useLocation();
   const initialSearchTerm = location.state?.searchTerm || '';
   const initialSelectedUser = location.state?.selectedUser || null;
@@ -132,7 +143,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
     });
   }, [connectableDevices]);
 
-  // 연결된 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
+  // 연결된 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 ��름 없으면 '이름 없음'으로 처리)
   const sortedAssignedDevices = useMemo(() => {
     const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
 
@@ -219,7 +230,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
         macAddr: action === 'assign' ? ring.MacAddr : '',
       };
 
-      // 현재 시간을 'yyMMddHHmmss' 형식으로 포맷팅
+      // 현재 시간을 'yyMMddHHmmss' 형식으로 ���맷팅
       const ringSettingDateTime =
         action === 'assign' ? formatDateTime(new Date()) : '';
 
@@ -256,7 +267,7 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
         },
       };
 
-      // 서버에 사용자 정보 업데이트 요청
+      // 서버에 사용자 정보 업데이트 ��청
       const response = await axios.post(`${url}/api/user`, requestBody, {
         headers: {
           'Content-Type': 'application/json',
@@ -352,222 +363,237 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <Header setShowModal={() => {}} setSearchQuery={setSearchTerm} />
-      <div className="flex flex-1">
-        {/* 사용자 리스트 */}
-        <div className="w-full sm:w-1/3 pr-4 flex flex-col mt-4 px-4">
-          <h2 className="text-xl font-semibold mb-4">사용자 목록</h2>
-          {/* 사용자 검색 입력 */}
-          <div className="relative mb-4">
-            <input
-              type="text"
-              placeholder="사용자 검색..."
-              value={userSearchTerm}
-              onChange={e => {
-                setUserSearchTerm(e.target.value);
-                setSearchTerm(e.target.value);
-              }}
-              className="p-2 border border-gray-300 rounded-md w-full"
-              aria-label="사용자 검색 입력"
-            />
-            {userSearchTerm && (
-              <button
-                onClick={() => {
-                  setUserSearchTerm('');
-                  setSearchTerm('');
+      <Header 
+        toggleSidebar={toggleSidebar}
+        isSidebarOpen={isSidebarOpen}
+        siteName={siteId}
+        userName={userName}
+        setShowModal={() => {}}
+        setSearchQuery={setSearchTerm}
+        sortOption=""
+        setSortOption={() => {}}
+      />
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col md:flex-row gap-4 p-4">
+          {/* 사용자 리스트 */}
+          <div className="w-full md:w-1/3 flex flex-col">
+            <h2 className="text-xl font-semibold mb-4">사용자 목록</h2>
+            {/* 사용자 검색 입력 */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                placeholder="사용자 검색..."
+                value={userSearchTerm}
+                onChange={e => {
+                  setUserSearchTerm(e.target.value);
+                  setSearchTerm(e.target.value);
                 }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                aria-label="검색어 지우기"
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {filteredUsers.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <p>사용자 목록이 없습니다.</p>
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {filteredUsers.map(user => (
-                  <li
-                    key={user.id}
-                    className={`p-4 bg-gray-100 rounded-md shadow-sm flex items-center cursor-pointer ${
-                      selectedUser && selectedUser.id === user.id ? 'border border-blue-500' : ''
-                    }`}
-                    onClick={() => {
-                      if (selectedUser && selectedUser.id === user.id) {
-                        setSelectedUser(null);
-                      } else {
-                        setSelectedUser(user);
-                      }
-                    }}
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{user.name || '이름 없음'}</p>
-                      <p className="text-sm text-gray-600">
-                        {user.gender === 0 ? '남성' : '여성'}, {user.age}세
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        {/* 연결 가능한 링 목록 */}
-        <div className="w-full sm:w-1/3 px-2 mt-4 px-4">
-          <h2 className="text-xl font-semibold mb-4">연결 가능한 링 목록</h2>
-          {/* 연결 가능한 링 검색 입력 */}
-          <div className="relative mb-4">
-            <input
-              type="text"
-              placeholder="링 검색..."
-              value={connectableSearchTerm}
-              onChange={e => setConnectableSearchTerm(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md w-full"
-              aria-label="연결 가능한 링 검색 입력"
-            />
-            {connectableSearchTerm && (
-              <button
-                onClick={() => setConnectableSearchTerm('')}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                aria-label="검색어 지우기"
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-            {isLoadingDevices ? (
-              <div className="flex items-center justify-center h-full">
-                <p>링 목록 로딩 중...</p>
-              </div>
-            ) : (
-              filteredConnectableDevices.map(ring => (
-                <div
-                  key={ring.MacAddr}
-                  className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => handleDeviceClick(ring, false)}
-                  title={`MAC 주소: ${ring.MacAddr}`}
+                className="p-2 border border-gray-300 rounded-md w-full"
+                aria-label="사용자 검색 입력"
+              />
+              {userSearchTerm && (
+                <button
+                  onClick={() => {
+                    setUserSearchTerm('');
+                    setSearchTerm('');
+                  }}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label="검색어 지우기"
                 >
-                  <div className="flex items-center">
-                    <FaGem className="text-gray-600 mr-4" size={24} />
-                    <div className="flex-1">
-                      {editingDeviceMacAddr === ring.MacAddr ? (
-                        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            value={newDeviceName}
-                            onChange={(e) => setNewDeviceName(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-1 border border-gray-300 rounded mr-2 flex-1"
-                          />
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateDeviceName(editingDeviceMacAddr);
-                            }}
-                            className="text-green-500 hover:text-green-700"
-                            aria-label="링 이름 저장"
-                          >
-                            <CheckIcon className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingDeviceMacAddr(null);
-                              setNewDeviceName('');
-                            }}
-                            className="text-red-500 hover:text-red-700 ml-2"
-                            aria-label="링 이름 편집 취소"
-                          >
-                            <XMarkIcon className="w-5 h-5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <h3 className="text-lg font-medium flex-1">{ring.Name || '이름 없음'}</h3>
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              startEditingDeviceName(ring.MacAddr, ring.Name);
-                            }}
-                            className="text-gray-500 hover:text-gray-700"
-                            aria-label="링 이름 편집"
-                          >
-                            <PencilIcon className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)]">
+              {filteredUsers.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <p>사용자 목록이 없습니다.</p>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* 연결된 링 목록 */}
-        <div className="w-full sm:w-1/3 pl-4 mt-4 px-4">
-          <h2 className="text-xl font-semibold mb-4">연결된 링 목록</h2>
-          {/* 연결된 링 검색 입력 */}
-          <div className="relative mb-4">
-            <input
-              type="text"
-              placeholder="링 검색..."
-              value={assignedSearchTerm}
-              onChange={e => setAssignedSearchTerm(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md w-full"
-              aria-label="연결된 링 검색 입력"
-            />
-            {assignedSearchTerm && (
-              <button
-                onClick={() => setAssignedSearchTerm('')}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                aria-label="검색어 지우기"
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-            {isLoadingDevices ? (
-              <div className="flex items-center justify-center h-full">
-                <p>링 목록 로딩 중...</p>
-              </div>
-            ) : (
-              filteredAssignedDevices.map(ring => {
-                const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
-                return (
-                  <div
-                    key={ring.MacAddr}
-                    className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleDeviceClick(ring, true)}
-                  >
-                    <div className="flex items-center">
-                      <FaGem className="text-gray-600 mr-4" size={24} />
+              ) : (
+                <ul className="space-y-2">
+                  {filteredUsers.map(user => (
+                    <li
+                      key={user.id}
+                      className={`p-4 bg-gray-100 rounded-md shadow-sm flex items-center cursor-pointer ${
+                        selectedUser && selectedUser.id === user.id ? 'border-2 border-blue-500' : ''
+                      }`}
+                      onClick={() => {
+                        if (selectedUser && selectedUser.id === user.id) {
+                          setSelectedUser(null);
+                        } else {
+                          setSelectedUser(user);
+                        }
+                      }}
+                    >
                       <div className="flex-1">
-                        <div className="flex items-center">
-                          <h3 className="text-lg font-medium flex-1">
-                            {ring.Name || '이름 없음'}{' '}
-                            {assignedUser && (
-                              <span className="text-sm text-gray-600">
-                                {`${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
-                                  assignedUser.age || '알 수 없음'
-                                }세)`}
-                              </span>
-                            )}
-                          </h3>
+                        <p className="font-medium">{user.name || '이름 없음'}</p>
+                        <p className="text-sm text-gray-600">
+                          {user.gender === 0 ? '남성' : '여성'}, {user.age}세
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* 연결 가능한 링 목록 */}
+          <div className="w-full md:w-1/3 flex flex-col">
+            <h2 className="text-xl font-semibold mb-4">연결 가능한 링 목록</h2>
+            {/* 연결 가능한 링 검색 입력 */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                placeholder="링 검색..."
+                value={connectableSearchTerm}
+                onChange={e => setConnectableSearchTerm(e.target.value)}
+                className="p-2 border border-gray-300 rounded-md w-full"
+                aria-label="연결 가능한 링 검색 입력"
+              />
+              {connectableSearchTerm && (
+                <button
+                  onClick={() => setConnectableSearchTerm('')}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label="검색어 지우기"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)]">
+              {isLoadingDevices ? (
+                <div className="flex items-center justify-center h-full">
+                  <p>링 목록 로딩 중...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredConnectableDevices.map(ring => (
+                    <div
+                      key={ring.MacAddr}
+                      className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
+                      onClick={() => handleDeviceClick(ring, false)}
+                      title={`MAC 주소: ${ring.MacAddr}`}
+                    >
+                      <div className="flex items-center">
+                        <FaGem className="text-gray-600 mr-4" size={24} />
+                        <div className="flex-1">
+                          {editingDeviceMacAddr === ring.MacAddr ? (
+                            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                value={newDeviceName}
+                                onChange={(e) => setNewDeviceName(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1 border border-gray-300 rounded mr-2 flex-1"
+                              />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateDeviceName(editingDeviceMacAddr);
+                                }}
+                                className="text-green-500 hover:text-green-700"
+                                aria-label="링 이름 저장"
+                              >
+                                <CheckIcon className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingDeviceMacAddr(null);
+                                  setNewDeviceName('');
+                                }}
+                                className="text-red-500 hover:text-red-700 ml-2"
+                                aria-label="링 이름 편집 취소"
+                              >
+                                <XMarkIcon className="w-5 h-5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center">
+                              <h3 className="text-lg font-medium flex-1">{ring.Name || '이름 없음'}</h3>
+                              <button
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  startEditingDeviceName(ring.MacAddr, ring.Name);
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                                aria-label="링 이름 편집"
+                              >
+                                <PencilIcon className="w-5 h-5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 연결된 링 목록 */}
+          <div className="w-full md:w-1/3 flex flex-col">
+            <h2 className="text-xl font-semibold mb-4">연결된 링 목록</h2>
+            {/* 연결된 링 검색 입력 */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                placeholder="링 검색..."
+                value={assignedSearchTerm}
+                onChange={e => setAssignedSearchTerm(e.target.value)}
+                className="p-2 border border-gray-300 rounded-md w-full"
+                aria-label="연결된 링 검색 입력"
+              />
+              {assignedSearchTerm && (
+                <button
+                  onClick={() => setAssignedSearchTerm('')}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label="검색어 지우기"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)]">
+              {isLoadingDevices ? (
+                <div className="flex items-center justify-center h-full">
+                  <p>링 목록 로딩 중...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredAssignedDevices.map(ring => {
+                    const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
+                    return (
+                      <div
+                        key={ring.MacAddr}
+                        className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
+                        onClick={() => handleDeviceClick(ring, true)}
+                      >
+                        <div className="flex items-center">
+                          <FaGem className="text-gray-600 mr-4" size={24} />
+                          <div className="flex-1">
+                            <div className="flex flex-col">
+                              <h3 className="text-lg font-medium">
+                                {ring.Name || '이름 없음'}
+                              </h3>
+                              {assignedUser && (
+                                <span className="text-sm text-gray-600">
+                                  {`${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
+                                    assignedUser.age || '알 수 없음'
+                                  }세)`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -575,25 +601,27 @@ const DeviceManagement = ({ users, setUsers, siteId, fetchUsers, setActiveCompon
       {/* 확인 모달 */}
       {showConfirmationModal && selectedDevice && (
         <Modal onClose={() => setShowConfirmationModal(false)}>
-          <h2 className="text-xl font-semibold mb-4">확인</h2>
-          <p>
-            {modalAction === 'assign'
-              ? `링 "${selectedDevice.Name || '이름 없음'}"을(를) 사용자 "${selectedUser.name}"에게 연결하시겠습니까?`
-              : `사용자 "${selectedUser.name}"로부터 링 "${selectedDevice.Name || '이름 없음'}"을(를) 연결 해제하시겠습니까?`}
-          </p>
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={() => setShowConfirmationModal(false)}
-              className="px-4 py-2 bg-gray-300 text-black rounded-md mr-2"
-            >
-              취소
-            </button>
-            <button
-              onClick={handleConfirmAction}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
-            >
-              확인
-            </button>
+          <div className="p-4">
+            <h2 className="text-xl font-semibold mb-4">확인</h2>
+            <p className="mb-4">
+              {modalAction === 'assign'
+                ? `링 "${selectedDevice.Name || '이름 없음'}"을(를) 사용자 "${selectedUser.name}"에게 연결하시겠습니까?`
+                : `사용자 "${selectedUser.name}"로부터 링 "${selectedDevice.Name || '이름 없음'}"을(를) 연결 해제하시겠습니까?`}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowConfirmationModal(false)}
+                className="px-4 py-2 bg-gray-300 text-black rounded-md"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmAction}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              >
+                확인
+              </button>
+            </div>
           </div>
         </Modal>
       )}

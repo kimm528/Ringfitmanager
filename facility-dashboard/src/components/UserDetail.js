@@ -652,6 +652,54 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     }))
   , [visibleVitalSigns]);
 
+  const [chartData, setChartData] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('1D');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // 모바일 환경 감지
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 차트 설정
+  const chartConfigs = {
+    temperature: {
+      data: chartData,
+      margin: { top: 5, right: 20, bottom: 25, left: 0 },
+      syncId: "userChart",
+      legend: { display: !isMobile }
+    },
+    bloodPressure: {
+      data: chartData,
+      margin: { top: 5, right: 20, bottom: 25, left: 0 },
+      syncId: "userChart",
+      legend: { display: !isMobile }
+    },
+    heartRate: {
+      data: chartData,
+      margin: { top: 5, right: 20, bottom: 25, left: 0 },
+      syncId: "userChart",
+      legend: { display: !isMobile }
+    },
+    oxygen: {
+      data: chartData,
+      margin: { top: 5, right: 20, bottom: 25, left: 0 },
+      syncId: "userChart",
+      legend: { display: !isMobile }
+    },
+    stress: {
+      data: chartData,
+      margin: { top: 5, right: 20, bottom: 25, left: 0 },
+      syncId: "userChart",
+      legend: { display: !isMobile }
+    }
+  };
+
   return (
     <div className="p-4">
       {/* User Profile Header */}
@@ -680,7 +728,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       {user && (
         <>
           {/* 링 정보 섹션 */}
-          {user.ring && (
+          {user.ring && !isMobile && (
             <div className="ring-info bg-white p-4 rounded-lg shadow-md mb-6">
               <h3 className="text-xl font-bold mb-4">링 정보</h3>
               <div className="flex space-x-8 items-center">
@@ -710,88 +758,47 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             />
           </div>
 
-          {/* 활력징후 그래프 섹션 추가 */}
+          {/* 활력징후 그래프 섹션 */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-6">
             <h3 className="text-xl font-bold mb-4">활력징후 데이터</h3>
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={vitalSignsData}>
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  vertical={false}
-                  verticalPoints={[72]} // 144/2 = 72 (12시 위치)
-                  verticalFill={['none', 'none']}
-                  verticalStroke="#666"
-                  verticalStrokeDasharray="3 3"
-                />
-                <XAxis 
-                  dataKey="time"
-                  interval={71} // 144/2 - 1 = 71 (0시와 12시만 표시)
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(tick) => tick}
-                />
-                <YAxis 
-                  yAxisId="temp"
-                  orientation="left"
-                  domain={[34, 40]}
-                  ticks={[35, 36, 37, 38, 39, 40, 41]}
-                  label={{ 
-                    value: '체온 (°C)', 
-                    position: 'insideLeft',
-                    angle: -90,
-                    offset: 10
-                  }}
-                />
-                <YAxis 
-                  yAxisId="pressure"
-                  orientation="right"
-                  domain={[60, 160]}
-                  label={{ 
-                    value: '혈압 (mmHg)', 
-                    position: 'insideRight',
-                    angle: 90,
-                    offset: 10
-                  }}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="time" />
+                <YAxis />
                 <Tooltip />
-                <Legend 
-                  verticalAlign="top" 
-                  height={36}
-                  content={<CustomLegend legendItems={vitalSignsLegend} />}
-                />
+                {!isMobile && (
+                  <Legend 
+                    verticalAlign="top" 
+                    height={36}
+                    content={<CustomLegend legendItems={vitalSignsLegend} />}
+                  />
+                )}
                 {visibleVitalSigns.temperature && (
                   <Line
-                    yAxisId="temp"
                     type="monotone"
                     dataKey="temperature"
                     stroke="#ff7300"
                     name="체온 (°C)"
                     dot={false}
-                    strokeWidth={2}
-                    connectNulls={true}
                   />
                 )}
                 {visibleVitalSigns.systolic && (
                   <Line
-                    yAxisId="pressure"
                     type="monotone"
                     dataKey="systolic"
                     stroke="#8884d8"
                     name="수축기 혈압 (mmHg)"
                     dot={false}
-                    strokeWidth={2}
-                    connectNulls={true}
                   />
                 )}
                 {visibleVitalSigns.diastolic && (
                   <Line
-                    yAxisId="pressure"
                     type="monotone"
                     dataKey="diastolic"
                     stroke="#82ca9d"
                     name="이완기 혈압 (mmHg)"
                     dot={false}
-                    strokeWidth={2}
-                    connectNulls={true}
                   />
                 )}
               </LineChart>
@@ -825,73 +832,48 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           {/* 일별 데이터 선그래프 */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-6">
             <h3 className="text-xl font-bold mb-4">일별 데이터</h3>
-
-            {isLoading ? (
-              <p>데이터를 불러오는 중...</p>
-            ) : error ? (
-              <p className="text-red-500">{error}</p>
-            ) : dailyLineChartData.length === 0 ? (
-              <p>데이터가 없습니다.</p>
-            ) : (
-              <ResponsiveContainer key={`${userId}-${formatDateYYYYMMDD(selectedDate)}`} width="100%" height={400}>
-                <LineChart data={dailyLineChartData}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    vertical={false}
-                    verticalPoints={[144]} // 288 데이터 포인트 중 12시 위치 (144)
-                    verticalFill={['none', 'none']}
-                    verticalStroke="#666"
-                    verticalStrokeDasharray="3 3"
-                  />
-                  <XAxis 
-                    dataKey="time"
-                    interval={143} // 0시, 12시만 표시
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(tick) => tick}
-                  />
-                  <YAxis domain={[0, 200]} />
-                  <Tooltip />
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={dailyLineChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                {!isMobile && (
                   <Legend 
                     verticalAlign="top" 
-                    height={36} 
-                    content={<CustomLegend legendItems={bpmOxygenLegend} />} 
+                    height={36}
+                    content={<CustomLegend legendItems={bpmOxygenLegend} />}
                   />
-                  {visibleBpmOxygen.bpm && (
-                    <Line 
-                      type="monotone"
-                      dataKey="bpm"
-                      stroke="red"
-                      strokeWidth={2}
-                      connectNulls={true}
-                      name="심박수 (BPM)"
-                      dot={false}
-                    />
-                  )}
-                  {visibleBpmOxygen.oxygen && (
-                    <Line 
-                      type="monotone"
-                      dataKey="oxygen"
-                      stroke="#1e88e5"
-                      strokeWidth={2}
-                      connectNulls={true}
-                      name="혈중 산소포화도 (%)"
-                      dot={false}
-                    />
-                  )}
-                  {visibleBpmOxygen.stress && (
-                    <Line 
-                      type="monotone"
-                      dataKey="stress"
-                      stroke="#FFD700"
-                      strokeWidth={2}
-                      connectNulls={true}
-                      name="스트레스 지수"
-                      dot={false}
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+                )}
+                {visibleBpmOxygen.bpm && (
+                  <Line
+                    type="monotone"
+                    dataKey="bpm"
+                    stroke="red"
+                    name="심박수 (BPM)"
+                    dot={false}
+                  />
+                )}
+                {visibleBpmOxygen.oxygen && (
+                  <Line
+                    type="monotone"
+                    dataKey="oxygen"
+                    stroke="#1e88e5"
+                    name="혈중 산소 (%)"
+                    dot={false}
+                  />
+                )}
+                {visibleBpmOxygen.stress && (
+                  <Line
+                    type="monotone"
+                    dataKey="stress"
+                    stroke="#FFD700"
+                    name="스트레스 지수"
+                    dot={false}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
           </div>
 
           {/* 걸음수, 소모 칼로리, 이동거리 정보 */}
@@ -915,76 +897,49 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
           {/* 활동 데이터 그래프 */}
           <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-            <h3 className="text-xl font-bold mb-4">활동 데이터 (걸음수, 소모 칼로리, 이동거리)</h3>
-
-            {activityLineChartData.length === 0 ? (
-              <p>활동 데이터가 없습니다.</p>
-            ) : (
-              <ResponsiveContainer key={`${userId}-${formatDateYYYYMMDD(selectedDate)}-activity`} width="100%" height={400}>
-                <LineChart data={activityLineChartData}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    vertical={false}
-                    verticalPoints={[12]} // 24시간 데이터 중 12시 위치 (12)
-                    verticalFill={['none', 'none']}
-                    verticalStroke="#666"
-                    verticalStrokeDasharray="3 3"
-                  />
-                  <XAxis 
-                    dataKey="time" 
-                    ticks={xAxisTicks} 
-                    interval={5} // Show ticks at every 2 hours
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(tick) => tick}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  
-                  {/* Custom Legend with Checkboxes */}
+            <h3 className="text-xl font-bold mb-4">활동 데이터</h3>
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart data={activityLineChartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="time" />
+                <YAxis />
+                <Tooltip />
+                {!isMobile && (
                   <Legend 
                     verticalAlign="top" 
-                    height={36} 
-                    content={<CustomLegend legendItems={activityLegend} />} 
+                    height={36}
+                    content={<CustomLegend legendItems={activityLegend} />}
                   />
-
-                  {visibleActivity.steps && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="steps" 
-                      stroke="#82ca9d" 
-                      strokeWidth={2}
-                      connectNulls={true}
-                      name="걸음수"
-                      dot={false} // 점 숨기기
-                    />
-                  )}
-
-                  {visibleActivity.calories && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="calories" // dataKey는 'calories'로 유지
-                      stroke="#ff9800" 
-                      strokeWidth={2}
-                      connectNulls={true}
-                      name="소모 칼로리 (kcal)"
-                      dot={false} // 점 숨기기
-                    />
-                  )}
-
-                  {visibleActivity.distance && (
-                    <Line 
-                      type="monotone"
-                      dataKey="distance"
-                      stroke="#4caf50"
-                      strokeWidth={2}
-                      connectNulls={true}
-                      name="이동 거리 (m)"
-                      dot={false} // 점 숨기기
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+                )}
+                {visibleActivity.steps && (
+                  <Line
+                    type="monotone"
+                    dataKey="steps"
+                    stroke="#82ca9d"
+                    name="걸음수"
+                    dot={false}
+                  />
+                )}
+                {visibleActivity.calories && (
+                  <Line
+                    type="monotone"
+                    dataKey="calories"
+                    stroke="#ff9800"
+                    name="소모 칼로리 (kcal)"
+                    dot={false}
+                  />
+                )}
+                {visibleActivity.distance && (
+                  <Line
+                    type="monotone"
+                    dataKey="distance"
+                    stroke="#4caf50"
+                    name="이동거리 (km)"
+                    dot={false}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
           </div>
 
           {/* Life 로그 섹션 */}

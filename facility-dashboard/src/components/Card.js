@@ -448,10 +448,11 @@ const Card = ({
         status === 'danger' ? 'border-4 border-red-500' : ''
       }`}
       style={{
-        width: '360px',
-        margin: '10px',
+        width: '100%',
+        margin: '0 auto',
         fontFamily: 'Nanum Gothic, sans-serif',
         minHeight: '400px',
+        maxWidth: '380px',
       }}
       onClick={navigateToUserDetail}
     >

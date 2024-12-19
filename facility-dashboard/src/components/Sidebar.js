@@ -13,7 +13,7 @@ import {
   AdjustmentsHorizontalIcon
 } from "@heroicons/react/24/outline";
 import { LiaRingSolid } from "react-icons/lia";
-import { GiRobotLeg, GiRobotGolem } from "react-icons/gi";
+import { GiRobotLeg } from "react-icons/gi";
 import './Sidebar.css';
 import Modal from './Modal';
 import { openDB } from 'idb';
@@ -29,15 +29,32 @@ const Sidebar = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [botfitExpanded, setBotfitExpanded] = useState(true);
   const [ringExpanded, setRingExpanded] = useState(true);
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+
+  // 모바일 뷰 감지
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobileView(mobile);
+      // 모바일에서는 기본적으로 사이드바를 닫힌 상태로 시작
+      if (mobile && isSidebarOpen) {
+        // toggleSidebar(); // 사이드바 상태 변경은 부모 컴포넌트에서 처리
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // 초기 실행
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 캐시 삭제 함수
   const clearFloorPlanCache = useCallback(async () => {
     if (!siteId) {
-      console.error('siteId가 제공되지 않았습니다. 캐시를 삭제할 수 없습니다.');
+      console.error('siteId가 제공되지 않았���니다. 캐시를 삭제할 수 없습니다.');
       return;
     }
 
@@ -103,17 +120,6 @@ const Sidebar = ({
     return sorted;
   }, [users, sortOption]);
 
-  // 반응형 사이드바 처리
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  
   const handleLogoClick = useCallback(() => {
     navigate('/');
   }, [navigate]);
@@ -122,53 +128,36 @@ const Sidebar = ({
     navigate(`/users/${userId}`);
   }, [navigate]);
 
-  if (isMobile) {
-    return null;
-  }
-
-  const isFloorPlan = location.pathname === '/floorplan';
+  // 모바일에서 사이드바 외부 클릭 시 닫기
+  const handleOutsideClick = useCallback((e) => {
+    if (isMobileView && isSidebarOpen && e.target.classList.contains('sidebar-overlay')) {
+      // toggleSidebar(); // 사이드바 상태 변경은 부모 컴포넌트에서 처리
+    }
+  }, [isMobileView, isSidebarOpen]);
 
   return (
     <>
-      {/* 로그아웃 확인 모달 */}
-      {showLogoutModal && (
-        <Modal onClose={() => setShowLogoutModal(false)}>
-          <div className="text-center">
-            <p className="mb-4">로그아웃 하시겠습니까?</p>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded-md mr-2"
-            >
-              로그아웃
-            </button>
-            <button
-              onClick={() => setShowLogoutModal(false)}
-              className="px-4 py-2 bg-gray-300 rounded-md"
-            >
-              취소
-            </button>
-          </div>
-        </Modal>
+      {/* 모바일 오버레이 배경 */}
+      {isMobileView && isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 sidebar-overlay"
+          onClick={handleOutsideClick}
+        />
       )}
 
+      {/* 사이드바 */}
       <aside
-        className={`transition-all duration-300 ${
-          isSidebarOpen ? 'w-64' : 'w-30 sidebar-minimized'
-        } bg-gray-50 text-gray-700 flex flex-col shadow-lg h-screen overflow-hidden`}
+        className={`
+          fixed lg:relative
+          lg:mt-20 lg:top-0 top-20 left-0 h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)]
+          ${isSidebarOpen ? 'translate-x-0 lg:w-64' : '-translate-x-full lg:w-0'}
+          transition-all duration-300 ease-in-out
+          bg-gray-50 text-gray-700 flex flex-col shadow-lg
+          ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
+          overflow-hidden
+        `}
       >
-        {/* 로고 이미지 */}
-        <div
-          className="bg-gray-50 p-2 h-20 cursor-pointer border-b border-gray-200 flex-shrink-0"
-          onClick={handleLogoClick}
-        >
-          <img
-            src={`${process.env.PUBLIC_URL}/AiFitLogoBgRmv.png`}
-            alt="Home Icon"
-            className={`w-16 h-16 ml-2 transition-transform duration-300 ${!isSidebarOpen ? 'scale-75' : ''}`}
-          />
-        </div>
-
-        {/* 네인 컨텐츠 영역 */}
+        {/* 메인 컨텐츠 영역 */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* 트리 메뉴 영역 */}
           <div className="p-4 flex-shrink-0">
@@ -296,6 +285,27 @@ const Sidebar = ({
           </button>
         </div>
       </aside>
+
+      {/* 로그아웃 모달 */}
+      {showLogoutModal && (
+        <Modal onClose={() => setShowLogoutModal(false)}>
+          <div className="text-center">
+            <p className="mb-4">로그아웃 하시겠습니까?</p>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-500 text-white rounded-md mr-2"
+            >
+              로그아웃
+            </button>
+            <button
+              onClick={() => setShowLogoutModal(false)}
+              className="px-4 py-2 bg-gray-300 rounded-md"
+            >
+              취소
+            </button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };
