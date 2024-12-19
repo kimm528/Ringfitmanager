@@ -711,7 +711,7 @@ function App() {
         }
       } catch (error) {
         console.error('사용자 추가 오류:', error);
-        alert('사용자 추가 중 오류가 발생했습니다.');
+        alert('사용자 추가 중 오류가 발생했���니다.');
       }
     },
     [users, siteId, credentials, fetchHealthData, getNewId, url, getRandomTemperature, getRandomBloodPressure]
@@ -1005,7 +1005,7 @@ function App() {
             resetState={resetState}
             toggleSidebar={toggleSidebar}
           />
-          <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+          <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
             <Header
               toggleSidebar={toggleSidebar}
               isSidebarOpen={isSidebarOpen}
@@ -1016,7 +1016,7 @@ function App() {
               sortOption={sortOption}
               setSortOption={setSortOption}
             />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20">
+            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20 relative">
               {showModal && (
                 <Modal onClose={() => setShowModal(false)}>
                   <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">

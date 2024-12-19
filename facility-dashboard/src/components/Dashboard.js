@@ -121,24 +121,24 @@ const Dashboard = ({
   }, [forceGridUpdate]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center p-4">
         {/* 상단 요소가 필요하면 추가 */}
       </div> 
 
-      <div className="dashboard-container flex-grow overflow-y-auto overflow-x-hidden">
+      <div className="flex-1">
         <AutoSizer onResize={handleAutoSizerResize}>
           {({ width, height }) => {
-            const margin = 5;
+            const margin = 16;  // 마진 값 증가
             const minColumnWidth = 380;
             const isMobile = width <= 768;
 
             // 모바일일 때는 한 열로 표시하고 카드 너비를 화면에 맞게 조정
-            const columnCount = isMobile ? 1 : Math.max(1, Math.floor((width + margin) / (minColumnWidth + margin)));
+            const columnCount = isMobile ? 1 : Math.max(1, Math.floor((width - margin) / (minColumnWidth + margin)));
 
             const columnWidth = isMobile 
-              ? Math.min(minColumnWidth, width - (margin * 2)) // 모바일에서는 화면 너비에 맞춤
-              : Math.floor((width - margin * (columnCount + 1)) / columnCount);
+              ? width - (margin * 2)  // 모바일에서는 좌우 마진만 적용
+              : Math.floor((width - (margin * (columnCount + 1))) / columnCount);
 
             const rowHeight = 500 + margin;
             const rowCount = Math.ceil(sortedUsers.length / columnCount);
@@ -158,7 +158,7 @@ const Dashboard = ({
                     top: style.top + margin,
                     width: columnWidth,
                     height: rowHeight - margin,
-                    padding: '8px',
+                    padding: margin / 2,
                   }}
                 >
                   <motion.div
@@ -201,7 +201,9 @@ const Dashboard = ({
                 rowCount={rowCount}
                 rowHeight={rowHeight}
                 width={width}
-                overscanRowCount={5}
+                overscanRowCount={2}
+                style={{ outline: 'none' }}
+                className="focus:outline-none"
               />
             );
           }}

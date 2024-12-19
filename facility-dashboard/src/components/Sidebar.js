@@ -34,40 +34,32 @@ const Sidebar = ({
   const [botfitExpanded, setBotfitExpanded] = useState(true);
   const [ringExpanded, setRingExpanded] = useState(true);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
-  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
 
   // 모바일 뷰 감지
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobileView(mobile);
-      
-      // 실제 보이는 화면 높이 계산
-      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-      setViewportHeight(vh);
     };
-
-    // visualViewport 이벤트 리스너 추가
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      window.visualViewport.addEventListener('scroll', handleResize);
-    }
 
     window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-
-    // 초기 실행
     handleResize();
 
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
-      }
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 모바일에서 사이드바 열릴 때 body 스크롤 제어
+  useEffect(() => {
+    if (isMobileView && isSidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [isMobileView, isSidebarOpen]);
 
   // 캐시 삭제 함수
   const clearFloorPlanCache = useCallback(async () => {
@@ -169,10 +161,7 @@ const Sidebar = ({
         <div
           className="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 sidebar-overlay"
           onClick={handleOutsideClick}
-          style={{ 
-            height: `${viewportHeight}px`,
-            top: '80px'
-          }}
+          style={{ top: '80px' }}
         />
       )}
 
@@ -187,13 +176,8 @@ const Sidebar = ({
           bg-gray-50 text-gray-700 shadow-lg
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
           overflow-y-auto
+          ${isMobileView ? 'h-[calc(100%-80px)]' : 'h-[calc(100vh-80px)]'}
         `}
-        style={{
-          height: isMobileView 
-            ? `${Math.max(viewportHeight - 80, document.documentElement.clientHeight - 80)}px`
-            : 'calc(100vh - 80px)',
-          maxHeight: '100%'
-        }}
       >
         {/* 전체 컨테이너 */}
         <div className="flex flex-col h-full">
