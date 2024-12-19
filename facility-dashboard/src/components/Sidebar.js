@@ -81,7 +81,6 @@ const Sidebar = ({
       await clearFloorPlanCache();
     }
 
-    // 상태 초���화
     resetState();
 
     // 로그인 상태 업데이트
@@ -156,7 +155,9 @@ const Sidebar = ({
       <aside
         className={`
           fixed lg:relative
-          lg:mt-0 lg:top-0 top-20 left-0 h-[calc(100vh-80px)] lg:h-[calc(100vh)]
+          ${isMobileView ? 'top-[80px]' : 'lg:mt-20 top-0'} 
+          left-0 
+          ${isMobileView ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-80px)]'}
           ${isSidebarOpen ? 'translate-x-0 lg:w-64' : '-translate-x-full lg:w-0'}
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
@@ -165,9 +166,9 @@ const Sidebar = ({
         `}
       >
         {/* 전체 컨테이너 */}
-        <div className="flex flex-col min-h-full">
+        <div className="flex flex-col h-full">
           {/* 트리 메뉴 영역 */}
-          <div className={`p-4 ${isMobileView ? 'mt-0' : 'mt-20'}`}>
+          <div className="p-4 ">
             {/* BotFit 섹션 */}
             <div className="mb-4 border-b border-gray-200 pb-2">
               <div
