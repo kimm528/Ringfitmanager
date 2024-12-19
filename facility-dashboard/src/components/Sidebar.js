@@ -155,7 +155,7 @@ const Sidebar = ({
       <aside
         className={`
           fixed lg:relative
-          ${isMobileView ? 'top-[80px]' : 'lg:mt-20 top-0'} 
+          ${isMobileView ? 'top-[80px] pb-[80px]' : 'lg:mt-20 top-0'} 
           left-0 
           ${isMobileView ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-80px)]'}
           ${isSidebarOpen ? 'translate-x-0 lg:w-64' : '-translate-x-full lg:w-0'}
@@ -166,7 +166,7 @@ const Sidebar = ({
         `}
       >
         {/* 전체 컨테이너 */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col min-h-full">
           {/* 트리 메뉴 영역 */}
           <div className="p-4 ">
             {/* BotFit 섹션 */}
