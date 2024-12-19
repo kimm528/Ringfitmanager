@@ -155,8 +155,7 @@ const Sidebar = ({
       <aside
         className={`
           fixed lg:relative
-          ${isMobileView ? 'top-[80px] pb-[80px]' : 'lg:mt-20 top-0'} 
-          left-0 
+          ${isMobileView ? 'top-[0px] pb-[0px]' : 'lg:mt-0 top-20'} 
           ${isMobileView ? 'h-[calc(100vh-80px)]' : 'h-[calc(100vh-80px)]'}
           ${isSidebarOpen ? 'translate-x-0 lg:w-64' : '-translate-x-full lg:w-0'}
           transition-all duration-300 ease-in-out
