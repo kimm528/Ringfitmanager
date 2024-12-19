@@ -155,20 +155,19 @@ const Sidebar = ({
       <aside
         className={`
           fixed md:relative
-          ${isMobileView ? 'top-0' : 'top-20'}
+          ${isMobileView ? 'top-[80px] h-[calc(100vh-80px)]' : 'top-20 h-[calc(100vh-80px)]'}
           left-0 
           ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
           overflow-y-auto
-          bottom-0
         `}
       >
         {/* 전체 컨테이너 */}
         <div className="flex flex-col h-full">
           {/* 트리 메뉴 영역 */}
-          <div className="p-4">
+          <div className="p-4 flex-shrink-0">
             {/* BotFit 섹션 */}
             <div className="mb-4 border-b border-gray-200 pb-2">
               <div
@@ -274,7 +273,7 @@ const Sidebar = ({
           </div>
 
           {/* 하단 버튼 영역 */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50 mt-auto sticky bottom-0 w-full">
+          <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
             <button
               onClick={() => handleMenuClick('/settings')}
               className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
