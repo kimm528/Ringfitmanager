@@ -66,7 +66,7 @@ const DataGridView = ({ users, setShowModal }) => {
       }
     }
 
-    // 체온 위험도 계산
+    // ���온 위험도 계산
     if (temperature > 0) {
       if (temperature < 35 || temperature > 38) {
         riskLevel = 'High';
@@ -288,62 +288,13 @@ const DataGridView = ({ users, setShowModal }) => {
   ];
 
   return (
-    <div
-      className="h-full flex flex-col overflow-hidden ag-theme-alpine"
-      style={{
-        width: '100%',
-        paddingTop: '10px',
-        position: 'relative',
-        zIndex: 1
-      }}
-    >
-      <style>
-        {`
-          .ag-header {
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            background-color: white;
-          }
-          .ag-root {
-            z-index: 1;
-          }
-          .ag-root-wrapper {
-            z-index: 1;
-          }
-          @keyframes blink {
-            0% { opacity: 1; }
-            50% { opacity: 0; }
-            100% { opacity: 1; }
-          }
-          /* Tooltip 스타일 */
-          .ag-theme-alpine .ag-cell[title]:hover:after {
-            content: attr(title);
-            position: absolute;
-            background: #333;
-            color: #fff;
-            padding: 5px;
-            border-radius: 3px;
-            top: 100%;
-            left: 0;
-            white-space: nowrap;
-            z-index: 10;
-          }
-        `}
-      </style>
+    <div className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
       <AgGridReact
         rowData={rowData}
         columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
         animateRows={true}
         pagination={true}
-        paginationPageSize={100}
-        domLayout="normal"
-        getRowNodeId={(data) => data.id}
-        deltaRowDataMode={true}
-        onGridReady={onGridReady}
-        suppressScrollOnNewData={true}
-        maintainColumnOrder={true}
+        paginationPageSize={10}
       />
     </div>
   );

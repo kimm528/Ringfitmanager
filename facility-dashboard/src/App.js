@@ -425,7 +425,7 @@ function App() {
     }
   }, [siteId, credentials, url, fetchHealthData, isEqual]);
 
-  // 배치도 이미지 및 디바이스 데이터 가져오기 함수
+  // ���치도 이미지 및 디바이스 데이터 가져오기 함수
   const handleLoadFloorPlan = useCallback(async () => {
     if (!siteId) {
       console.warn('siteId가 설정되지 않았습니다.');
@@ -489,7 +489,7 @@ function App() {
       }
     } catch (error) {
       console.error('스마트폰 위치 데이터 불러오기 오류:', error);
-      setDevices([]); // 오류 발생 시 devices 상태를 빈 배열로 설정
+      setDevices([]); // 오류 발생 시 devices 상���를 빈 배열로 설정
       // saveToSessionStorage('devices', []); // 제거
     } finally {
       setIsLoading(false);
@@ -505,7 +505,7 @@ function App() {
       handleLoadFloorPlan();
 
       intervalRef.current = setInterval(() => {
-        console.log('30초마다 사용자 및 링 데이터 가져오기');
+        console.log('30초마다 사용자 및 링 데이터 져오기');
         
         if (currentPath.startsWith('/users/')) {
           // UserDetail 페이지일 경우 해당 사용자만 업데이트
@@ -738,7 +738,7 @@ function App() {
           const apiUrl = `${url}/api/user`;
           const gender = updatedUser.gender === 0 ? 0 : 1;
 
-          // 서버에 사용자 업데이트 요청
+          // 서버에 사용자 업데이트 청
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -984,39 +984,60 @@ function App() {
       if (isMobile) {
         setIsSidebarOpen(false);
       }
+      // 모바일 환경에서 실제 화면 높이 계산
+      const height = window.innerHeight;
+      document.documentElement.style.setProperty('--app-height', `${height}px`);
     };
 
-    window.addEventListener('resize', handleResize);
-    handleResize(); // 초기 실행
+    // 초기 실행
+    handleResize();
 
-    return () => window.removeEventListener('resize', handleResize);
+    // 이벤트 리스너 등록
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    // iOS Safari에서 스크롤 시 주소창 높이 변경 대응
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+      window.addEventListener('scroll', handleResize);
+      window.visualViewport?.addEventListener('resize', handleResize);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        window.removeEventListener('scroll', handleResize);
+        window.visualViewport?.removeEventListener('resize', handleResize);
+      }
+    };
   }, []);
 
   return (
     <Router>
       {isLoggedIn ? (
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar
-            isSidebarOpen={isSidebarOpen}
-            users={users}
-            setIsLoggedIn={setIsLoggedIn}
-            sortOption={sortOption}
-            siteId={Cookies.get('siteId')}
-            resetState={resetState}
+        <div className="app-container">
+          <Header
             toggleSidebar={toggleSidebar}
+            isSidebarOpen={isSidebarOpen}
+            siteName={Cookies.get('siteId')}
+            userName={Cookies.get('adminId')}
+            setShowModal={setShowModal}
+            setSearchQuery={setSearchQuery}
+            sortOption={sortOption}
+            setSortOption={setSortOption}
+            className="header"
           />
-          <div className="flex-1 flex flex-col min-h-screen bg-gray-50 overflow-hidden">
-            <Header
-              toggleSidebar={toggleSidebar}
+          <div className="main-content">
+            <Sidebar
               isSidebarOpen={isSidebarOpen}
-              siteName={Cookies.get('siteId')}
-              userName={Cookies.get('adminId')}
-              setShowModal={setShowModal}
-              setSearchQuery={setSearchQuery}
+              users={users}
+              setIsLoggedIn={setIsLoggedIn}
               sortOption={sortOption}
-              setSortOption={setSortOption}
+              siteId={Cookies.get('siteId')}
+              resetState={resetState}
+              toggleSidebar={toggleSidebar}
             />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20 relative">
+            <main className="content-area">
               {showModal && (
                 <Modal onClose={() => setShowModal(false)}>
                   <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
@@ -1175,7 +1196,7 @@ function App() {
           </div>
         </div>
       ) : (
-        <div className="min-h-screen overflow-auto">
+        <div className="h-full overflow-auto">
           <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
         </div>
       )}

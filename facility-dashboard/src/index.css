@@ -4,9 +4,59 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-height: 100%;
+  --header-height: 80px;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* 좌우 스크롤 방지 */
+  overflow: hidden;
+}
+
+.app-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.header {
+  height: var(--header-height);
+  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: white;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  margin-top: var(--header-height);
+  height: calc(100% - var(--header-height));
+}
+
+.content-area {
+  flex: 1;
+  overflow: auto;
+  height: 100%;
+  position: relative;
+}
+
+/* 모바일 환경에서의 높이 조정 */
+@media (max-width: 768px) {
+  .app-container {
+    height: var(--app-height);
+  }
+  
+  .main-content {
+    height: calc(var(--app-height) - var(--header-height));
+  }
 }
