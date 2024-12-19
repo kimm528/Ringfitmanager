@@ -154,14 +154,15 @@ const Sidebar = ({
       {/* 사이드바 */}
       <aside
         className={`
-          fixed lg:relative
-          ${isMobileView ? 'top-[80px] h-[calc(100vh-80px)]' : 'lg:mt-20 top-0 h-[calc(100vh-80px)]'}
+          fixed md:relative
+          ${isMobileView ? 'top-0' : 'top-20'}
           left-0 
-          ${isSidebarOpen ? 'translate-x-0 lg:w-64' : '-translate-x-full lg:w-0'}
+          ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
           overflow-y-auto
+          bottom-0
         `}
       >
         {/* 전체 컨테이너 */}
@@ -251,8 +252,8 @@ const Sidebar = ({
 
           {/* 사용자 리스트 영역 */}
           <div className={`
-            px-4 
-            ${isMobileView ? 'hidden' : 'max-h-[calc(100vh-500px)] overflow-y-auto'}
+            px-4 flex-1
+            ${isMobileView ? 'hidden' : 'overflow-y-auto'}
           `}>
             {sortedUsers.map((user) => (
               <div
@@ -273,7 +274,7 @@ const Sidebar = ({
           </div>
 
           {/* 하단 버튼 영역 */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50 mt-auto">
+          <div className="p-4 border-t border-gray-200 bg-gray-50 mt-auto sticky bottom-0 w-full">
             <button
               onClick={() => handleMenuClick('/settings')}
               className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
