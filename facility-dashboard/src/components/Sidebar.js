@@ -81,7 +81,7 @@ const Sidebar = ({
       await clearFloorPlanCache();
     }
 
-    // 상태 초기화
+    // 상태 초���화
     resetState();
 
     // 로그인 상태 업데이트
@@ -166,7 +166,7 @@ const Sidebar = ({
       >
         {/* 스크롤 가능한 컨테이너 */}
         <div className="flex flex-col h-full overflow-y-auto">
-          {/* 트리 메뉴 영역 */}
+          {/* 트�� 메뉴 영역 */}
           <div className="p-4 flex-shrink-0">
             {/* BotFit 섹션 */}
             <div className="mb-4 border-b border-gray-200 pb-2">
@@ -270,7 +270,7 @@ const Sidebar = ({
           </div>
 
           {/* 하단 버튼 영역 - 항상 보이도록 수정 */}
-          <div className="p-4 border-t border-gray-200 flex-shrink-0 mt-auto">
+          <div className="p-4 border-t border-gray-200 flex-shrink-0 mt-auto bg-gray-50">
             <button
               onClick={() => handleMenuClick('/settings')}
               className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
