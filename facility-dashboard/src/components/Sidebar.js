@@ -168,15 +168,13 @@ const Sidebar = ({
       {/* 사이드바 */}
       <aside
         className={`
-          fixed md:relative
-          ${isMobileView ? 'top-[80px]' : 'top-20'}
+          ${isMobileView ? 'fixed top-[80px] h-[calc(100%-80px)]' : 'relative h-full'}
           left-0 
           ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
           overflow-y-auto
-          ${isMobileView ? 'h-[calc(100%-80px)]' : 'h-[calc(100vh-80px)]'}
         `}
       >
         {/* 전체 컨테이너 */}
