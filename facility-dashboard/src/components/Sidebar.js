@@ -41,8 +41,17 @@ const Sidebar = ({
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobileView(mobile);
-      setViewportHeight(window.innerHeight);
+      
+      // 실제 보이는 화면 높이 계산
+      const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      setViewportHeight(vh);
     };
+
+    // visualViewport 이벤트 리스너 추가
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    }
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
@@ -51,6 +60,10 @@ const Sidebar = ({
     handleResize();
 
     return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
@@ -156,7 +169,10 @@ const Sidebar = ({
         <div
           className="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 sidebar-overlay"
           onClick={handleOutsideClick}
-          style={{ height: `${viewportHeight}px` }}
+          style={{ 
+            height: `${viewportHeight}px`,
+            top: '80px'
+          }}
         />
       )}
 
@@ -173,7 +189,10 @@ const Sidebar = ({
           overflow-y-auto
         `}
         style={{
-          height: isMobileView ? `${viewportHeight - 80}px` : 'calc(100vh - 80px)'
+          height: isMobileView 
+            ? `${Math.max(viewportHeight - 80, document.documentElement.clientHeight - 80)}px`
+            : 'calc(100vh - 80px)',
+          maxHeight: '100%'
         }}
       >
         {/* 전체 컨테이너 */}
