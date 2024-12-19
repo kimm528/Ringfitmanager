@@ -34,18 +34,26 @@ const Sidebar = ({
   const [botfitExpanded, setBotfitExpanded] = useState(true);
   const [ringExpanded, setRingExpanded] = useState(true);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
 
   // 모바일 뷰 감지
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobileView(mobile);
+      setViewportHeight(window.innerHeight);
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // 초기 실행
+    window.addEventListener('orientationchange', handleResize);
 
-    return () => window.removeEventListener('resize', handleResize);
+    // 초기 실행
+    handleResize();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
   }, []);
 
   // 캐시 삭제 함수
@@ -148,6 +156,7 @@ const Sidebar = ({
         <div
           className="fixed inset-0 bg-gray-900 bg-opacity-50 z-40 sidebar-overlay"
           onClick={handleOutsideClick}
+          style={{ height: `${viewportHeight}px` }}
         />
       )}
 
@@ -155,7 +164,7 @@ const Sidebar = ({
       <aside
         className={`
           fixed md:relative
-          ${isMobileView ? 'top-[80px] h-[calc(100vh-80px)]' : 'top-20 h-[calc(100vh-80px)]'}
+          ${isMobileView ? 'top-[80px]' : 'top-20'}
           left-0 
           ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
@@ -163,6 +172,9 @@ const Sidebar = ({
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
           overflow-y-auto
         `}
+        style={{
+          height: isMobileView ? `${viewportHeight - 80}px` : 'calc(100vh - 80px)'
+        }}
       >
         {/* 전체 컨테이너 */}
         <div className="flex flex-col h-full">
