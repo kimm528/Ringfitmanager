@@ -711,7 +711,7 @@ function App() {
         }
       } catch (error) {
         console.error('사용자 추가 오류:', error);
-        alert('사용자 추가 중 오류가 발생했���니다.');
+        alert('사용자 추가 중 오류가 발생했습니다.');
       }
     },
     [users, siteId, credentials, fetchHealthData, getNewId, url, getRandomTemperature, getRandomBloodPressure]
@@ -1005,7 +1005,7 @@ function App() {
             resetState={resetState}
             toggleSidebar={toggleSidebar}
           />
-          <div className="flex-1 flex flex-col min-h-screen bg-gray-50">
+          <div className="flex-1 flex flex-col min-h-screen bg-gray-50 overflow-hidden">
             <Header
               toggleSidebar={toggleSidebar}
               isSidebarOpen={isSidebarOpen}
@@ -1175,7 +1175,9 @@ function App() {
           </div>
         </div>
       ) : (
-        <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
+        <div className="min-h-screen overflow-auto">
+          <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
+        </div>
       )}
     </Router>
   );

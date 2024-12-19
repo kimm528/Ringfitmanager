@@ -4,9 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root {
+html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* 좌우 스크롤 방지 */
+}
+
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* 기본적으로 모든 스크롤 방지 */
+}
+
+/* 로그인 페이지에서만 스크롤 허용 */
+#root > div.min-h-screen.overflow-auto {
+  overflow: auto !important;
 }

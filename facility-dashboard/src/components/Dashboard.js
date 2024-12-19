@@ -126,10 +126,10 @@ const Dashboard = ({
         {/* 상단 요소가 필요하면 추가 */}
       </div> 
 
-      <div className="flex-1">
+      <div className="flex-1 px-2">
         <AutoSizer onResize={handleAutoSizerResize}>
           {({ width, height }) => {
-            const margin = 16;  // 마진 값 증가
+            const margin = 8;
             const minColumnWidth = 380;
             const isMobile = width <= 768;
 
@@ -137,7 +137,7 @@ const Dashboard = ({
             const columnCount = isMobile ? 1 : Math.max(1, Math.floor((width - margin) / (minColumnWidth + margin)));
 
             const columnWidth = isMobile 
-              ? width - (margin * 2)  // 모바일에서는 좌우 마진만 적용
+              ? width - (margin * 2)
               : Math.floor((width - (margin * (columnCount + 1))) / columnCount);
 
             const rowHeight = 500 + margin;
@@ -158,7 +158,7 @@ const Dashboard = ({
                     top: style.top + margin,
                     width: columnWidth,
                     height: rowHeight - margin,
-                    padding: margin / 2,
+                    padding: '8px',
                   }}
                 >
                   <motion.div
