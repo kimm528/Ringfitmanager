@@ -864,7 +864,6 @@ function App() {
         // 서버 업데이트
         updateUser(updatedUser, true);
 
-        // 로��� 상태 업데이트
         setUsers((prevUsers) => {
           const updatedUsers = prevUsers.map((user) =>
             user.id === userId ? updatedUser : user

@@ -155,7 +155,6 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         data = await response.json();
         console.log("첫 번째 파싱 결과:", data);
 
-        // 만약 data가 문자열이라면, ��� 번째 파싱 시도
         if (typeof data === 'string') {
           data = JSON.parse(data);
           console.log("두 번째 파싱 결과:", data);

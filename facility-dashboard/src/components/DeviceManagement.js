@@ -143,7 +143,7 @@ const DeviceManagement = ({
     });
   }, [connectableDevices]);
 
-  // 연결된 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 ��름 없으면 '이름 없음'으로 처리)
+  // 연결된 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
   const sortedAssignedDevices = useMemo(() => {
     const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
 
@@ -230,7 +230,7 @@ const DeviceManagement = ({
         macAddr: action === 'assign' ? ring.MacAddr : '',
       };
 
-      // 현재 시간을 'yyMMddHHmmss' 형식으로 ���맷팅
+      // 현재 시간을 'yyMMddHHmmss' 형식으로 
       const ringSettingDateTime =
         action === 'assign' ? formatDateTime(new Date()) : '';
 
@@ -267,7 +267,6 @@ const DeviceManagement = ({
         },
       };
 
-      // 서버에 사용자 정보 업데이트 ��청
       const response = await axios.post(`${url}/api/user`, requestBody, {
         headers: {
           'Content-Type': 'application/json',

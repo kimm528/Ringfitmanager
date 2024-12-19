@@ -40,10 +40,6 @@ const Sidebar = ({
     const handleResize = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobileView(mobile);
-      // 모바일에서는 기본적으로 사이드바를 닫힌 상태로 시작
-      if (mobile && isSidebarOpen) {
-        // toggleSidebar(); // 사이드바 상태 변경은 부모 컴포넌트에서 처리
-      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -67,7 +63,7 @@ const Sidebar = ({
           }
         },
       });
-      await db.delete('floorPlans', siteId); // 특정 siteId의 배치도 삭제
+      await db.delete('floorPlans', siteId);
       console.log('캐시가 성공적으로 삭제되었습니다.');
     } catch (error) {
       console.error('캐시 삭제 오류:', error);
@@ -86,7 +82,7 @@ const Sidebar = ({
     }
 
     // 상태 초기화
-    resetState(); // 상태 초기화 호출
+    resetState();
 
     // 로그인 상태 업데이트
     setIsLoggedIn(false);
@@ -142,9 +138,9 @@ const Sidebar = ({
   // 모바일에서 사이드바 외부 클릭 시 닫기
   const handleOutsideClick = useCallback((e) => {
     if (isMobileView && isSidebarOpen && e.target.classList.contains('sidebar-overlay')) {
-      // toggleSidebar(); // 사이드바 상태 변경은 부모 컴포넌트에서 처리
+      toggleSidebar();
     }
-  }, [isMobileView, isSidebarOpen]);
+  }, [isMobileView, isSidebarOpen, toggleSidebar]);
 
   return (
     <>
@@ -168,8 +164,8 @@ const Sidebar = ({
           overflow-hidden
         `}
       >
-        {/* 메인 컨텐츠 영역 */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* 스크롤 가능한 컨테이너 */}
+        <div className="flex flex-col h-full overflow-y-auto">
           {/* 트리 메뉴 영역 */}
           <div className="p-4 flex-shrink-0">
             {/* BotFit 섹션 */}
@@ -179,10 +175,10 @@ const Sidebar = ({
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-  {isSidebarOpen && (
-    <span className="ml-3 text-[18px] font-bold">BotFit Pro</span>
-  )}
-</div>
+                  {isSidebarOpen && (
+                    <span className="ml-3 text-[18px] font-bold">BotFit Pro</span>
+                  )}
+                </div>
                 {isSidebarOpen && (
                   botfitExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
                 )}
@@ -254,7 +250,7 @@ const Sidebar = ({
           </div>
 
           {/* 사용자 리스트 영역 */}
-          <div className="flex-1 overflow-auto px-4 sidebar-scroll">
+          <div className="flex-1 overflow-y-auto px-4">
             {sortedUsers.map((user) => (
               <div
                 key={user.id}
@@ -272,28 +268,28 @@ const Sidebar = ({
               </div>
             ))}
           </div>
-        </div>
 
-        {/* 하단 버튼 영역 */}
-        <div className="p-4 border-t border-gray-200 flex-shrink-0">
-          <button
-            onClick={() => handleMenuClick('/settings')}
-            className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
-              location.pathname === '/settings'
-                ? 'bg-blue-50 text-blue-600'
-                : 'hover:bg-gray-100'
-            }`}
-          >
-            <Cog6ToothIcon className="w-6 h-6" />
-            {isSidebarOpen && <span className="ml-3">설정</span>}
-          </button>
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 text-gray-700"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {isSidebarOpen && <span className="ml-3">로그아웃</span>}
-          </button>
+          {/* 하단 버튼 영역 - 항상 보이도록 수정 */}
+          <div className="p-4 border-t border-gray-200 flex-shrink-0 mt-auto">
+            <button
+              onClick={() => handleMenuClick('/settings')}
+              className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
+                location.pathname === '/settings'
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              <Cog6ToothIcon className="w-6 h-6" />
+              {isSidebarOpen && <span className="ml-3">설정</span>}
+            </button>
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 text-gray-700"
+            >
+              <ArrowRightOnRectangleIcon className="w-6 h-6" />
+              {isSidebarOpen && <span className="ml-3">로그아웃</span>}
+            </button>
+          </div>
         </div>
       </aside>
 
