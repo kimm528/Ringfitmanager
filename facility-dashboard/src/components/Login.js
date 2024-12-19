@@ -78,19 +78,19 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         setSiteId(siteId);
 
         Cookies.set("isLoggedIn", "true", { 
-          //domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
+          domain: '.dotories.com', // 모든 서브도메인에서 접근 가능하도록 설정
           path: '/', 
           sameSite: 'None',       // 교차 사이트 요청에서도 전송 가능
           secure: true            // HTTPS에서만 전송
         });
         Cookies.set("siteId", siteId, { 
-          //domain: '.dotories.com', 
+          domain: '.dotories.com', 
           path: '/', 
           sameSite: 'None', 
           secure: true 
         });
         Cookies.set("adminId", username, { 
-          //domain: '.dotories.com', 
+          domain: '.dotories.com', 
           path: '/', 
           sameSite: 'None', 
           secure: true 
@@ -155,7 +155,7 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
         data = await response.json();
         console.log("첫 번째 파싱 결과:", data);
 
-        // 만약 data가 문자열이라면, 두 번째 파싱 시도
+        // 만약 data가 문자열이라면, ��� 번째 파싱 시도
         if (typeof data === 'string') {
           data = JSON.parse(data);
           console.log("두 번째 파싱 결과:", data);
@@ -212,9 +212,9 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   }, [signUpSiteId, signUpAdminId, signUpPassword, signUpName, credentials]);
 
   return (
-    <section className="min-h-screen bg-gray-50 flex flex-col justify-center overflow-y-auto py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+    <section className="min-h-screen bg-gray-50 flex flex-col py-8">
+      <div className="container mx-auto px-4 flex-grow flex items-center justify-center min-h-[600px]">
+        <div className="flex flex-col lg:flex-row items-center justify-center gap-8 w-full">
           {/* 로고 이미지 컨테이너 */}
           <div className="w-full lg:w-5/12 flex justify-center">
             <img
@@ -313,10 +313,10 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
 
       {/* 회원가입 모달 */}
       {isSignUpModalOpen && (
-        <div className="fixed inset-0 z-50 bg-gray-900 bg-opacity-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 py-8">
-            <div className="relative w-full max-w-md">
-              <div className="bg-white rounded-lg shadow-xl">
+        <div className="fixed inset-0 z-50 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="relative w-full max-w-md my-6">
+              <div className="bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
                 {/* 헤더 영역 */}
                 <div className="px-6 pt-5 pb-4 border-b border-gray-200">
                   <h2 className="text-2xl font-semibold text-center">회원가입</h2>
