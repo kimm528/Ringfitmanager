@@ -864,7 +864,7 @@ function App() {
         // 서버 업데이트
         updateUser(updatedUser, true);
 
-        // 로컬 상태 업데이트
+        // 로��� 상태 업데이트
         setUsers((prevUsers) => {
           const updatedUsers = prevUsers.map((user) =>
             user.id === userId ? updatedUser : user
@@ -1004,6 +1004,7 @@ function App() {
             sortOption={sortOption}
             siteId={Cookies.get('siteId')}
             resetState={resetState}
+            toggleSidebar={toggleSidebar}
           />
           <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
             <Header

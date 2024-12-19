@@ -26,6 +26,7 @@ const Sidebar = ({
   sortOption,
   siteId,
   resetState,
+  toggleSidebar
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,7 +55,7 @@ const Sidebar = ({
   // 캐시 삭제 함수
   const clearFloorPlanCache = useCallback(async () => {
     if (!siteId) {
-      console.error('siteId가 제공되지 않았���니다. 캐시를 삭제할 수 없습니다.');
+      console.error('siteId가 제공되지 않았습니다. 캐시를 삭제할 수 없습니다.');
       return;
     }
 
@@ -126,7 +127,17 @@ const Sidebar = ({
 
   const handleUserClick = useCallback((userId) => {
     navigate(`/users/${userId}`);
-  }, [navigate]);
+    if (isMobileView) {
+      toggleSidebar();
+    }
+  }, [navigate, isMobileView, toggleSidebar]);
+
+  const handleMenuClick = useCallback((path) => {
+    navigate(path);
+    if (isMobileView) {
+      toggleSidebar();
+    }
+  }, [navigate, isMobileView, toggleSidebar]);
 
   // 모바일에서 사이드바 외부 클릭 시 닫기
   const handleOutsideClick = useCallback((e) => {
@@ -217,7 +228,7 @@ const Sidebar = ({
                 <ul className="ml-8 mt-2 space-y-2">
                   <li>
                     <button
-                      onClick={() => navigate('/')}
+                      onClick={() => handleMenuClick('/')}
                       className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
                         location.pathname === '/' ? 'text-[#594AE2]' : ''
                       }`}
@@ -228,7 +239,7 @@ const Sidebar = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => navigate('/devices')}
+                      onClick={() => handleMenuClick('/devices')}
                       className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
                         location.pathname === '/devices' ? 'text-[#594AE2]' : ''
                       }`}
@@ -266,7 +277,7 @@ const Sidebar = ({
         {/* 하단 버튼 영역 */}
         <div className="p-4 border-t border-gray-200 flex-shrink-0">
           <button
-            onClick={() => navigate('/settings')}
+            onClick={() => handleMenuClick('/settings')}
             className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
               location.pathname === '/settings'
                 ? 'bg-blue-50 text-blue-600'
