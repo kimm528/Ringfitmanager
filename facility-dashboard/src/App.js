@@ -141,31 +141,35 @@ function App() {
       const siteId = Cookies.get('siteId');
       const adminId = Cookies.get('adminId');
 
-      console.log('Raw Cookie values:', {
+      console.log('쿠키 상태 확인:', {
         isLoggedInCookie,
         siteId,
         adminId
       });
 
-      // 쿠키가 존재하는지만 확인
+      // 쿠키가 하나라도 없으면 중단
       if (!isLoggedInCookie || !siteId || !adminId) {
-        console.log('로그인 필요: 쿠키 누락');
+        console.log('쿠키 누락됨:', {
+          hasIsLoggedIn: !!isLoggedInCookie,
+          hasSiteId: !!siteId,
+          hasAdminId: !!adminId
+        });
         setIsLoggedIn(false);
-        window.location.href = 'https://aifitmanager.dotories.com';
         return;
       }
 
-      // isLoggedIn 값이 'true'인지 대소문자 구분 없이 확인
-      const isValidLogin = isLoggedInCookie.toLowerCase() === 'true';
+      // 값이 'true'인지 확인 (대소문자 구분 없이)
+      const isValidLogin = String(isLoggedInCookie).toLowerCase() === 'true';
+      console.log('로그인 검증:', { isValidLogin, isLoggedInCookie });
+
       if (!isValidLogin) {
-        console.log('로그인 필요: isLoggedIn 값이 true가 아님');
+        console.log('로그인 값이 true가 아님');
         setIsLoggedIn(false);
-        window.location.href = 'https://aifitmanager.dotories.com';
         return;
       }
 
-      // 쿠키가 모두 있고 isLoggedIn이 true이면 정상적으로 진행
-      console.log('로그인 성공: 모든 조건 충족');
+      // 모든 검증 통과
+      console.log('로그인 성공');
       setIsLoggedIn(true);
       setSiteId(siteId);
       // 데이터 로드 시작
@@ -1205,7 +1209,16 @@ function App() {
           </div>
         </div>
       ) : (
-        window.location.href = 'https://aifitmanager.dotories.com'
+        <div style={{ padding: '20px' }}>
+          <h2>로그인 상태 디버깅</h2>
+          <pre>
+            {JSON.stringify({
+              isLoggedIn: Cookies.get('isLoggedIn'),
+              siteId: Cookies.get('siteId'),
+              adminId: Cookies.get('adminId')
+            }, null, 2)}
+          </pre>
+        </div>
       )}
     </Router>
   );
