@@ -141,16 +141,27 @@ function App() {
       const siteId = Cookies.get('siteId');
       const adminId = Cookies.get('adminId');
 
-      if (isLoggedIn && siteId && adminId) {
-        setIsLoggedIn(true);
-        setSiteId(siteId);
-        // 데이터 로드 시작
-        fetchUsersAndRingData();
-        handleLoadFloorPlan();
-      } else {
+      console.log('Cookie values:', {
+        isLoggedIn,
+        siteId,
+        adminId
+      });
+
+      // aifitmanager.dotories.com의 쿠키가 없으면 로그인 페이지로 리다이렉트
+      if (!isLoggedIn || !siteId || !adminId) {
+        console.log('로그인 필요: aifitmanager로 리다이렉트');
         setIsLoggedIn(false);
         window.location.href = 'https://aifitmanager.dotories.com';
+        return;
       }
+
+      // 쿠키가 모두 있으면 정상적으로 진행
+      console.log('로그인 성공: 모든 조건 충족');
+      setIsLoggedIn(true);
+      setSiteId(siteId);
+      // 데이터 로드 시작
+      fetchUsersAndRingData();
+      handleLoadFloorPlan();
     };
 
     validateAndInitialize();
