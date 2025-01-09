@@ -1209,16 +1209,12 @@ function App() {
           </div>
         </div>
       ) : (
-        <div style={{ padding: '20px' }}>
-          <h2>로그인 상태 디버깅</h2>
-          <pre>
-            {JSON.stringify({
-              isLoggedIn: Cookies.get('isLoggedIn'),
-              siteId: Cookies.get('siteId'),
-              adminId: Cookies.get('adminId')
-            }, null, 2)}
-          </pre>
-        </div>
+        <>
+          {(!Cookies.get('isLoggedIn') || !Cookies.get('siteId') || !Cookies.get('adminId')) && (
+            window.location.href = 'https://aifitmanager.dotories.com'
+          )}
+          <div style={{ padding: '20px' }}>잠시만 기다려주세요...</div>
+        </>
       )}
     </Router>
   );
