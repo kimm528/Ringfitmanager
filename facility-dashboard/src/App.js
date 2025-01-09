@@ -137,25 +137,34 @@ function App() {
   // 로그인 상태 초기화: 컴포넌트 마운트 시 쿠키에서 값을 읽어와 상태 설정
   useEffect(() => {
     const validateAndInitialize = () => {
-      const isLoggedIn = Cookies.get('isLoggedIn') === 'true';
+      const isLoggedInCookie = Cookies.get('isLoggedIn');
       const siteId = Cookies.get('siteId');
       const adminId = Cookies.get('adminId');
 
-      console.log('Cookie values:', {
-        isLoggedIn,
+      console.log('Raw Cookie values:', {
+        isLoggedInCookie,
         siteId,
         adminId
       });
 
-      // aifitmanager.dotories.com의 쿠키가 없으면 로그인 페이지로 리다이렉트
-      if (!isLoggedIn || !siteId || !adminId) {
-        console.log('로그인 필요: aifitmanager로 리다이렉트');
+      // 쿠키가 존재하는지만 확인
+      if (!isLoggedInCookie || !siteId || !adminId) {
+        console.log('로그인 필요: 쿠키 누락');
         setIsLoggedIn(false);
         window.location.href = 'https://aifitmanager.dotories.com';
         return;
       }
 
-      // 쿠키가 모두 있으면 정상적으로 진행
+      // isLoggedIn 값이 'true'인지 대소문자 구분 없이 확인
+      const isValidLogin = isLoggedInCookie.toLowerCase() === 'true';
+      if (!isValidLogin) {
+        console.log('로그인 필요: isLoggedIn 값이 true가 아님');
+        setIsLoggedIn(false);
+        window.location.href = 'https://aifitmanager.dotories.com';
+        return;
+      }
+
+      // 쿠키가 모두 있고 isLoggedIn이 true이면 정상적으로 진행
       console.log('로그인 성공: 모든 조건 충족');
       setIsLoggedIn(true);
       setSiteId(siteId);
