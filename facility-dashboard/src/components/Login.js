@@ -1,7 +1,7 @@
 // src/components/Login.js
 
 import React, { useState, useCallback } from "react";
-import Cookies from 'js-cookie'; // js-cookie 임포트
+import Cookies from 'js-cookie'; 
 
 export default function Login({ setIsLoggedIn, setSiteId }) {
   // State for login
@@ -19,12 +19,11 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   const [signUpErrorMessage, setSignUpErrorMessage] = useState("");
 
   const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
-  //const url = 'http://14.47.20.111:7201'
-  const url = 'https://fitlife.dotories.com';
+  const url = 'http://14.47.20.111:7201'
+  //const url = 'https://api.ring.dotories.com';
 
   const formattedTime = (date) => {
     const pad = (n) => n.toString().padStart(2, '0');
-
     const yy = pad(date.getFullYear() % 100); // 연도 (마지막 2자리)
     const MM = pad(date.getMonth() + 1); // 월 (0부터 시작하므로 +1)
     const dd = pad(date.getDate()); // 일
@@ -39,14 +38,14 @@ export default function Login({ setIsLoggedIn, setSiteId }) {
   const handleLogin = useCallback(async (e) => {
     e.preventDefault(); // Form 기본 동작 방지
 
-    if (isLoading) return; // 이미 로딩 중이면 함수 종료
+    if (isLoading) return;
 
     if (!username || !password) {
       setLoginErrorMessage("아이디와 비밀번호를 입력해주세요.");
       return;
     }
 
-    setIsLoading(true); // 로딩 시작
+    setIsLoading(true);
 
     try {
       // 서버 요청

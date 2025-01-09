@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { VscGraph } from "react-icons/vsc";  
 import { CiBoxList } from "react-icons/ci";  
-import { RiUserAddFill } from "react-icons/ri";
 import { AiOutlineClose } from "react-icons/ai"; 
 import { FaMap } from 'react-icons/fa';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -13,7 +12,6 @@ const Header = ({
   isSidebarOpen, 
   siteName, 
   userName,
-  setShowModal,
   setSearchQuery,
   sortOption,
   setSortOption 
@@ -146,17 +144,6 @@ const Header = ({
               <VscGraph className="text-2xl" />
             )}
           </motion.button>
-
-          {(isHomePage || isGridView) && (
-            <motion.button
-              onClick={() => setShowModal(true)}
-              className="bg-transparent hover:bg-gray-100 text-black p-2 rounded-lg"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <RiUserAddFill className="text-2xl" />
-            </motion.button>
-          )}
         </div>
       </div>
     </header>

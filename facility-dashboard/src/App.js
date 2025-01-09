@@ -13,7 +13,6 @@ import Header from './components/Header.js';
 import Sidebar from './components/Sidebar.js';
 import Dashboard from './components/Dashboard.js';
 import UserDetail from './components/UserDetail.js';
-import Login from './components/Login.js';
 import Settings from './components/Settings.js';
 import FloorPlan from './components/FloorPlan.js';
 import DeviceManagement from './components/DeviceManagement.js';
@@ -30,7 +29,7 @@ const MemoizedDeviceManagement = memo(DeviceManagement);
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 //const url = 'http://14.47.20.111:7201'
-const url = 'https://fitlife.dotories.com';
+const url = 'https://api.ring.dotories.com';
 
 // 세션 스토리지 관련 헬퍼 함수 (floorPlanImage만 처리하도록 수정)
 const loadFromSessionStorage = (key, defaultValue) => {
@@ -137,13 +136,24 @@ function App() {
 
   // 로그인 상태 초기화: 컴포넌트 마운트 시 쿠키에서 값을 읽어와 상태 설정
   useEffect(() => {
-    const loggedIn = Cookies.get('isLoggedIn') === 'true';
-    const storedSiteId = Cookies.get('siteId') || '';
+    const validateAndInitialize = () => {
+      const isLoggedIn = Cookies.get('isLoggedIn') === 'true';
+      const siteId = Cookies.get('siteId');
+      const adminId = Cookies.get('adminId');
 
-    setIsLoggedIn(loggedIn);
-    setSiteId(storedSiteId);
-    // adminId가 필요하면 추가로 상태에 저장
-    // 예: setAdminId(storedAdminId);
+      if (isLoggedIn && siteId && adminId) {
+        setIsLoggedIn(true);
+        setSiteId(siteId);
+        // 데이터 로드 시작
+        fetchUsersAndRingData();
+        handleLoadFloorPlan();
+      } else {
+        setIsLoggedIn(false);
+        window.location.href = 'https://aifitmanager.dotories.com';
+      }
+    };
+
+    validateAndInitialize();
   }, []);
 
   const getRandomTemperature = useCallback(() => {
@@ -1175,9 +1185,7 @@ function App() {
           </div>
         </div>
       ) : (
-        <div className="min-h-screen overflow-auto">
-          <Login setIsLoggedIn={setIsLoggedIn} setSiteId={setSiteId} />
-        </div>
+        window.location.href = 'https://aifitmanager.dotories.com'
       )}
     </Router>
   );

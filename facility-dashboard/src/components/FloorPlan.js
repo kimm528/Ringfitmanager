@@ -44,8 +44,8 @@ const FloorPlan = ({
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [smartphoneListHeight, setSmartphoneListHeight] = useState(80); // 초기 높이 설정
 
-  const UPLOAD_API_URL = `https://fitlife.dotories.com/api/site/image`; // 배치도 업로드 API 엔드포인트
-  const UPLOADING_DEVICE_API_URL = `https://fitlife.dotories.com/api/device/floorplan`; // 디바이스 데이터 업로드 API 엔드포인트
+  const UPLOAD_API_URL = `https://api.ring.dotories.com/api/site/image`; // 배치도 업로드 API 엔드포인트
+  const UPLOADING_DEVICE_API_URL = `https://api.ring.dotories.com/api/device/floorplan`; // 디바이스 데이터 업로드 API 엔드포인트
 
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(false);

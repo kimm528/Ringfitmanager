@@ -9,7 +9,8 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   DeviceTabletIcon,
-  InformationCircleIcon,
+  UsersIcon,
+  UserIcon,
   AdjustmentsHorizontalIcon
 } from "@heroicons/react/24/outline";
 import { LiaRingSolid } from "react-icons/lia";
@@ -33,6 +34,7 @@ const Sidebar = ({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [botfitExpanded, setBotfitExpanded] = useState(true);
   const [ringExpanded, setRingExpanded] = useState(true);
+  const [userExpanded, setUserExpanded] = useState(true);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
 
   // 모바일 뷰 감지
@@ -168,7 +170,7 @@ const Sidebar = ({
       {/* 사이드바 */}
       <aside
         className={`
-          ${isMobileView ? 'fixed top-[80px] h-[calc(100%-80px)]' : 'relative h-full'}
+          ${isMobileView ? 'fixed top-[80px] h-[calc(100%-80px)]' : 'relative h-[calc(100vh-80px)] mt-[80px]'}
           left-0 
           ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
@@ -178,7 +180,7 @@ const Sidebar = ({
         `}
       >
         {/* 전체 컨테이너 */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full pt-2">
           {/* 트리 메뉴 영역 */}
           <div className="p-4 flex-shrink-0">
             {/* BotFit 섹션 */}
@@ -255,6 +257,47 @@ const Sidebar = ({
                     >
                       <LiaRingSolid className="w-5 h-5" />
                       <span className="ml-3">기기 관리</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
+
+            {/* User 섹션 */}
+            <div className="mb-4 border-b border-gray-200 pb-2">
+              <div
+                onClick={() => setUserExpanded(!userExpanded)}
+                className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
+              >
+                <div className="flex items-center">
+                  {isSidebarOpen && <span className="ml-3 text-[18px] font-bold">User</span>}
+                </div>
+                {isSidebarOpen && (
+                  userExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
+                )}
+              </div>
+              {userExpanded && isSidebarOpen && (
+                <ul className="ml-8 mt-2 space-y-2">
+                  <li>
+                    <button
+                      onClick={() => handleMenuClick('/user-management')}
+                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                        location.pathname === '/user-management' ? 'text-[#594AE2]' : ''
+                      }`}
+                    >
+                      <UsersIcon className="w-5 h-5" />
+                      <span className="ml-3">사용자 관리</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleMenuClick('/assign-users')}
+                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                        location.pathname === '/assign-users' ? 'text-[#594AE2]' : ''
+                      }`}
+                    >
+                      <UserIcon className="w-5 h-5" />
+                      <span className="ml-3">관리자 할당</span>
                     </button>
                   </li>
                 </ul>

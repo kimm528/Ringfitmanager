@@ -8,17 +8,13 @@ import { Grid, AutoSizer } from 'react-virtualized';
 import 'react-virtualized/styles.css';
 
 const Dashboard = ({
-  showModal,
-  setShowModal,
   users,
   searchQuery,
-  handleAddUser,
   updateUser,
   deleteUser,
   availableRings,
   toggleFavorite,
   disconnectInterval,
-  getNewId,
   sortOption
 }) => {
   const gridRef = useRef();

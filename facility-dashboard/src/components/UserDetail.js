@@ -264,18 +264,17 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const getPastData = useCallback(async (userId, date) => {
     try {
       setIsLoading(true);
-      setError(null); // 에러 상태 초기화
+      setError(null);
   
       // 새로운 데이터 fetch 전 tempHealthData를 기본값으로 초기화
       setTempHealthData(normalizeData(null));
   
       if (!isToday(date)) {
         setIsPast(true);
-        const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
+        const formattedDate = formatDateYYMMDD(date);
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-        const url = 'https://fitlife.dotories.com';
+        const url = 'https://api.ring.dotories.com';
   
-        // API 요청
         const healthResponse = await axios.get(
           `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
           {
@@ -293,35 +292,32 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
         const healthDataArray = healthJson.Data || [];
   
         if (healthDataArray.length > 0) {
-          // 특정 날짜의 데이터를 사용 (예: 최신 데이터)
           const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
-  
-          setTempHealthData(normalizeData(latestHealthData)); // normalizeData 적용
+          setTempHealthData(normalizeData(latestHealthData));
           console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
         } else {
-          // 데이터가 없는 경우 본값 설정
           setTempHealthData(normalizeData(null));
           console.log(`사용자 ${userId}의 건강 데이터가 없습니다. 기본값으로 설정합니다.`);
         }
       } else {
         setIsPast(false);
-        setTempHealthData(normalizeData(null)); // 오늘인 경우 기본값 설정
-        console.log("오늘 날짜를 선택했습니다. tempHealthData를 기본값으로 설정합니다.");
+        setTempHealthData(normalizeData(userData)); // userData로 업데이트
+        console.log("오늘 날짜입니다. 현재 데이터로 업데이트합니다.");
       }
     } catch (error) {
       console.error('Error fetching past data:', error);
       setError('데이터를 불러오는데 실패했습니다.');
-      setTempHealthData(normalizeData(null)); // 에러 발생 시 기본값 설정
+      setTempHealthData(normalizeData(null));
     } finally {
       setIsLoading(false);
     }
-  }, [formatDateYYMMDD, siteId, isToday, normalizeData]);
+  }, [formatDateYYMMDD, siteId, isToday, normalizeData, userData]);
 
   useEffect(() => {
-    if (userId && selectedDate && !isToday(selectedDate)) {
+    if (userId && selectedDate) {
       getPastData(userId, selectedDate);
     }
-  }, [userId, selectedDate, getPastData, isToday]);
+  }, [userId, selectedDate, getPastData]);
 
   // Normalize currentHealthData
   const currentHealthData = useMemo(() => {
@@ -491,7 +487,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
     const updatedEditItem = {
       ...editItem,
-      dose: dose, // '세부 사항'으로 변경
+      dose: dose, // '세부 사항'으 변경
     };
 
     const updatedItems = logItems.map((item) =>
@@ -619,7 +615,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       const minute = (i % 6) * 10;
       const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       
-      // 시간에 따른 변동 계수 (0시에서 12시까지 약간 증가했다가 다시 감소)
+      // 시간에 른 변동 계수 (0시에서 12시까지 약간 증가했다가 다시 감소)
       const variation = Math.sin((hour * 60 + minute) * Math.PI / (24 * 60)) * 0.5 + 0.5;
       
       // 기본 랜덤 값 생성
@@ -699,6 +695,31 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       legend: { display: !isMobile }
     }
   };
+
+
+
+  useEffect(() => {
+    const updateHourlyData = async () => {
+      try {
+        // API에서 시간별 데이터를 가져옵니다
+        const response = await axios.get(`/api/users/${userId}/hourly-data`);
+        const hourlyData = response.data;
+
+        // 세션 스토리지의 사용자 데이터를 업데이트합니다
+        const users = JSON.parse(sessionStorage.getItem('users') || '[]');
+        const userIndex = users.findIndex(u => u.id === userId);
+        
+        if (userIndex !== -1) {
+          users[userIndex].data.hourlyData = hourlyData;
+          sessionStorage.setItem('users', JSON.stringify(users));
+        }
+      } catch (error) {
+        console.error('시간별 데이터 로딩 실패:', error);
+      }
+    };
+
+    updateHourlyData();
+  }, [userId]);
 
   return (
     <div className="p-4">
@@ -1120,7 +1141,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   className="w-full border border-gray-300 rounded-lg p-2 mb-4"
                   value={editItem.dose}
                   onChange={(e) => setEditItem({ ...editItem, dose: e.target.value })}
-                  aria-label="세부 사항 수정 필드"
+                  aria-label="세 사항 수정 필드"
                 />
 
                 {/* 복용 시간 선택 */}
@@ -1151,7 +1172,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                   <button
                     className="bg-blue-500 text-white py-2 px-4 rounded-lg"
                     onClick={handleSaveEditItem}
-                    aria-label="Life 로그 저장 버튼"
+                    aria-label="Life 그 저장 버튼"
                   >
                     저장
                   </button>

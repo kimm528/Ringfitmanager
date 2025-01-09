@@ -19,7 +19,7 @@ const ModalComponent = ({ children, onClose }) => {
 };
 
 //const url = 'http://14.47.20.111:7201';
-const url = 'https://fitlife.dotories.com';
+const url = 'https://api.ring.dotories.com';
 
 const Settings = ({
   adminInfo,
@@ -266,7 +266,7 @@ const Settings = ({
 
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await fetch(`https://fitlife.dotories.com/api/manager`, {
+      const response = await fetch(`https://api.ring.dotories.com/api/manager`, {
         method: 'UPDATE', 
         headers: {
           'Content-Type': 'application/json',

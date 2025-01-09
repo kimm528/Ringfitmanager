@@ -41,7 +41,7 @@ const DeviceManagement = ({
   
 
   const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-  const url = 'https://fitlife.dotories.com';
+  const url = 'https://api.ring.dotories.com';
   //const url = 'http://14.47.20.111:7201'
 
   const userListRef = useRef(null);
@@ -90,25 +90,47 @@ const DeviceManagement = ({
 
   // 컴포넌트 마운트 시 데이터 분류 및 선택된 사용자 설정
   useEffect(() => {
-    if (setActiveComponent) {
-      setActiveComponent('DeviceManagement');
-    }
+    const initializeData = async () => {
+      if (setActiveComponent) {
+        setActiveComponent('DeviceManagement');
+      }
 
-    classifyDevices();
-    setIsLoadingDevices(false);
+      // 컴포넌트 진입 시 즉시 데이터 업데이트
+      if (fetchUsers) {
+        await fetchUsers();
+      }
 
-    // **선택된 사용자 상태 설정**
-    if (location.state && location.state.selectedUser) {
-      const user = location.state.selectedUser;
-      setSelectedUser(user);
-    }
+      classifyDevices();
+      setIsLoadingDevices(false);
+
+      // 선택된 사용자 상태 설정
+      if (location.state?.selectedUser) {
+        setSelectedUser(location.state.selectedUser);
+        setUserSearchTerm(''); // 검색어 초기화
+      }
+    };
+
+    initializeData();
 
     return () => {
       if (setActiveComponent) {
         setActiveComponent('');
       }
     };
-  }, [setActiveComponent, classifyDevices, location.state]);
+  }, []); // 컴포넌트 마운트 시 한 번만 실행
+
+  // location.state가 변경될 때만 선택된 사용자 업데이트
+  useEffect(() => {
+    if (location.state?.selectedUser) {
+      setSelectedUser(location.state.selectedUser);
+      setUserSearchTerm('');
+    }
+  }, [location.state?.selectedUser]);
+
+  // availableRings나 users가 변경될 때만 devices 분류
+  useEffect(() => {
+    classifyDevices();
+  }, [classifyDevices, availableRings, users]);
 
   // 사용자 필터링 및 정렬
   const filteredUsers = useMemo(() => {
@@ -322,11 +344,6 @@ const DeviceManagement = ({
       updateUserRing(selectedUser, selectedDevice, 'unassign');
     }
   };
-
-  useEffect(() => {
-    console.log('availableRings 또는 users 변경되었습니다:', { availableRings, users });
-    classifyDevices();
-  }, [availableRings, users, classifyDevices]);
 
   // Filtered ring lists based on search terms
   const filteredConnectableDevices = useMemo(() => {
