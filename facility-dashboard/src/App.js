@@ -95,7 +95,7 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
-  /* ======= 테스트 설정 시작 =======
+  // ======= 테스트 설정 시작 =======
   // TODO: 실제 배포 전 이 부분 제거 필요
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
@@ -103,11 +103,11 @@ function App() {
     Cookies.set('siteId', 'Dotories');  // 원하는 사이트 ID로 변경
     Cookies.set('adminId', 'yskim');     // 원하는 관리자 ID로 변경
   }, []);
-  // ======= 테스트 설정 끝 =======*/
+  // ======= 테스트 설정 끝 =======
 
   // 상태 변수들
   // TODO: 실제 배포 전 false로 변경 필요
-  const [isLoggedIn, setIsLoggedIn] = useState(false);  // 테스트를 위해 true로 설정
+  const [isLoggedIn, setIsLoggedIn] = useState(true);  // 테스트를 위해 true로 설정
   const [isEditing, setIsEditing] = useState(false);  // 수정 중인 상태를 상단으로 이동
   
   const [showModal, setShowModal] = useState(false);
@@ -138,6 +138,10 @@ function App() {
 
   // Ref for interval to prevent multiple intervals
   const intervalRef = useRef(null);
+
+  // 매니저 정보 관련 상태 추가
+  const [adminList, setAdminList] = useState(null);
+  const [assignedUsers, setAssignedUsers] = useState([]);
 
   // PathListener 컴포넌트 정의: 현재 경로를 App의 상태로 전달
   const PathListener = React.memo(({ setCurrentPath }) => {
@@ -190,6 +194,7 @@ function App() {
       // 데이터 로드 시작
       fetchUsersAndRingData();
       handleLoadFloorPlan();
+      fetchAdminList(); // 매니저 정보 가져오기 추가
     };
 
     validateAndInitialize();
@@ -892,20 +897,27 @@ function App() {
 
   // 즐겨찾 토글 함수 수정: 세션 스토리지 관련 코드 제거
   const toggleFavorite = useCallback(
-    (userId) => {
+    async (userId) => {
       const userToUpdate = users.find((user) => user.id === userId);
       if (userToUpdate) {
         const updatedUser = { ...userToUpdate, isFavorite: !userToUpdate.isFavorite };
 
-        // 서버 업데이트
-        updateUser(updatedUser, true);
+        try {
+          // 서버 업데이트를 기다림
+          await updateUser(updatedUser, true);
 
-        setUsers((prevUsers) => {
-          const updatedUsers = prevUsers.map((user) =>
-            user.id === userId ? updatedUser : user
-          );
-          return updatedUsers;
-        });
+          // 서버 업데이트가 성공한 후에만 UI 업데이트
+          setUsers((prevUsers) => {
+            const updatedUsers = prevUsers.map((user) =>
+              user.id === userId ? updatedUser : user
+            );
+            return updatedUsers;
+          });
+        } catch (error) {
+          console.error('즐겨찾기 업데이트 실패:', error);
+          // 실패 시 사용자에게 알림
+          alert('즐겨찾기 업데이트에 실패했습니다.');
+        }
       }
     },
     [users, updateUser]
@@ -1028,6 +1040,74 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 매니저 정보 가져오기 함수 추가
+  const fetchAdminList = useCallback(async () => {
+    try {
+      const currentAdminId = Cookies.get('adminId');
+      const response = await fetch(
+        `${url}/api/manager?id=${currentAdminId}&isLogin=false`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${credentials}`,
+          },
+        }
+      );
+
+      let data = await response.json();
+      
+      // 응답 데이터가 문자열인 경우 다시 파싱
+      if (typeof data === 'string') {
+        data = JSON.parse(data);
+      }
+
+      if (response.ok) {
+        setAdminList(data.Data);
+        // 현재 관리자의 할당된 사용자 목록 설정
+        if (data.Data.AdminId === currentAdminId) {
+          setAssignedUsers(data.Data.AssignUsers || []);
+        }
+      }
+    } catch (error) {
+      console.error('관리자 목록 가져오기 오류:', error);
+    }
+  }, [url, credentials]);
+
+  // 매니저 정보 업데이트 함수 추가
+  const updateManagerAssignedUsers = useCallback(async (newAssignedUsers) => {
+    try {
+      const response = await fetch(`${url}/api/manager`, {
+        method: 'UPDATE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${credentials}`,
+        },
+        body: JSON.stringify({
+          header: {
+            siteId: '',
+            sitePassword: ''
+          },
+          data: {
+            SiteId: adminList.SiteId,
+            AdminId: adminList.AdminId,
+            Password: adminList.Password,
+            Name: adminList.Name,
+            Description: adminList.Description,
+            AssignUsers: newAssignedUsers,
+          },
+        })
+      });
+
+      if (response.ok) {
+        setAssignedUsers(newAssignedUsers);
+        await fetchAdminList(); // 목록 새로고침
+      }
+    } catch (error) {
+      console.error('매니저 정보 업데이트 오류:', error);
+    }
+  }, [url, credentials, adminList, fetchAdminList]);
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
@@ -1093,6 +1173,7 @@ function App() {
                         disconnectInterval={disconnectInterval}
                         devices={devices}
                         getNewId={getNewId}
+                        assignedUsers={assignedUsers}
                       />
                     }
                   />
@@ -1124,6 +1205,9 @@ function App() {
                         setUsers={setUsers}
                         updateUser={updateUser}
                         siteId={siteId}
+                        adminList={adminList}
+                        assignedUsers={assignedUsers}
+                        updateManagerAssignedUsers={updateManagerAssignedUsers}
                       />
                     }
                   />
@@ -1183,6 +1267,8 @@ function App() {
                         toggleSidebar={toggleSidebar}
                         isSidebarOpen={isSidebarOpen}
                         userName={Cookies.get('adminId')}
+                        adminList={adminList}
+                        assignedUsers={assignedUsers}
                       />
                     }
                   />
@@ -1201,7 +1287,10 @@ function App() {
         ) : (
           <>
             {(!Cookies.get('isLoggedIn') || !Cookies.get('siteId') || !Cookies.get('adminId')) && (
-              window.location.href = 'https://aifitmanager.dotories.com'
+              <div className="flex items-center justify-center min-h-screen bg-gray-50">
+                <img src="/Loading.gif" alt="로딩 중..." className="w-16 h-16" />
+                {window.location.replace('https://aifitmanager.dotories.com')}
+              </div>
             )}
           </>
         )}

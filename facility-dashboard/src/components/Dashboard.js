@@ -15,7 +15,8 @@ const Dashboard = ({
   availableRings,
   toggleFavorite,
   disconnectInterval,
-  sortOption
+  sortOption,
+  assignedUsers
 }) => {
   const gridRef = useRef();
   const [gridKey, setGridKey] = useState(0);
@@ -67,9 +68,13 @@ const Dashboard = ({
   }, [sortOption]);
 
   const sortedUsers = useMemo(() => {
-    const filtered = users.filter((user) =>
-      (user.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // 할당된 사용자만 필터링
+    const assignedUserIds = assignedUsers || [];
+    const filtered = users
+      .filter(user => assignedUserIds.includes(user.id))
+      .filter((user) =>
+        (user.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+      );
   
     const usersWithStatus = filtered.map((user) => ({
       ...user,
@@ -87,7 +92,7 @@ const Dashboard = ({
     });
   
     return usersWithStatus;
-  }, [users, searchQuery, sortOption, sortByOption]);
+  }, [users, searchQuery, sortOption, sortByOption, assignedUsers]);
 
   // 그리드 강제 업데이트 함수
   const forceGridUpdate = useCallback(() => {

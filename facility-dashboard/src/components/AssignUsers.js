@@ -2,51 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Cookies from 'js-cookie';
 
-const AssignUsers = ({ users, updateUser, siteId }) => {
-  const [adminList, setAdminList] = useState([]);
+const AssignUsers = ({ users, adminList, assignedUsers, updateManagerAssignedUsers }) => {
   const [loading, setLoading] = useState(true);
-  const [currentAdminId, setCurrentAdminId] = useState(Cookies.get('adminId'));
   const [selectedUsers, setSelectedUsers] = useState([]);
-
-  // 관리자 목록 가져오기
-  const fetchAdminList = async () => {
-    try {
-      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await fetch(
-        `https://api.ring.dotories.com/api/manager?id=${currentAdminId}&isLogin=false`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${credentials}`,
-          },
-        }
-      );
-
-      let data = await response.json();
-
-      // 응답 데이터가 문자열인 경우 다시 파싱
-      if (typeof data === 'string') {
-        data = JSON.parse(data);
-      }
-
-      if (response.ok) {
-        setAdminList(data.Data);
-        // 현재 관리자의 할당된 사용자 목록 설정
-        if (data.Data.AdminId === currentAdminId) {
-          setSelectedUsers(data.Data.AssignUsers || []);
-        }
-      }
-    } catch (error) {
-      console.error('관리자 목록 가져오기 오류:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [assignedSearchTerm, setAssignedSearchTerm] = useState('');
+  const [unassignedSearchTerm, setUnassignedSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchAdminList();
-  }, [siteId]);
+    if (assignedUsers) {
+      setSelectedUsers(assignedUsers);
+      setLoading(false);
+    }
+  }, [assignedUsers]);
 
   const handleUserToggle = async (userId) => {
     try {
@@ -54,110 +21,43 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
         ? selectedUsers.filter(id => id !== userId)
         : [...selectedUsers, userId];
 
-      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await fetch(`https://api.ring.dotories.com/api/manager`, {
-        method: 'UPDATE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
-        },
-        body: JSON.stringify({
-          header: {
-            siteId: '',
-            sitePassword: ''
-          },
-          data: {
-          SiteId: adminList.SiteId,
-          AdminId: adminList.AdminId,
-          Password: adminList.Password,
-          Name: adminList.Name,
-          Description: adminList.Description,
-          AssignUsers: newSelectedUsers,
-          },
-        })
-      });
-
-      if (response.ok) {
-        setSelectedUsers(newSelectedUsers);
-        fetchAdminList(); // 목록 새로고침
-      }
+      await updateManagerAssignedUsers(newSelectedUsers);
     } catch (error) {
       console.error('사용자 할당 업데이트 오류:', error);
     }
   };
 
-  // 전체 할당 처리 함수 추가
+  // 전체 할당 처리 함수
   const handleAssignAll = async () => {
     try {
       const unassignedUsers = users.filter(user => !selectedUsers.includes(user.id));
       const newSelectedUsers = [...selectedUsers, ...unassignedUsers.map(user => user.id)];
-
-      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await fetch('https://api.ring.dotories.com/api/manager', {
-        method: 'UPDATE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
-        },
-        body: JSON.stringify({
-          header: {
-            siteId: '',
-            sitePassword: ''
-          },
-          data: {
-            SiteId: adminList.SiteId,
-            AdminId: adminList.AdminId,
-            Password: adminList.Password,
-            Name: adminList.Name,
-            Description: adminList.Description,
-            AssignUsers: newSelectedUsers,
-          },
-        })
-      });
-
-      if (response.ok) {
-        setSelectedUsers(newSelectedUsers);
-        fetchAdminList();
-      }
+      await updateManagerAssignedUsers(newSelectedUsers);
     } catch (error) {
       console.error('전체 할당 중 오류 발생:', error);
     }
   };
 
-  // 전체 해제 처리 함수 추가
+  // 전체 해제 처리 함수
   const handleUnassignAll = async () => {
     try {
-      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await fetch('https://api.ring.dotories.com/api/manager', {
-        method: 'UPDATE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
-        },
-        body: JSON.stringify({
-          header: {
-            siteId: '',
-            sitePassword: ''
-          },
-          data: {
-            SiteId: adminList.SiteId,
-            AdminId: adminList.AdminId,
-            Password: adminList.Password,
-            Name: adminList.Name,
-            Description: adminList.Description,
-            AssignUsers: [],
-          },
-        })
-      });
-
-      if (response.ok) {
-        setSelectedUsers([]);
-        fetchAdminList();
-      }
+      await updateManagerAssignedUsers([]);
     } catch (error) {
       console.error('전체 해제 중 오류 발생:', error);
     }
   };
+
+  const filteredAssignedUsers = users
+    .filter(user => selectedUsers.includes(user.id))
+    .filter(user => 
+      user.name.toLowerCase().includes(assignedSearchTerm.toLowerCase())
+    );
+
+  const filteredUnassignedUsers = users
+    .filter(user => !selectedUsers.includes(user.id))
+    .filter(user => 
+      user.name.toLowerCase().includes(unassignedSearchTerm.toLowerCase())
+    );
 
   if (loading) {
     return <div className="p-8">로딩 중...</div>;
@@ -169,7 +69,7 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
         {/* 할당된 사용자 섹션 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">할당된 사용자</h2>
                 <p className="mt-1 text-sm text-gray-500">현재 관리 중인 사용자 목록입니다.</p>
@@ -183,6 +83,13 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
                 전체 해제
               </motion.button>
             </div>
+            <input
+              type="text"
+              placeholder="이름으로 검색..."
+              value={assignedSearchTerm}
+              onChange={(e) => setAssignedSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           
           <div className="overflow-x-auto">
@@ -196,7 +103,7 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.filter(user => selectedUsers.includes(user.id)).map((user) => (
+                {filteredAssignedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{user.name}</div>
@@ -227,7 +134,7 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
         {/* 미할당 사용자 섹션 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">미할당 사용자</h2>
                 <p className="mt-1 text-sm text-gray-500">할당 가능한 사용자 목록입니다.</p>
@@ -241,6 +148,13 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
                 전체 할당
               </motion.button>
             </div>
+            <input
+              type="text"
+              placeholder="이름으로 검색..."
+              value={unassignedSearchTerm}
+              onChange={(e) => setUnassignedSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
           
           <div className="overflow-x-auto">
@@ -254,7 +168,7 @@ const AssignUsers = ({ users, updateUser, siteId }) => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.filter(user => !selectedUsers.includes(user.id)).map((user) => (
+                {filteredUnassignedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{user.name}</div>

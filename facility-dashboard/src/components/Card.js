@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStar, FaEllipsisV, FaExchangeAlt, FaThermometerHalf, FaHeartbeat } from 'react-icons/fa';
+import { FaStar, FaEllipsisV, FaExchangeAlt} from 'react-icons/fa';
 import {
   BarChart,
   ReferenceArea,
@@ -322,28 +322,17 @@ const Card = ({
         !modalRef.current.contains(event.target)
       ) {
         event.stopPropagation();
+        // 모달 닫기 로직은 각각의 onClose 핸들러에서 처리
       }
     };
 
-    document.addEventListener('click', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [menuRef, modalRef, showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
+  }, [showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
 
-  const openEditModalHandler = useCallback(
-    (e) => {
-      e.stopPropagation();
-      setEditedName(user.name);
-      setEditedGender(user.gender);
-      setEditedAge(user.age);
-      setShowEditModal(true);
-      setMenuOpen(false);
-    },
-    [user]
-  );
-
-  const openDeleteModalHandler = useCallback(
+   const openDeleteModalHandler = useCallback(
     (e) => {
       e.stopPropagation();
       setShowDeleteModal(true);
@@ -424,22 +413,6 @@ const Card = ({
     [user, navigate]
   );
 
-  const handleRingAssign = () => {
-    if (user.macAddr) {
-      // 이미 링이 연결된 사용자일 경우 모달 표시
-      setShowRingModal(true);
-    } else {
-      // 링이 연결되지 않은 사용자일 경우 DeviceManagement 페이지로 이동하면서 사용자 전달
-      navigate('/devices', { 
-        state: { 
-          selectedUser: user,
-          userName: user.name,
-          searchTerm: user.name  // 검색어로 사용자 이름 추가
-        } 
-      });
-    }
-  };
-
   return (
     <div
       className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
@@ -506,19 +479,15 @@ const Card = ({
         </button>
         {menuOpen && (
           <div
-            className="absolute right-0 mt-12 translate-y-2 py-2 w-48 bg-white border rounded shadow-lg z-50"
+            className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-50"
+            onClick={(e) => e.stopPropagation()}
+            style={{ position: 'absolute', top: '100%', right: '0', transform: 'none' }}
           >
             <button
               className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
               onClick={openThresholdModal}
             >
               심박수 위험도 수정
-            </button>
-            <button
-              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openEditModalHandler}
-            >
-              사용자 정보 수정
             </button>
             <button
               className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
@@ -761,137 +730,164 @@ const Card = ({
 
       {/* Threshold Setting Modal */}
       {showThresholdModal && (
-        <Modal onClose={() => setShowThresholdModal(false)} ref={modalRef}>
-          <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
-          <div className="mb-6">
-            <h3 className="font-semibold mb-8">심박수 임계값</h3>
+        <div 
+          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
+          style={{ zIndex: 1000 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowThresholdModal(false);
+          }}
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
+            style={{ maxHeight: '90%', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
+            <div className="mb-6">
+              <h3 className="font-semibold mb-8">심박수 임계값</h3>
 
-            {/* 다중 핸들 슬라이더 */}
-            <div className="relative mb-6">
-              <ReactSlider
-                className="horizontal-slider"
-                min={30}
-                max={200}
-                value={[
-                  thresholds.heartRateDangerLow,
-                  thresholds.heartRateWarningLow,
-                  thresholds.heartRateWarningHigh,
-                  thresholds.heartRateDangerHigh,
-                ]}
-                onChange={(values) => {
-                  setThresholds({
-                    ...thresholds,
-                    heartRateDangerLow: values[0],
-                    heartRateWarningLow: values[1],
-                    heartRateWarningHigh: values[2],
-                    heartRateDangerHigh: values[3],
-                  });
-                }}
-                withTracks={true}
-                pearling={true}
-                minDistance={1}
-                renderThumb={(props, state) => (
+              {/* 다중 핸들 슬라이더 */}
+              <div className="relative mb-6">
+                <ReactSlider
+                  className="horizontal-slider"
+                  min={30}
+                  max={200}
+                  value={[
+                    thresholds.heartRateDangerLow,
+                    thresholds.heartRateWarningLow,
+                    thresholds.heartRateWarningHigh,
+                    thresholds.heartRateDangerHigh,
+                  ]}
+                  onChange={(values) => {
+                    setThresholds({
+                      ...thresholds,
+                      heartRateDangerLow: values[0],
+                      heartRateWarningLow: values[1],
+                      heartRateWarningHigh: values[2],
+                      heartRateDangerHigh: values[3],
+                    });
+                  }}
+                  withTracks={true}
+                  pearling={true}
+                  minDistance={1}
+                  renderThumb={(props, state) => (
+                    <div
+                      {...props}
+                      style={{
+                        ...props.style,
+                        height: '25px',
+                        width: '25px',
+                        backgroundColor:
+                          state.index === 0 || state.index === 3
+                            ? '#f44336'
+                            : '#ff9800',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        position: 'absolute',
+                      }}
+                    ></div>
+                  )}
+                  renderTrack={(props, state) => (
+                    <div
+                      {...props}
+                      style={{
+                        ...props.style,
+                        height: '10px',
+                        backgroundColor: (() => {
+                          switch (state.index) {
+                            case 0:
+                              return '#f44336';
+                            case 1:
+                              return '#ff9800';
+                            case 2:
+                              return '#4caf50';
+                            case 3:
+                              return '#ff9800';
+                            case 4:
+                              return '#f44336';
+                            default:
+                              return '#ddd';
+                          }
+                        })(),
+                      }}
+                    />
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
+                <div className="text-center">
                   <div
-                    {...props}
-                    style={{
-                      ...props.style,
-                      height: '25px',
-                      width: '25px',
-                      backgroundColor:
-                        state.index === 0 || state.index === 3
-                          ? '#f44336'
-                          : '#ff9800',
-                      borderRadius: '50%',
-                      cursor: 'pointer',
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      position: 'absolute',
-                    }}
+                    className="w-4 h-4 mx-auto mb-1"
+                    style={{ backgroundColor: '#f44336' }}
                   ></div>
-                )}
-                renderTrack={(props, state) => (
+                  <p>위험 (하한)</p>
+                  <p>{thresholds.heartRateDangerLow} bpm</p>
+                </div>
+                <div className="text-center">
                   <div
-                    {...props}
-                    style={{
-                      ...props.style,
-                      height: '10px',
-                      backgroundColor: (() => {
-                        switch (state.index) {
-                          case 0:
-                            return '#f44336';
-                          case 1:
-                            return '#ff9800';
-                          case 2:
-                            return '#4caf50';
-                          case 3:
-                            return '#ff9800';
-                          case 4:
-                            return '#f44336';
-                          default:
-                            return '#ddd';
-                        }
-                      })(),
-                    }}
-                  />
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
-              <div className="text-center">
-                <div
-                  className="w-4 h-4 mx-auto mb-1"
-                  style={{ backgroundColor: '#f44336' }}
-                ></div>
-                <p>위험 (하한)</p>
-                <p>{thresholds.heartRateDangerLow} bpm</p>
-              </div>
-              <div className="text-center">
-                <div
-                  className="w-4 h-4 mx-auto mb-1"
-                  style={{ backgroundColor: '#ff9800' }}
-                ></div>
-                <p>경고 (하한)</p>
-                <p>{thresholds.heartRateWarningLow} bpm</p>
-              </div>
-              <div className="text-center">
-                <div
-                  className="w-4 h-4 mx-auto mb-1"
-                  style={{ backgroundColor: '#ff9800' }}
-                ></div>
-                <p>경고 (상한)</p>
-                <p>{thresholds.heartRateWarningHigh} bpm</p>
-              </div>
-              <div className="text-center">
-                <div
-                  className="w-4 h-4 mx-auto mb-1"
-                  style={{ backgroundColor: '#f44336' }}
-                ></div>
-                <p>위험 (상한)</p>
-                <p>{thresholds.heartRateDangerHigh} bpm</p>
+                    className="w-4 h-4 mx-auto mb-1"
+                    style={{ backgroundColor: '#ff9800' }}
+                  ></div>
+                  <p>경고 (하한)</p>
+                  <p>{thresholds.heartRateWarningLow} bpm</p>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="w-4 h-4 mx-auto mb-1"
+                    style={{ backgroundColor: '#ff9800' }}
+                  ></div>
+                  <p>경고 (상한)</p>
+                  <p>{thresholds.heartRateWarningHigh} bpm</p>
+                </div>
+                <div className="text-center">
+                  <div
+                    className="w-4 h-4 mx-auto mb-1"
+                    style={{ backgroundColor: '#f44336' }}
+                  ></div>
+                  <p>위험 (상한)</p>
+                  <p>{thresholds.heartRateDangerHigh} bpm</p>
+                </div>
               </div>
             </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  const updatedUser = {
+                    ...user,
+                    thresholds: { ...thresholds },
+                  };
+                  updateUser(updatedUser, true);
+                  setShowThresholdModal(false);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              >
+                저장
+              </button>
+            </div>
           </div>
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                const updatedUser = {
-                  ...user,
-                  thresholds: { ...thresholds },
-                };
-                updateUser(updatedUser, true);
-                setShowThresholdModal(false);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
-            >
-              저장
-            </button>
-          </div>
-        </Modal>
+        </div>
       )}
 
+      {/* Ring Disconnect Modal */}
       {showRingDisconnectModal && (
-        <Modal onClose={() => setShowRingDisconnectModal(false)} ref={modalRef}>
-          <div onClick={(e) => e.stopPropagation()}> {/* 이벤트 전파 중지 */}
+        <div 
+          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
+          style={{ zIndex: 1000 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowRingDisconnectModal(false);
+          }}
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
+            style={{ maxHeight: '90%', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
             <h2 className="text-xl font-semibold mb-4">링 해제</h2>
             <p>링을 해제하시겠습니까?</p>
             <div className="flex justify-end mt-4">
@@ -917,65 +913,79 @@ const Card = ({
               </button>
             </div>
           </div>
-        </Modal>
+        </div>
       )}
 
       {/* Edit User Modal */}
       {showEditModal && (
-        <Modal onClose={() => setShowEditModal(false)} ref={modalRef}>
-          <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
+        <div 
+          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
+          style={{ zIndex: 1000 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowEditModal(false);
+          }}
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
+            style={{ maxHeight: '90%', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
 
-          {/* Name Edit */}
-          <div className="mb-4">
-            <label className="block">이름</label>
-            <input
-              type="text"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+            {/* Name Edit */}
+            <div className="mb-4">
+              <label className="block">이름</label>
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
 
-          {/* Gender Edit */}
-          <div className="mb-4">
-            <label className="block">성별</label>
-            <select
-              value={editedGender}
-              onChange={(e) => setEditedGender(Number(e.target.value))}
-              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value={0}>남성</option>
-              <option value={1}>여성</option>
-            </select>
-          </div>
+            {/* Gender Edit */}
+            <div className="mb-4">
+              <label className="block">성별</label>
+              <select
+                value={editedGender}
+                onChange={(e) => setEditedGender(Number(e.target.value))}
+                className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value={0}>남성</option>
+                <option value={1}>여성</option>
+              </select>
+            </div>
 
-          {/* Age Edit */}
-          <div className="mb-4">
-            <label className="block">나이</label>
-            <input
-              type="number"
-              value={editedAge}
-              onChange={(e) => setEditedAge(e.target.value)}
-              className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+            {/* Age Edit */}
+            <div className="mb-4">
+              <label className="block">나이</label>
+              <input
+                type="number"
+                value={editedAge}
+                onChange={(e) => setEditedAge(e.target.value)}
+                className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowEditModal(false)}
-              className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
-            >
-              취소
-            </button>
-            <button
-              onClick={handleSaveUserInfo}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
-            >
-              저장
-            </button>
+            {/* Save Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSaveUserInfo}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              >
+                저장
+              </button>
+            </div>
           </div>
-        </Modal>
+        </div>
       )}
 
       {/* Ring Connection Status */}
@@ -1086,23 +1096,37 @@ const Card = ({
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <Modal onClose={() => setShowDeleteModal(false)}>
-          <h2 className="text-xl font-semibold mb-4">삭제 하시겠습니까?</h2>
-          <div className="flex justify-end">
-            <button
-              onClick={handleCancelDelete}
-              className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
-            >
-              취소
-            </button>
-            <button
-              onClick={handleConfirmDelete}
-              className="px-4 py-2 bg-red-500 text-white rounded-md"
-            >
-              확인
-            </button>
+        <div 
+          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
+          style={{ zIndex: 1000 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteModal(false);
+          }}
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
+            style={{ maxHeight: '90%', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold mb-4">삭제 하시겠습니까?</h2>
+            <div className="flex justify-end">
+              <button
+                onClick={handleCancelDelete}
+                className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-500 text-white rounded-md"
+              >
+                확인
+              </button>
+            </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );

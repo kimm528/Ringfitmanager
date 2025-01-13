@@ -18,7 +18,9 @@ const DeviceManagement = ({
   availableRings,
   toggleSidebar,
   isSidebarOpen,
-  userName
+  userName,
+  adminList,
+  assignedUsers
 }) => {
   const location = useLocation();
   const initialSearchTerm = location.state?.searchTerm || '';
@@ -135,8 +137,13 @@ const DeviceManagement = ({
   // 사용자 필터링 및 정렬
   const filteredUsers = useMemo(() => {
     const collator = new Intl.Collator('ko-KR', { sensitivity: 'base' });
+    
+    // 할당된 사용자 ID 목록
+    const assignedUserIds = assignedUsers || [];
+    
     let filtered = users
       .filter(user => !user.macAddr) // 링이 없는 사용자만 포함
+      .filter(user => assignedUserIds.includes(user.id)) // 할당된 사용자만 포함
       .filter(user => user?.name?.toLowerCase().includes(userSearchTerm.toLowerCase()));
 
     // 선택된 사용자가 있으면 최상단으로 이동
@@ -151,7 +158,7 @@ const DeviceManagement = ({
     }
 
     return filtered;
-  }, [users, userSearchTerm, selectedUser]);
+  }, [users, userSearchTerm, selectedUser, assignedUsers]);
 
   // 연결 가능한 링 목록을 정렬 (한글 ㄱㄴㄷ 순, 링 이름 없으면 '이름 없음'으로 처리)
   const sortedConnectableDevices = useMemo(() => {
