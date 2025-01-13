@@ -7,7 +7,6 @@ import {
   FaSmile, FaTint, FaWalking, FaFireAlt, FaRoute,
   FaTemperatureHigh
 } from 'react-icons/fa';
-import { BsArrowUpCircleFill, BsArrowDownCircleFill } from 'react-icons/bs';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Legend 
@@ -17,12 +16,7 @@ import CustomLegend from './CustomLegend';
 import { calculateSleepScore } from './CalculateUserStatus';
 import axios from 'axios';
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 사용
-import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { MdHealthAndSafety, MdMonitorHeart } from 'react-icons/md';
-import { GiHeartBeats } from 'react-icons/gi';
-import { format } from 'date-fns';
-import ko from 'date-fns/locale/ko';
 import { RiHeartPulseLine, RiHeartPulseFill } from 'react-icons/ri';
 
 // 상수 데이터 정의 (컴포넌트 외부)
@@ -109,6 +103,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     const dateString = e.target.value;
     const selected = new Date(dateString);
     setSelectedDate(selected);
+    sessionStorage.setItem('selectedDate', dateString);
   }, []);
 
   // 사용자 계산 via useMemo
@@ -265,16 +260,13 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     try {
       setIsLoading(true);
       setError(null);
-  
-      // 새로운 데이터 fetch 전 tempHealthData를 기본값으로 초기화
-      setTempHealthData(normalizeData(null));
-  
+
       if (!isToday(date)) {
         setIsPast(true);
         const formattedDate = formatDateYYMMDD(date);
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
         const url = 'https://api.ring.dotories.com';
-  
+
         const healthResponse = await axios.get(
           `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
           {
@@ -284,30 +276,34 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             },
           }
         );
-  
+
         const healthJson =
           typeof healthResponse.data === 'string'
             ? JSON.parse(healthResponse.data)
             : healthResponse.data;
         const healthDataArray = healthJson.Data || [];
-  
+
         if (healthDataArray.length > 0) {
           const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
-          setTempHealthData(normalizeData(latestHealthData));
+          // 기존 데이터가 있는 경우에만 업데이트
+          setTempHealthData(prev => {
+            if (!prev || !isEqual(prev, normalizeData(latestHealthData))) {
+              return normalizeData(latestHealthData);
+            }
+            return prev;
+          });
           console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
         } else {
-          setTempHealthData(normalizeData(null));
-          console.log(`사용자 ${userId}의 건강 데이터가 없습니다. 기본값으로 설정합니다.`);
+          console.log(`사용자 ${userId}의 건강 데이터가 없습니다.`);
         }
       } else {
         setIsPast(false);
-        setTempHealthData(normalizeData(userData)); // userData로 업데이트
+        setTempHealthData(normalizeData(userData));
         console.log("오늘 날짜입니다. 현재 데이터로 업데이트합니다.");
       }
     } catch (error) {
       console.error('Error fetching past data:', error);
       setError('데이터를 불러오는데 실패했습니다.');
-      setTempHealthData(normalizeData(null));
     } finally {
       setIsLoading(false);
     }

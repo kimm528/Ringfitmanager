@@ -207,7 +207,13 @@ const Sidebar = ({
                     </a>
                   </li>
                   <li>
-                    <a href="https://botfit.dotories.com/setting-training" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                    <a href="https://botfit.dotories.com/user-management" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
+                      <img src="/users.svg" alt="users" className="w-5 h-5 [filter:brightness(0)_saturate(100%)_invert(45%)_sepia(11%)_saturate(372%)_hue-rotate(182deg)_brightness(94%)_contrast(87%)]" />
+                      <span className="ml-3">사용자 정보</span>
+                    </a>
+                  </li>
+                  <li>
+                  <a href="https://botfit.dotories.com/custom-program" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
                       <AdjustmentsHorizontalIcon className="w-5 h-5" />
                       <span className="ml-3">운동 프로그램 관리</span>
                     </a>

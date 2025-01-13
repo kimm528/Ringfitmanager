@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Modal from './Modal';
 import { HiOutlineSearch, HiOutlineUserAdd, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 import { motion } from 'framer-motion';
@@ -12,7 +12,8 @@ const UserManagement = ({
   siteId,
   availableRings,
   showModal,
-  setShowModal
+  setShowModal,
+  setIsEditing
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -21,6 +22,11 @@ const UserManagement = ({
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [newUser, setNewUser] = useState({ name: '', gender: '', age: '' });
+
+  // 편집 상태 변경 시 상위 컴포넌트에 알림
+  useEffect(() => {
+    setIsEditing(editingField.userId !== null);
+  }, [editingField, setIsEditing]);
 
   // 검색어에 따른 필터링
   useEffect(() => {
@@ -32,51 +38,23 @@ const UserManagement = ({
 
   const handleEdit = (userId, field, value) => {
     setEditingField({ userId, field });
-    setEditValue(value);
-  };
-
-  const handleSave = async (userId) => {
     const user = users.find(u => u.id === userId);
-    const field = editingField.field;
-    
-    // 서버와 통신이 필요한 기본 정보 필드들
-    const serverFields = ['name', 'gender', 'age', 'address'];
-    
-    try {
-      if (serverFields.includes(field)) {
-        // 서버에 업데이트가 필요한 필드인 경우
-        const updatedUser = {
-          ...user,
-          [field]: field === 'gender' ? 
-            (editValue === '남성' ? 0 : 1) : // 성별은 0 또는 1로 변환
-            field === 'age' ? parseInt(editValue) : // 나이는 숫자로 변환
-            editValue
-        };
-        
-        // 서버 업데이트 호출
-        await updateUser(updatedUser, true);
-      } else {
-        // 보호자 정보 등 로컬에서만 관리되는 필드
-        const updatedUser = {
-          ...user,
-          [field]: editValue
-        };
-        
-        // 로컬 상태만 업데이트
-        setUsers(prevUsers => 
-          prevUsers.map(u => 
-            u.id === userId ? updatedUser : u
-          )
-        );
+    if (user) {
+      let initialValue = value;
+      if (field === 'gender') {
+        initialValue = user.gender === 0 ? '남성' : '여성';
+      } else if (field === 'age') {
+        initialValue = user.age.toString();
+      } else if (field === 'phone') {
+        initialValue = user.PhoneNumber || '';
+      } else if (field === 'guardianName') {
+        initialValue = user.GuardianName || '';
+      } else if (field === 'guardianPhone') {
+        initialValue = user.GuardianPhoneNumber || '';
+      } else if (field === 'guardianEmail') {
+        initialValue = user.GuardianEmail || '';
       }
-      
-      // 편집 모드 종료
-      setEditingField({ userId: null, field: null });
-      setEditValue('');
-      
-    } catch (error) {
-      console.error('사용자 정보 수정 중 오류 발생:', error);
-      alert('사용자 정보 수정에 실패했습니다.');
+      setEditValue(initialValue);
     }
   };
 
@@ -93,49 +71,106 @@ const UserManagement = ({
     }
   };
 
-  const EditableField = ({ userId, field, value, label }) => {
+   const EditableField = React.memo(({ userId, field, value, label }) => {
     const isEditing = editingField.userId === userId && editingField.field === field;
-    const isServerField = ['name', 'gender', 'age', 'address'].includes(field);
-    
+    const isServerField = ['name', 'gender', 'age', 'address', 'phone', 'guardianName', 'guardianPhone', 'guardianEmail'].includes(field);
+    const [localValue, setLocalValue] = useState(value);
+    const isAgeField = field === 'age';
+
+    useEffect(() => {
+      if (isEditing) {
+        setLocalValue(value);
+      }
+    }, [isEditing, value]);
+
+    const handleInputChange = (e) => {
+      const newValue = e.target.value;
+      setLocalValue(newValue);
+    };
+
+    const handleSaveClick = async () => {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      try {
+        const updatedUser = {
+          id: userId,
+          name: field === 'name' ? localValue : user.name,
+          gender: field === 'gender' ? (localValue === '남성' ? 0 : 1) : user.gender,
+          age: field === 'age' ? parseInt(localValue) : user.age,
+          address: field === 'address' ? localValue : user.address,
+          phoneNumber: field === 'phone' ? localValue : user.phoneNumber,
+          guardianName: field === 'guardianName' ? localValue : user.guardianName,
+          guardianPhoneNumber: field === 'guardianPhone' ? localValue : user.guardianPhoneNumber,
+          guardianEmail: field === 'guardianEmail' ? localValue : user.guardianEmail,
+          macAddr: user.macAddr || '',
+          ringSettingDateTime: user.ringSettingDateTime || '',
+          stepTarget: user.stepTarget || 10000,
+          kcalTarget: user.kcalTarget || 2000,
+          kmTarget: user.kmTarget || 5,
+          lifeLogs: user.lifeLogs || [],
+          warningHeartRate: user.warningHeartRate || [82, 120],
+          dangersHeartRate: user.dangersHeartRate || [74, 140],
+          favorite: user.favorite || false,
+          createDateTime: user.createDateTime || ''
+        };
+
+        await updateUser(updatedUser, true);
+        setEditingField({ userId: null, field: null });
+      } catch (error) {
+        console.error('사용자 정보 수정 중 오류 발생:', error);
+        alert('사용자 정보 수정에 실패했습니다.');
+      }
+    };
+
+    const handleCancelClick = () => {
+      setLocalValue(value);
+      setEditingField({ userId: null, field: null });
+    };
+
     return (
       <div className="mb-2">
         <span className="text-gray-500 text-sm">{label}</span>
         {isEditing ? (
-          <div className="flex gap-2 mt-1">
+          <div className={`flex mt-1 ${isAgeField ? 'relative' : ''}`}>
             {field === 'gender' ? (
               <select
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                value={localValue}
+                onChange={handleInputChange}
                 className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="남성">남성</option>
                 <option value="여성">여성</option>
               </select>
             ) : (
-              <input
-                type={field === 'age' ? 'number' : 'text'}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                className="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                autoFocus
-              />
+              <div className={`flex-1 relative ${isAgeField ? 'w-24' : ''}`}>
+                <input
+                  type={field === 'age' ? 'number' : 'text'}
+                  value={localValue}
+                  onChange={handleInputChange}
+                  className={`${isAgeField ? 'w-16' : 'w-full'} border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  autoFocus
+                />
+              </div>
             )}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleSave(userId)}
-              className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
-            >
-              저장
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setEditingField({ userId: null, field: null })}
-              className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors"
-            >
-              취소
-            </motion.button>
+            <div className={`flex gap-1 shrink-0 ${isAgeField ? 'absolute right-0 top-0' : 'ml-2'}`}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSaveClick}
+                className="px-2 py-1.5 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors whitespace-nowrap"
+              >
+                저장
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCancelClick}
+                className="px-2 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors whitespace-nowrap"
+              >
+                취소
+              </motion.button>
+            </div>
           </div>
         ) : (
           <div
@@ -154,7 +189,7 @@ const UserManagement = ({
         )}
       </div>
     );
-  };
+  });
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -235,32 +270,32 @@ const UserManagement = ({
               <EditableField
                 userId={user.id}
                 field="phone"
-                value={user.phone || `010-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`}
+                value={user.phoneNumber}
                 label="휴대폰"
               />
               
-              <div className="mt-6 pt-6 border-t border-gray-200 bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-2xl">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-2 mb-4 px-4">
                   <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
                   <h3 className="text-base font-semibold text-gray-900">보호자 정보</h3>
                 </div>
-                <div className="space-y-3 bg-white rounded-xl p-4 shadow-sm">
+                <div className="space-y-3 bg-white p-4 rounded-lg border border-gray-100">
                   <EditableField
                     userId={user.id}
                     field="guardianName"
-                    value={user.guardianName || `${user.name}의 보호자`}
+                    value={user.guardianName}
                     label="이름"
                   />
                   <EditableField
                     userId={user.id}
                     field="guardianPhone"
-                    value={user.guardianPhone || `010-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`}
+                    value={user.guardianPhoneNumber}
                     label="연락처"
                   />
                   <EditableField
                     userId={user.id}
                     field="guardianEmail"
-                    value={user.guardianEmail || `guardian_${user.name.toLowerCase()}${Math.floor(Math.random() * 100)}@example.com`}
+                    value={user.guardianEmail}
                     label="이메일"
                   />
                 </div>

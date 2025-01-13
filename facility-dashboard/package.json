@@ -16,7 +16,7 @@
     "ag-grid-community": "^32.3.3",
     "ag-grid-react": "^32.3.3",
     "chart.js": "^4.4.6",
-    "framer-motion": "^11.5.5",
+    "framer-motion": "^11.17.0",
     "immer": "^10.1.1",
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.21",

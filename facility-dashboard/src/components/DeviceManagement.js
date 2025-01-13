@@ -3,10 +3,10 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { XMarkIcon, PencilIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { FaGem } from 'react-icons/fa'; // FaGem 아이콘 임포트
+import { FaRing } from 'react-icons/fa';
 import Header from './Header.js';
 import Modal from './Modal.js';
-import { useLocation } from 'react-router-dom'; // useLocation 임포트
+import { useLocation } from 'react-router-dom';
 
 const DeviceManagement = ({ 
   users, 
@@ -389,11 +389,11 @@ const DeviceManagement = ({
         sortOption=""
         setSortOption={() => {}}
       />
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col md:flex-row gap-4 p-4">
+      <div className="flex-1 overflow-y-auto bg-gray-50">
+        <div className="flex flex-col md:flex-row gap-6 p-6">
           {/* 사용자 리스트 */}
           <div className="w-full md:w-1/3 flex flex-col">
-            <h2 className="text-xl font-semibold mb-4">사용자 목록</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">사용자 목록</h2>
             {/* 사용자 검색 입력 */}
             <div className="relative mb-4">
               <input
@@ -404,7 +404,7 @@ const DeviceManagement = ({
                   setUserSearchTerm(e.target.value);
                   setSearchTerm(e.target.value);
                 }}
-                className="p-2 border border-gray-300 rounded-md w-full"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
                 aria-label="사용자 검색 입력"
               />
               {userSearchTerm && (
@@ -413,25 +413,25 @@ const DeviceManagement = ({
                     setUserSearchTerm('');
                     setSearchTerm('');
                   }}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label="검색어 지우기"
                 >
                   ×
                 </button>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)]">
+            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)] p-2">
               {filteredUsers.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full text-gray-500">
                   <p>사용자 목록이 없습니다.</p>
                 </div>
               ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                   {filteredUsers.map(user => (
                     <li
                       key={user.id}
-                      className={`p-4 bg-gray-100 rounded-md shadow-sm flex items-center cursor-pointer ${
-                        selectedUser && selectedUser.id === user.id ? 'border-2 border-blue-500' : ''
+                      className={`p-4 bg-white rounded-xl shadow-sm hover:shadow transition-all cursor-pointer ${
+                        selectedUser && selectedUser.id === user.id ? 'ring-2 ring-blue-500 ring-offset-2' : 'border border-gray-100'
                       }`}
                       onClick={() => {
                         if (selectedUser && selectedUser.id === user.id) {
@@ -442,8 +442,8 @@ const DeviceManagement = ({
                       }}
                     >
                       <div className="flex-1">
-                        <p className="font-medium">{user.name || '이름 없음'}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="font-medium text-gray-900">{user.name || '이름 없음'}</p>
+                        <p className="text-sm text-gray-500 mt-1">
                           {user.gender === 0 ? '남성' : '여성'}, {user.age}세
                         </p>
                       </div>
@@ -456,7 +456,7 @@ const DeviceManagement = ({
 
           {/* 연결 가능한 링 목록 */}
           <div className="w-full md:w-1/3 flex flex-col">
-            <h2 className="text-xl font-semibold mb-4">연결 가능한 링 목록</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">연결 가능한 링 목록</h2>
             {/* 연결 가능한 링 검색 입력 */}
             <div className="relative mb-4">
               <input
@@ -464,35 +464,35 @@ const DeviceManagement = ({
                 placeholder="링 검색..."
                 value={connectableSearchTerm}
                 onChange={e => setConnectableSearchTerm(e.target.value)}
-                className="p-2 border border-gray-300 rounded-md w-full"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
                 aria-label="연결 가능한 링 검색 입력"
               />
               {connectableSearchTerm && (
                 <button
                   onClick={() => setConnectableSearchTerm('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label="검색어 지우기"
                 >
                   ×
                 </button>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)]">
+            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)] p-2">
               {isLoadingDevices ? (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full text-gray-500">
                   <p>링 목록 로딩 중...</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {filteredConnectableDevices.map(ring => (
                     <div
                       key={ring.MacAddr}
-                      className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
+                      className="p-4 bg-white rounded-xl shadow-sm hover:shadow transition-all cursor-pointer border border-gray-100"
                       onClick={() => handleDeviceClick(ring, false)}
                       title={`MAC 주소: ${ring.MacAddr}`}
                     >
                       <div className="flex items-center">
-                        <FaGem className="text-gray-600 mr-4" size={24} />
+                        <FaRing className="text-gray-400 mr-3" size={20} />
                         <div className="flex-1">
                           {editingDeviceMacAddr === ring.MacAddr ? (
                             <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
@@ -501,14 +501,14 @@ const DeviceManagement = ({
                                 value={newDeviceName}
                                 onChange={(e) => setNewDeviceName(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
-                                className="p-1 border border-gray-300 rounded mr-2 flex-1"
+                                className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg mr-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   updateDeviceName(editingDeviceMacAddr);
                                 }}
-                                className="text-green-500 hover:text-green-700"
+                                className="p-1.5 text-green-500 hover:text-green-600 hover:bg-green-50 rounded-lg"
                                 aria-label="링 이름 저장"
                               >
                                 <CheckIcon className="w-5 h-5" />
@@ -519,7 +519,7 @@ const DeviceManagement = ({
                                   setEditingDeviceMacAddr(null);
                                   setNewDeviceName('');
                                 }}
-                                className="text-red-500 hover:text-red-700 ml-2"
+                                className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg ml-1"
                                 aria-label="링 이름 편집 취소"
                               >
                                 <XMarkIcon className="w-5 h-5" />
@@ -527,19 +527,20 @@ const DeviceManagement = ({
                             </div>
                           ) : (
                             <div className="flex items-center">
-                              <h3 className="text-lg font-medium flex-1">{ring.Name || '이름 없음'}</h3>
+                              <h3 className="text-gray-900 font-medium flex-1">{ring.Name || '이름 없음'}</h3>
                               <button
                                 onClick={e => {
                                   e.stopPropagation();
                                   startEditingDeviceName(ring.MacAddr, ring.Name);
                                 }}
-                                className="text-gray-500 hover:text-gray-700"
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg"
                                 aria-label="링 이름 편집"
                               >
-                                <PencilIcon className="w-5 h-5" />
+                                <PencilIcon className="w-4 h-4" />
                               </button>
                             </div>
                           )}
+                          <p className="text-sm text-gray-500 mt-1">MAC: {ring.MacAddr}</p>
                         </div>
                       </div>
                     </div>
@@ -551,7 +552,7 @@ const DeviceManagement = ({
 
           {/* 연결된 링 목록 */}
           <div className="w-full md:w-1/3 flex flex-col">
-            <h2 className="text-xl font-semibold mb-4">연결된 링 목록</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">연결된 링 목록</h2>
             {/* 연결된 링 검색 입력 */}
             <div className="relative mb-4">
               <input
@@ -559,49 +560,51 @@ const DeviceManagement = ({
                 placeholder="링 검색..."
                 value={assignedSearchTerm}
                 onChange={e => setAssignedSearchTerm(e.target.value)}
-                className="p-2 border border-gray-300 rounded-md w-full"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
                 aria-label="연결된 링 검색 입력"
               />
               {assignedSearchTerm && (
                 <button
                   onClick={() => setAssignedSearchTerm('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   aria-label="검색어 지우기"
                 >
                   ×
                 </button>
               )}
             </div>
-            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)]">
+            <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[calc(33vh-100px)] md:max-h-[calc(100vh-250px)] p-2">
               {isLoadingDevices ? (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full text-gray-500">
                   <p>링 목록 로딩 중...</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {filteredAssignedDevices.map(ring => {
                     const assignedUser = users.find(user => user.macAddr === ring.MacAddr);
                     return (
                       <div
                         key={ring.MacAddr}
-                        className="p-4 bg-white rounded-md shadow hover:shadow-lg transition-shadow cursor-pointer"
+                        className="p-4 bg-white rounded-xl shadow-sm hover:shadow transition-all cursor-pointer border border-gray-100"
                         onClick={() => handleDeviceClick(ring, true)}
                       >
                         <div className="flex items-center">
-                          <FaGem className="text-gray-600 mr-4" size={24} />
+                          <FaRing className="text-blue-500 mr-3" size={20} />
                           <div className="flex-1">
-                            <div className="flex flex-col">
-                              <h3 className="text-lg font-medium">
-                                {ring.Name || '이름 없음'}
-                              </h3>
-                              {assignedUser && (
-                                <span className="text-sm text-gray-600">
+                            <h3 className="text-gray-900 font-medium">
+                              {ring.Name || '이름 없음'}
+                            </h3>
+                            {assignedUser && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                                <span className="text-sm text-gray-500">
                                   {`${assignedUser.name || '이름 없음'}(${assignedUser.gender === 0 ? '남' : '여'}, ${
                                     assignedUser.age || '알 수 없음'
                                   }세)`}
                                 </span>
-                              )}
-                            </div>
+                              </div>
+                            )}
+                            <p className="text-sm text-gray-500 mt-1">MAC: {ring.MacAddr}</p>
                           </div>
                         </div>
                       </div>
@@ -617,23 +620,23 @@ const DeviceManagement = ({
       {/* 확인 모달 */}
       {showConfirmationModal && selectedDevice && (
         <Modal onClose={() => setShowConfirmationModal(false)}>
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-4">확인</h2>
-            <p className="mb-4">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900">확인</h2>
+            <p className="mb-6 text-gray-600">
               {modalAction === 'assign'
                 ? `링 "${selectedDevice.Name || '이름 없음'}"을(를) 사용자 "${selectedUser.name}"에게 연결하시겠습니까?`
                 : `사용자 "${selectedUser.name}"로부터 링 "${selectedDevice.Name || '이름 없음'}"을(를) 연결 해제하시겠습니까?`}
             </p>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowConfirmationModal(false)}
-                className="px-4 py-2 bg-gray-300 text-black rounded-md"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleConfirmAction}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
                 확인
               </button>

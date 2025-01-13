@@ -18,6 +18,8 @@ import FloorPlan from './components/FloorPlan.js';
 import DeviceManagement from './components/DeviceManagement.js';
 import DataGridView from './components/DataGridView.js';
 import Modal from './components/Modal.js';
+import UserManagement from './components/UserManagement.js';
+import AssignUsers from './components/AssignUsers.js';
 
 // React.memo로 컴포넌트 래핑
 const MemoizedSidebar = memo(Sidebar);
@@ -93,8 +95,21 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
+  /* ======= 테스트 설정 시작 =======
+  // TODO: 실제 배포 전 이 부분 제거 필요
+  useEffect(() => {
+    // 테스트용 임시 쿠키 설정
+    Cookies.set('isLoggedIn', 'true');
+    Cookies.set('siteId', 'Dotories');  // 원하는 사이트 ID로 변경
+    Cookies.set('adminId', 'yskim');     // 원하는 관리자 ID로 변경
+  }, []);
+  // ======= 테스트 설정 끝 =======*/
+
   // 상태 변수들
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // TODO: 실제 배포 전 false로 변경 필요
+  const [isLoggedIn, setIsLoggedIn] = useState(false);  // 테스트를 위해 true로 설정
+  const [isEditing, setIsEditing] = useState(false);  // 수정 중인 상태를 상단으로 이동
+  
   const [showModal, setShowModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     // 모바일 환경인 경우 기본값 false, 데스크톱인 경우 true
@@ -279,6 +294,10 @@ function App() {
 
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
+    if (isEditing) {
+      return;
+    }
+
     if (!siteId) {
       console.warn('siteId가 설정되지 않았습니다.');
       return;
@@ -380,6 +399,10 @@ function App() {
               gender: user.Gender,
               age: user.Age,
               address: user.Address,
+              phoneNumber: user.PhoneNumber || '',
+              guardianName: user.GuardianName || '',
+              guardianPhoneNumber: user.GuardianPhoneNumber || '',
+              guardianEmail: user.GuardianEmail || '',
               stepTarget: user.StepTarget || 10000,
               kcalTarget: user.KcalTarget || 2000,
               kmTarget: user.KmTarget || 5,
@@ -387,8 +410,8 @@ function App() {
               lifeLogs: lifeLogs,
               ring: userRing,
               isFavorite: user.Favorite || false,
-              CreateDateTime: user.CreateDateTime,
-              data: data, // 기존 데이터 사용 또는 초기값 설정
+              createDateTime: user.CreateDateTime,
+              data: data,
               thresholds: {
                 heartRateWarningLow: user.WarningHeartRate ? user.WarningHeartRate[0] : 80,
                 heartRateWarningHigh: user.WarningHeartRate ? user.WarningHeartRate[1] : 120,
@@ -457,7 +480,7 @@ function App() {
     } catch (error) {
       console.error('사용자 데이터 가져오기 실패:', error.response || error.message);
     }
-  }, [siteId, credentials, url, fetchHealthData, isEqual]);
+  }, [siteId, credentials, url, fetchHealthData, isEqual, isEditing]);
 
   // 배치도 이미지 및 디바이스 데이터 가져오기 함수
   const handleLoadFloorPlan = useCallback(async () => {
@@ -545,7 +568,14 @@ function App() {
           // UserDetail 페이지일 경우 해당 사용자만 업데이트
           const userId = currentPath.split('/users/')[1]; // URL에서 userId 추출
           if (userId) {
-           // fetchHealthData(parseInt(userId), new Date());
+            // 현재 날짜가 오늘인 경우에만 업데이트
+            const selectedDate = sessionStorage.getItem('selectedDate');
+            const today = new Date();
+            const isToday = selectedDate ? new Date(selectedDate).toDateString() === today.toDateString() : true;
+            
+            if (isToday) {
+              fetchHealthData(parseInt(userId), today);
+            }
           }
         } else {
           // 일반적인 업데이트
@@ -670,8 +700,12 @@ function App() {
               KcalTarget: newUser.kcalTarget || 2000,
               KmTarget: newUser.kmTarget || 5,
               MacAddr: newUser.macAddr || '',
+              PhoneNumber: newUser.phoneNumber || '',
+              GuardianName: newUser.guardianName || '',
+              GuardianPhoneNumber: newUser.guardianPhoneNumber || '',
+              GuardianEmail: newUser.guardianEmail || '',
               LifeLogs: [],
-              CreateDateTime: createDateTime, // 생성 시간 추가
+              CreateDateTime: createDateTime,
             },
           }),
         });
@@ -752,89 +786,57 @@ function App() {
   );
 
   // 사용자 업데이트 함수 수정: 세션 스토리지 관련 코드 제거
-  const updateUser = useCallback(
-    async (updatedUser, sendTo_server = false) => {
-      console.log('사용자 업데이트:', updatedUser);
-
-      // 기존 사용자 데이터와 비교하여 변경된 경우에만 상태 업데이트
-      setUsers((prevUsers) => {
-        return produce(prevUsers, draft => {
-          const user = draft.find(u => u.id === updatedUser.id);
-          if (user) {
-            Object.assign(user, updatedUser);
-          }
-        });
+  const updateUser = useCallback(async (updatedUser, shouldRefetch = true) => {
+    try {
+      const response = await fetch(`${url}/api/user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${credentials}`,
+        },
+        body: JSON.stringify({
+          header: {
+            siteId: siteId,
+          },
+          data: {
+            Id: updatedUser.id,
+            Gender: updatedUser.gender,
+            Name: updatedUser.name,
+            Age: updatedUser.age,
+            Address: updatedUser.address,
+            StepTarget: updatedUser.stepTarget,
+            KcalTarget: updatedUser.kcalTarget,
+            KmTarget: updatedUser.kmTarget,
+            MacAddr: updatedUser.macAddr,
+            PhoneNumber: updatedUser.phoneNumber,
+            GuardianName: updatedUser.guardianName,
+            GuardianPhoneNumber: updatedUser.guardianPhoneNumber,
+            GuardianEmail: updatedUser.guardianEmail,
+            LifeLogs: updatedUser.lifeLogs,
+            WarningHeartRate: updatedUser.warningHeartRate,
+            DangersHeartRate: updatedUser.dangersHeartRate,
+            Favorite: updatedUser.favorite,
+            CreateDateTime: updatedUser.createDateTime
+          },
+        }),
       });
 
-      // 서버에 업데이트 요청
-      if (sendTo_server && siteId) {
-        try {
-          const apiUrl = `${url}/api/user`;
-          const gender = updatedUser.gender === 0 ? 0 : 1;
+      const responseText = await response.text();
 
-          // 서버에 사용자 업데이트 요청
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Basic ${credentials}`,
-            },
-            body: JSON.stringify({
-              header: {
-                siteId: siteId,
-              },
-              data: {
-                Id: updatedUser.id,
-                Gender: gender,
-                Name: updatedUser.name,
-                Age: updatedUser.age,
-                StepTarget: updatedUser.stepTarget || 10000,
-                KcalTarget: updatedUser.kcalTarget || 2000,
-                KmTarget: updatedUser.kmTarget || 5,
-                MacAddr: updatedUser.macAddr || '',
-                LifeLogs: updatedUser.lifeLogs.map((log) => ({
-                  IsChecked: log.taken,
-                  LogContent: log.medicine,
-                  LogDateTime: `${log.date}T${log.time}:00+00:00`,
-                  Description: log.dose,
-                })),
-                WarningHeartRate: [
-                  updatedUser.thresholds.heartRateWarningLow,
-                  updatedUser.thresholds.heartRateWarningHigh,
-                ],
-                DangersHeartRate: [
-                  updatedUser.thresholds.heartRateDangerLow,
-                  updatedUser.thresholds.heartRateDangerHigh,
-                ],
-                Favorite: updatedUser.isFavorite,
-                Temperature: updatedUser.temperature, // 체온 포함
-                BloodPressure: updatedUser.bloodPressure, // 혈압 포함
-              },
-            }),
-          });
-
-          const responseText = await response.text();
-
-          if (response.ok && responseText.includes('User update success')) {
-            console.log('서버에서 사용자 업데이트 성공.');
-            setSuccessMessage('수정이 완료되었습니다.');
-
-            // 3초 후 성공 메시지 제거
-            setTimeout(() => {
-              setSuccessMessage('');
-            }, 3000);
-          } else {
-            console.error('서버에서 사용자 업데이트 실패:', responseText);
-            alert('서버에 사용자 정보를 업데이트하는 데 실패했습니다.');
-          }
-        } catch (error) {
-          console.error('사용자 업데이트 오류:', error);
-          alert('사용자 정보 업데이트 중 오류가 발생했습니다.');
+      if (response.ok && responseText.includes('User update success')) {
+        console.log('서버에서 사용자 업데이트 성공.');
+        if (shouldRefetch) {
+          await fetchUsersAndRingData();
         }
+      } else {
+        console.error('서버에서 사용자 업데이트 실패:', responseText);
+        throw new Error('서버에 사용자 정보를 업데이트하는 데 실패했습니다.');
       }
-    },
-    [siteId, credentials, url]
-  );
+    } catch (error) {
+      console.error('사용자 정보 업데이트 실패:', error);
+      throw error;
+    }
+  }, [siteId, url, credentials, fetchUsersAndRingData]);
 
   // 사용자 삭제 함수 수정: 세션 스토리지 관련 코드 제거
   const deleteUser = useCallback(
@@ -1028,194 +1030,182 @@ function App() {
 
   return (
     <Router>
-      {isLoggedIn ? (
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar
-            isSidebarOpen={isSidebarOpen}
-            users={users}
-            setIsLoggedIn={setIsLoggedIn}
-            sortOption={sortOption}
-            siteId={Cookies.get('siteId')}
-            resetState={resetState}
-            toggleSidebar={toggleSidebar}
-          />
-          <div className="flex-1 flex flex-col min-h-screen bg-gray-50 overflow-hidden">
-            <Header
-              toggleSidebar={toggleSidebar}
+      <div className="min-h-screen bg-gray-50">
+        {isLoggedIn ? (
+          <div className="flex h-screen overflow-hidden">
+            <MemoizedSidebar
               isSidebarOpen={isSidebarOpen}
-              siteName={Cookies.get('siteId')}
-              userName={Cookies.get('adminId')}
-              setShowModal={setShowModal}
-              setSearchQuery={setSearchQuery}
+              users={users}
+              setIsLoggedIn={setIsLoggedIn}
               sortOption={sortOption}
-              setSortOption={setSortOption}
+              siteId={Cookies.get('siteId')}
+              resetState={resetState}
+              toggleSidebar={toggleSidebar}
             />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20 relative">
-              {showModal && (
-                <Modal onClose={() => setShowModal(false)}>
-                  <div className="bg-white p-8 rounded-lg shadow-lg w-[500px]">
-                    <h2 className="text-xl font-bold mb-4">새 사용자 추가</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block">이름</label>
-                        <input
-                          type="text"
-                          name="name"
-                          value={newUser.name}
-                          onChange={(e) =>
-                            setNewUser({ ...newUser, name: e.target.value })
-                          }
-                          className="p-2 border border-gray-300 rounded w-full"
-                          placeholder="이름을 입력하세요"
-                        />
-                      </div>
-                      <div>
-                        <label className="block">성별</label>
-                        <select
-                          name="gender"
-                          value={newUser.gender !== '' ? newUser.gender : ''}
-                          onChange={(e) =>
-                            setNewUser({ ...newUser, gender: e.target.value })
-                          }
-                          className="p-2 border border-gray-300 rounded w-full"
-                        >
-                          <option value="">성별을 선택하세요</option>
-                          <option value="0">남성</option>
-                          <option value="1">여성</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block">나이</label>
-                        <input
-                          type="number"
-                          name="age"
-                          value={newUser.age}
-                          onChange={(e) =>
-                            setNewUser({ ...newUser, age: e.target.value })
-                          }
-                          className="p-2 border border-gray-300 rounded w-full"
-                          placeholder="나이를 입력하세요"
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-between">
-                      <button
-                        onClick={handleModalSubmit}
-                        className="bg-blue-500 text-white py-2 px-4 rounded"
-                      >
-                        사용자 추가
-                      </button>
-                      <button
-                        onClick={() => setShowModal(false)}
-                        className="bg-gray-300 text-black py-2 px-4 rounded"
-                      >
-                        닫기
-                      </button>
-                    </div>
-                  </div>
-                </Modal>
-              )}
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <MemoizedDashboard
-                      showModal={showModal}
-                      setShowModal={setShowModal}
-                      users={users}
-                      setUsers={setUsers}
-                      searchQuery={searchQuery}
-                      handleAddUser={handleAddUser}
-                      updateUser={updateUser}
-                      sortOption={sortOption}
-                      deleteUser={deleteUser}
-                      toggleFavorite={toggleFavorite}
-                      availableRings={availableRings}
-                      disconnectInterval={disconnectInterval}
-                      devices={devices}
-                      getNewId={getNewId}
-                    />
-                  }
-                />
-                <Route
-                  path="/users/:userId"
-                  element={
-                    <MemoizedUserDetail
-                      users={users}
-                      updateUserLifeLog={updateUser}
-                      siteId={siteId}
-                      fetchHealthData={fetchHealthData}
-                      healthData={healthData}
-                    />
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <MemoizedSettings
-                      handleUpdateAdminInfo={handleUpdateAdminInfo}
-                      users={users}
-                      deleteUser={deleteUser}
-                      siteId={siteId}
-                      disconnectInterval={disconnectInterval}
-                      setDisconnectInterval={setDisconnectInterval}
-                      devices={devices}
-                    />
-                  }
-                />
-                <Route
-                  path="/floorplan"
-                  element={
-                    <MemoizedFloorPlan
-                      ringData={availableRings}
-                      users={users}
-                      floorPlanImage={floorPlanImage}
-                      devices={devices}
-                      setDevices={setDevices}
-                      setFloorPlanImage={setFloorPlanImage}
-                      siteId={siteId}
-                      isLocked={isLocked}
-                      setIsLocked={setIsLocked}
-                    />
-                  }
-                />
-                <Route
-                  path="/devices"
-                  element={
-                    <DeviceManagement
-                      users={users}
-                      setUsers={setUsers}
-                      siteId={Cookies.get('siteId')}
-                      fetchUsers={fetchUsersAndRingData}
-                      setActiveComponent={setActiveComponent}
-                      devices={devices}
-                      availableRings={availableRings}
-                      toggleSidebar={toggleSidebar}
-                      isSidebarOpen={isSidebarOpen}
-                      userName={Cookies.get('adminId')}
-                    />
-                  }
-                />
-                <Route
-                  path="/datagridview"
-                  element={
-                    <>
-                      <DataGridView users={users} setShowModal={setShowModal} />
-                    </>
-                  }
-                />
-              </Routes>
-            </main>
+            <div className="flex-1 flex flex-col min-h-screen bg-gray-50 overflow-hidden">
+              <Header
+                toggleSidebar={toggleSidebar}
+                isSidebarOpen={isSidebarOpen}
+                siteName={Cookies.get('siteId')}
+                userName={Cookies.get('adminId')}
+                setShowModal={setShowModal}
+                setSearchQuery={setSearchQuery}
+                sortOption={sortOption}
+                setSortOption={setSortOption}
+              />
+              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 pt-20 relative">
+                <Routes>
+                  <Route
+                    path="/users"
+                    element={
+                      <UserManagement
+                        users={users}
+                        setUsers={setUsers}
+                        handleAddUser={handleAddUser}
+                        updateUser={updateUser}
+                        deleteUser={deleteUser}
+                        setIsEditing={setIsEditing}
+                        siteId={siteId}
+                        availableRings={availableRings}
+                        showModal={showModal}
+                        setShowModal={setShowModal}
+                        handleModalSubmit={handleModalSubmit}
+                        newUser={newUser}
+                        setNewUser={setNewUser}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/"
+                    element={
+                      <MemoizedDashboard
+                        showModal={showModal}
+                        setShowModal={setShowModal}
+                        users={users}
+                        setUsers={setUsers}
+                        searchQuery={searchQuery}
+                        handleAddUser={handleAddUser}
+                        updateUser={updateUser}
+                        sortOption={sortOption}
+                        deleteUser={deleteUser}
+                        toggleFavorite={toggleFavorite}
+                        availableRings={availableRings}
+                        disconnectInterval={disconnectInterval}
+                        devices={devices}
+                        getNewId={getNewId}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/user-management"
+                    element={
+                      <UserManagement
+                        users={users}
+                        setUsers={setUsers}
+                        handleAddUser={handleAddUser}
+                        updateUser={updateUser}
+                        deleteUser={deleteUser}
+                        setIsEditing={setIsEditing}
+                        siteId={siteId}
+                        availableRings={availableRings}
+                        showModal={showModal}
+                        setShowModal={setShowModal}
+                        handleModalSubmit={handleModalSubmit}
+                        newUser={newUser}
+                        setNewUser={setNewUser}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/assign-users"
+                    element={
+                      <AssignUsers
+                        users={users}
+                        setUsers={setUsers}
+                        updateUser={updateUser}
+                        siteId={siteId}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/users/:userId"
+                    element={
+                      <MemoizedUserDetail
+                        users={users}
+                        updateUserLifeLog={updateUser}
+                        siteId={siteId}
+                        fetchHealthData={fetchHealthData}
+                        healthData={healthData}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <MemoizedSettings
+                        handleUpdateAdminInfo={handleUpdateAdminInfo}
+                        users={users}
+                        deleteUser={deleteUser}
+                        siteId={siteId}
+                        disconnectInterval={disconnectInterval}
+                        setDisconnectInterval={setDisconnectInterval}
+                        devices={devices}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/floorplan"
+                    element={
+                      <MemoizedFloorPlan
+                        ringData={availableRings}
+                        users={users}
+                        floorPlanImage={floorPlanImage}
+                        devices={devices}
+                        setDevices={setDevices}
+                        setFloorPlanImage={setFloorPlanImage}
+                        siteId={siteId}
+                        isLocked={isLocked}
+                        setIsLocked={setIsLocked}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/devices"
+                    element={
+                      <DeviceManagement
+                        users={users}
+                        setUsers={setUsers}
+                        siteId={Cookies.get('siteId')}
+                        fetchUsers={fetchUsersAndRingData}
+                        setActiveComponent={setActiveComponent}
+                        devices={devices}
+                        availableRings={availableRings}
+                        toggleSidebar={toggleSidebar}
+                        isSidebarOpen={isSidebarOpen}
+                        userName={Cookies.get('adminId')}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/datagridview"
+                    element={
+                      <>
+                        <DataGridView users={users} setShowModal={setShowModal} />
+                      </>
+                    }
+                  />
+                </Routes>
+              </main>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
-          {(!Cookies.get('isLoggedIn') || !Cookies.get('siteId') || !Cookies.get('adminId')) && (
-            window.location.href = 'https://aifitmanager.dotories.com'
-          )}
-          <div style={{ padding: '20px' }}>잠시만 기다려주세요...</div>
-        </>
-      )}
+        ) : (
+          <>
+            {(!Cookies.get('isLoggedIn') || !Cookies.get('siteId') || !Cookies.get('adminId')) && (
+              window.location.href = 'https://aifitmanager.dotories.com'
+            )}
+          </>
+        )}
+      </div>
     </Router>
   );
 }
