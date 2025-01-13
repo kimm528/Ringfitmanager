@@ -95,7 +95,7 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
-  // ======= 테스트 설정 시작 =======
+  /* ======= 테스트 설정 시작 =======
   // TODO: 실제 배포 전 이 부분 제거 필요
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
@@ -103,11 +103,11 @@ function App() {
     Cookies.set('siteId', 'Dotories');  // 원하는 사이트 ID로 변경
     Cookies.set('adminId', 'yskim');     // 원하는 관리자 ID로 변경
   }, []);
-  // ======= 테스트 설정 끝 =======
+  // ======= 테스트 설정 끝 =======*/
 
   // 상태 변수들
   // TODO: 실제 배포 전 false로 변경 필요
-  const [isLoggedIn, setIsLoggedIn] = useState(true);  // 테스트를 위해 true로 설정
+  const [isLoggedIn, setIsLoggedIn] = useState(false);  // 테스트를 위해 true로 설정
   const [isEditing, setIsEditing] = useState(false);  // 수정 중인 상태를 상단으로 이동
   
   const [showModal, setShowModal] = useState(false);
