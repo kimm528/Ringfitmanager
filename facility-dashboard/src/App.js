@@ -143,6 +143,8 @@ function App() {
   const [adminList, setAdminList] = useState(null);
   const [assignedUsers, setAssignedUsers] = useState([]);
 
+  const [isMobileView, setIsMobileView] = useState(window.innerWidth <= 768);
+
   // PathListener 컴포넌트 정의: 현재 경로를 App의 상태로 전달
   const PathListener = React.memo(({ setCurrentPath }) => {
     const location = useLocation();
@@ -1028,8 +1030,9 @@ function App() {
   // 화면 크기 변경 감지
   useEffect(() => {
     const handleResize = () => {
-      const isMobile = window.innerWidth <= 768;
-      if (isMobile) {
+      const mobile = window.innerWidth <= 768;
+      setIsMobileView(mobile);
+      if (mobile) {
         setIsSidebarOpen(false);
       }
     };
@@ -1112,7 +1115,7 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-50">
         {isLoggedIn ? (
-          <div className="flex h-screen">
+          <div className={`${isMobileView ? 'h-[100dvh]' : 'flex h-screen'}`}>
             <MemoizedSidebar
               isSidebarOpen={isSidebarOpen}
               users={users}
@@ -1122,7 +1125,7 @@ function App() {
               resetState={resetState}
               toggleSidebar={toggleSidebar}
             />
-            <div className="flex-1 flex flex-col bg-gray-50">
+            <div className={`flex-1 flex flex-col bg-gray-50 ${isMobileView ? 'h-full' : ''}`}>
               <Header
                 toggleSidebar={toggleSidebar}
                 isSidebarOpen={isSidebarOpen}
