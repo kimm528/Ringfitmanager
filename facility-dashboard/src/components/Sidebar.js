@@ -176,15 +176,15 @@ const Sidebar = ({
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
-          overflow-y-auto pb-6
+          overflow-y-auto
         `}
       >
         {/* 전체 컨테이너 */}
-        <div className="flex flex-col h-full pt-2">
+        <div className="flex flex-col h-full">
           {/* 트리 메뉴 영역 */}
-          <div className="p-4 flex-shrink-0">
+          <div className="p-3 flex-shrink-0">
             {/* BotFit 섹션 */}
-            <div className="mb-4 border-b border-gray-200 pb-2">
+            <div className="mb-3 border-b border-gray-200 pb-2">
               <div
                 onClick={() => setBotfitExpanded(!botfitExpanded)}
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
@@ -229,7 +229,7 @@ const Sidebar = ({
             </div>
 
             {/* Ring 섹션 */}
-            <div className="mb-4 border-b border-gray-200 pb-2">
+            <div className="mb-3 border-b border-gray-200 pb-2">
               <div
                 onClick={() => setRingExpanded(!ringExpanded)}
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
@@ -270,7 +270,7 @@ const Sidebar = ({
             </div>
 
             {/* User 섹션 */}
-            <div className="mb-4 border-b border-gray-200 pb-2">
+            <div className="mb-3 border-b border-gray-200 pb-2">
               <div
                 onClick={() => setUserExpanded(!userExpanded)}
                 className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
@@ -335,7 +335,7 @@ const Sidebar = ({
           </div>
 
           {/* 하단 버튼 영역 */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+          <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0 mt-auto">
             <button
               onClick={() => handleMenuClick('/settings')}
               className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
