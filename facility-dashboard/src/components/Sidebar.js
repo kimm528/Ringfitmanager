@@ -170,13 +170,13 @@ const Sidebar = ({
       {/* 사이드바 */}
       <aside
         className={`
-          ${isMobileView ? 'fixed top-[80px] h-[calc(100%-80px)]' : 'relative h-[calc(100vh-80px)] mt-[80px]'}
+          ${isMobileView ? 'fixed top-[80px] h-[calc(100vh-80px)]' : 'relative h-[calc(100vh-80px)] mt-[80px]'}
           left-0 
           ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
           ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
-          overflow-y-auto
+          overflow-y-auto pb-6
         `}
       >
         {/* 전체 컨테이너 */}
@@ -313,7 +313,7 @@ const Sidebar = ({
 
           {/* 사용자 리스트 영역 */}
           <div className={`
-            px-4 flex-1
+            px-4 flex-grow
             ${isMobileView ? 'hidden' : 'overflow-y-auto'}
           `}>
             {sortedUsers.map((user) => (
