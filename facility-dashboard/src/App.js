@@ -95,7 +95,7 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
-  /*//======= 테스트 설정 시작 ======= 
+  //======= 테스트 설정 시작 ======= 
   // TODO: 실제 배포 전 이 부분 제거 필요
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
@@ -107,7 +107,7 @@ function App() {
 
   // 상태 변수들
   // TODO: 실제 배포 전 false로 변경 필요
-  const [isLoggedIn, setIsLoggedIn] = useState(false);  // 테스트를 위해 true로 설정
+  const [isLoggedIn, setIsLoggedIn] = useState(true);  // 테스트를 위해 true로 설정
   const [isEditing, setIsEditing] = useState(false);  // 수정 중인 상태를 상단으로 이동
   
   const [showModal, setShowModal] = useState(false);
@@ -223,7 +223,7 @@ function App() {
     }
 
     try {
-      const formattedDate = formatDateYYMMDD(date); // YYMMDD 형식으로 변환
+      const formattedDate = formatDateYYMMDD(date);
       const healthResponse = await axios.get(
         `${url}/api/user/health?siteId=${siteId}&yearMonthDay=${formattedDate}`,
         {
@@ -237,57 +237,47 @@ function App() {
       const healthJson = typeof healthResponse.data === 'string' ? JSON.parse(healthResponse.data) : healthResponse.data;
       const healthDataArray = healthJson.Data || [];
 
-      // healthDataArray를 순회하면서 각 사용자에 대한 데이터 업데이트
       healthDataArray.forEach((healthItem) => {
-        const userId = healthItem.UserId; // 각 데이터 항목에서 사용자 ID 추출
-
-        // 기존 데이터와 비교하여 변경된 경우에만 업데이트
-        setHealthData((prevData) => {
-          const existingData = prevData[userId]?.[formattedDate];
-          if (!isEqual(existingData, healthItem)) {
-            return {
-              ...prevData,
-              [userId]: {
-                ...(prevData[userId] || {}),
-                [formattedDate]: healthItem,
-              },
-            };
-          }
-          return prevData; // 변경되지 않았으므로 상태 업데이트하지 않음
-        });
-
-        // users 배열에 해당 ID를 가진 사용자 객체를 찾아 데이터 업데이트
+        const userId = healthItem.UserId;
         setUsers((prevUsers) =>
           produce(prevUsers, (draft) => {
             const userDraft = draft.find((u) => u.id === userId);
             if (userDraft) {
-              userDraft.data.bpm = getLastNonZero(
-                healthItem.HeartRateArr
-              );
-              userDraft.data.oxygen = getLastNonZero(
-                healthItem.BloodOxygenArr
-              );
+              // 실제 측정 데이터만 업데이트
+              userDraft.data.bpm = getLastNonZero(healthItem.HeartRateArr);
+              userDraft.data.oxygen = getLastNonZero(healthItem.BloodOxygenArr);
               userDraft.data.stress = getLastNonZero(healthItem.PressureArr);
-              userDraft.data.sleep =
-                healthItem.Sleep?.TotalSleepDuration || 0;
-              userDraft.data.steps =
-                healthItem.Sport?.slice(-1)[0]?.TotalSteps || 0;
-              userDraft.data.calories =
-                healthItem.Sport?.slice(-1)[0]?.Calorie || 0;
-              userDraft.data.distance =
-                healthItem.Sport?.slice(-1)[0]?.WalkDistance || 0;
-              userDraft.data.heartRateArr =
-                healthItem.HeartRateArr || [];
-              userDraft.data.pressureArr =
-                healthItem.PressureArr || [];
-              userDraft.data.oxygenArr =
-                healthItem.BloodOxygenArr || [];
-              userDraft.data.hourlyData.steps =
-                healthItem.Sport?.map((s) => s.TotalSteps) || [];
-              userDraft.data.hourlyData.calories =
-                healthItem.Sport?.map((s) => s.Calorie) || [];
-              userDraft.data.hourlyData.distance =
-                healthItem.Sport?.map((s) => s.WalkDistance) || [];
+              userDraft.data.sleep = healthItem.Sleep?.TotalSleepDuration || 0;
+              userDraft.data.steps = healthItem.Sport?.slice(-1)[0]?.TotalSteps || 0;
+              userDraft.data.calories = healthItem.Sport?.slice(-1)[0]?.Calorie || 0;
+              userDraft.data.distance = healthItem.Sport?.slice(-1)[0]?.WalkDistance || 0;
+              userDraft.data.heartRateArr = healthItem.HeartRateArr || [];
+              userDraft.data.pressureArr = healthItem.PressureArr || [];
+              userDraft.data.oxygenArr = healthItem.BloodOxygenArr || [];
+              userDraft.data.hourlyData.steps = healthItem.Sport?.map((s) => s.TotalSteps) || [];
+              userDraft.data.hourlyData.calories = healthItem.Sport?.map((s) => s.Calorie) || [];
+              userDraft.data.hourlyData.distance = healthItem.Sport?.map((s) => s.WalkDistance) || [];
+              
+              const sleepData = healthItem.Sleep || {};
+              userDraft.data.sleepData = {
+                sleepDateTime: sleepData.SleepDateTime || '',
+                wakeTime: sleepData.WakeTime || '',
+                totalSleepDuration: Math.round((sleepData.TotalSleepDuration || 0) / 60),
+                deepSleepDuration: Math.round((sleepData.DeepSleepDuration || 0) / 60),
+                shallowSleepDuration: Math.round((sleepData.ShallowSleepDuration || 0) / 60),
+                awakeDuration: Math.round((sleepData.AwakeDuration || 0) / 60),
+                sleepBeans: sleepData.SleepBeans || []
+              };
+              
+              userDraft.data.sleep = userDraft.data.sleepData.totalSleepDuration;
+
+              // 체온과 혈압은 이미 있는 경우 업데이트하지 않음
+              if (!userDraft.data.temperature) {
+                userDraft.data.temperature = getRandomTemperature();
+              }
+              if (!userDraft.data.bloodPressure) {
+                userDraft.data.bloodPressure = getRandomBloodPressure();
+              }
             }
           })
         );
@@ -295,9 +285,7 @@ function App() {
     } catch (error) {
       console.error('건강 데이터 fetching 오류:', error);
     }
-  },
-  [siteId, url, credentials]
-  );
+  }, [siteId, credentials, url, getRandomTemperature, getRandomBloodPressure]);
 
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
@@ -349,7 +337,7 @@ function App() {
       ringData.forEach(ring => {
         ringMap.set(ring.MacAddr, ring);
       });
-  
+
       // 이전 사용자 맵 생성
       setUsers((prevUsers) => {
         try {
@@ -375,28 +363,19 @@ function App() {
                 calories: [],
                 distance: [],
               },
-              temperature: getRandomTemperature(), // 체온 초기값
-              bloodPressure: getRandomBloodPressure(), // 혈압 초기값
+              sleepData: {
+                sleepDateTime: '',
+                wakeTime: '',
+                totalSleepDuration: 0,
+                deepSleepDuration: 0,
+                shallowSleepDuration: 0,
+                awakeDuration: 0,
+                sleepBeans: []
+              },
+              temperature: getRandomTemperature(),
+              bloodPressure: getRandomBloodPressure(),
             };
 
-            // LifeLogs 처리
-            const lifeLogs = (user.LifeLogs || []).map((log, index) => {
-              const logDateTime = log.LogDateTime || '';
-              const dateTimeParts = logDateTime.split('T');
-              const date = dateTimeParts[0] || '';
-              const timePart = dateTimeParts[1] || '';
-              const time = timePart.substring(0, 5) || '';
-  
-              return {
-                id: index + 1,
-                medicine: log.LogContent,
-                date: date,
-                time: time,
-                dose: log.Description,
-                taken: log.IsChecked,
-              };
-            });
-  
             // 사용자와 링 연결
             const userRing = ringMap.get(user.MacAddr) || {};
   
@@ -414,7 +393,14 @@ function App() {
               kcalTarget: user.KcalTarget || 2000,
               kmTarget: user.KmTarget || 5,
               macAddr: user.MacAddr || '',
-              lifeLogs: lifeLogs,
+              lifeLogs: (user.LifeLogs || []).map((log, index) => ({
+                id: index + 1,
+                medicine: log.LogContent,
+                date: log.LogDateTime.split('T')[0],
+                time: log.LogDateTime.split('T')[1].substring(0, 5),
+                dose: log.Description,
+                taken: log.IsChecked,
+              })),
               ring: userRing,
               isFavorite: user.Favorite || false,
               createDateTime: user.CreateDateTime,
@@ -427,7 +413,7 @@ function App() {
               },
             };
           });
-  
+
           // 변경 감지 및 상태 업데이트
           const changedUsers = [];
   
@@ -467,7 +453,7 @@ function App() {
               return updatedUser;
             }
   
-            return prevUser; // 변경되지 않은 경우 기존 객체 반환
+            return prevUser;
           });
   
           if (changedUsers.length > 0) {
@@ -476,18 +462,19 @@ function App() {
             return prevUsers;
           }
         } catch (e) {
-          console.error('사용자 데이터 경 감지 오류:', e);
-          return prevUsers; // 오류 발생 시 기존 상태 유지
+          console.error('사용자 데이터 변경 감지 오류:', e);
+          return prevUsers;
         }
       });
-  
-      const today = new Date(); // 오늘 날짜로 설정
-      fetchHealthData(0, today);
+
+      // 사용자 데이터 업데이트 후 건강 데이터 가져오기
+      const today = new Date();
+      await fetchHealthData(0, today);
   
     } catch (error) {
       console.error('사용자 데이터 가져오기 실패:', error.response || error.message);
     }
-  }, [siteId, credentials, url, fetchHealthData, isEqual, isEditing]);
+  }, [siteId, credentials, url, isEqual, isEditing, fetchHealthData]);
 
   // 배치도 이미지 및 디바이스 데이터 가져오기 함수
   const handleLoadFloorPlan = useCallback(async () => {
@@ -563,43 +550,47 @@ function App() {
   useEffect(() => {
     if (!isLoggedIn || !siteId || !isLocked) return;
 
-    if (!intervalRef.current) {
-      // 초기 데이터 로드
-      fetchUsersAndRingData();
-      handleLoadFloorPlan();
+    // 초기 데이터 로드
+    fetchUsersAndRingData();
+    handleLoadFloorPlan();
 
-      intervalRef.current = setInterval(() => {
-        console.log('30초마다 사용자 및 링 데이터 가져오기');
-        
-        if (currentPath.startsWith('/users/')) {
-          // UserDetail 페이지일 경우 해당 사용자만 업데이트
-          const userId = currentPath.split('/users/')[1]; // URL에서 userId 추출
-          if (userId) {
-            // 현재 날짜가 오늘인 경우에만 업데이트
-            const selectedDate = sessionStorage.getItem('selectedDate');
-            const today = new Date();
-            const isToday = selectedDate ? new Date(selectedDate).toDateString() === today.toDateString() : true;
-            
-            if (isToday) {
-              fetchHealthData(parseInt(userId), today);
-            }
-          }
-        } else {
-          // 일반적인 업데이트
-          fetchUsersAndRingData();
-          handleLoadFloorPlan();
-        }
-      }, 30000); // 30초
-
+    // 이전 인터벌 정리
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
 
+    // 새로운 인터벌 설정
+    intervalRef.current = setInterval(() => {
+      console.log('30초마다 사용자 및 링 데이터 가져오기');
+      
+      if (currentPath.startsWith('/users/')) {
+        // UserDetail 페이지일 경우 해당 사용자만 업데이트
+        const userId = currentPath.split('/users/')[1]; // URL에서 userId 추출
+        if (userId) {
+          // 현재 날짜가 오늘인 경우에만 업데이트
+          const selectedDate = sessionStorage.getItem('selectedDate');
+          const today = new Date();
+          const isToday = selectedDate ? new Date(selectedDate).toDateString() === today.toDateString() : true;
+          
+          if (isToday) {
+            fetchHealthData(parseInt(userId), today);
+          }
+        }
+      } else {
+        // 일반적인 업데이트
+        fetchUsersAndRingData();
+        handleLoadFloorPlan();
+      }
+    }, 30000); // 30초
+
+    // 컴포넌트 언마운트 시 정리
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [currentPath, fetchUsersAndRingData, handleLoadFloorPlan, fetchHealthData, isLoggedIn, siteId, isLocked]);
+  }, [isLoggedIn, siteId, isLocked, currentPath]); // 의존성 배열에서 불필요한 의존성 제거
 
   useEffect(() => {
     if (floorPlanImage && floorPlanImage.src && siteId) {
@@ -631,18 +622,10 @@ function App() {
     }
   }, [isLoggedIn, siteId, fetchHealthData]);
 
-  // 새로운 ID 생성 함수 (변경 없음)
+  // 새로운 ID 생성 함수 (최대 ID + 1 방식)
   const getNewId = useCallback((users) => {
-    const existingIds = users.map((user) => user.id).sort((a, b) => a - b);
-    let newId = 1;
-
-    for (let i = 0; i < existingIds.length; i++) {
-      if (existingIds[i] !== newId) {
-        break;
-      }
-      newId++;
-    }
-    return newId;
+    const maxId = users.reduce((max, user) => Math.max(max, user.id), 0);
+    return maxId + 1;
   }, []);
 
   const formatCreateDateTime = () => {
@@ -749,6 +732,15 @@ function App() {
                 steps: [],
                 calories: [],
                 distance: [],
+              },
+              sleepData: {
+                sleepDateTime: '',
+                wakeTime: '',
+                totalSleepDuration: 0,
+                deepSleepDuration: 0,
+                shallowSleepDuration: 0,
+                awakeDuration: 0,
+                sleepBeans: []
               },
               temperature: getRandomTemperature(), // 체온 초기값
               bloodPressure: getRandomBloodPressure(), // 혈압 초기값

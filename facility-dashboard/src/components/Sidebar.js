@@ -182,16 +182,16 @@ const Sidebar = ({
         {/* 전체 컨테이너 */}
         <div className="flex flex-col h-full">
           {/* 트리 메뉴 영역 */}
-          <div className="p-3 flex-shrink-0">
+          <div className="p-2 flex-shrink-0">
             {/* BotFit 섹션 */}
-            <div className="mb-3 border-b border-gray-200 pb-2">
+            <div>
               <div
                 onClick={() => setBotfitExpanded(!botfitExpanded)}
-                className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
+                className="flex items-center justify-between w-full p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
                   {isSidebarOpen && (
-                    <span className="ml-3 text-[18px] font-bold">BotFit Pro</span>
+                    <span className="ml-2 text-[18px] font-bold">BotFit Pro</span>
                   )}
                 </div>
                 {isSidebarOpen && (
@@ -199,70 +199,73 @@ const Sidebar = ({
                 )}
               </div>
               {botfitExpanded && isSidebarOpen && (
-                <ul className="ml-8 mt-2 space-y-2">
+                <ul className="ml-6 mt-1 space-y-0.5 mb-4">
                   <li>
-                    <a href="https://botfit.dotories.com" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <HomeIcon className="w-5 h-5" />
-                      <span className="ml-3">Home</span>
+                    <a href="https://botfit.dotories.com" className="flex items-center p-1.5 hover:bg-gray-100 rounded-lg">
+                      <HomeIcon className="w-7 h-7" />
+                      <span className="ml-2">Home</span>
                     </a>
                   </li>
                   <li>
-                    <a href="https://botfit.dotories.com/user-management" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <img src="/users.svg" alt="users" className="w-5 h-5 [filter:brightness(0)_saturate(100%)_invert(45%)_sepia(11%)_saturate(372%)_hue-rotate(182deg)_brightness(94%)_contrast(87%)]" />
-                      <span className="ml-3">사용자 정보</span>
+                    <a href="https://botfit.dotories.com/user-management" className="flex items-center p-1.5 hover:bg-gray-100 rounded-lg">
+                      <img src="/users.svg" alt="users" className="w-7 h-7 [filter:brightness(0)_saturate(100%)_invert(45%)_sepia(11%)_saturate(372%)_hue-rotate(182deg)_brightness(94%)_contrast(87%)]" />
+                      <span className="ml-2">사용자 정보</span>
                     </a>
                   </li>
                   <li>
-                  <a href="https://botfit.dotories.com/custom-program" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                      <span className="ml-3">운동 프로그램 관리</span>
+                    <a href="https://botfit.dotories.com/custom-program" className="flex items-center p-1.5 hover:bg-gray-100 rounded-lg">
+                      <AdjustmentsHorizontalIcon className="w-7 h-7" />
+                      <span className="ml-2">운동 프로그램 관리</span>
                     </a>
                   </li>
                   <li>
-                    <a href="https://botfit.dotories.com/botfit-management" className="flex items-center p-2 hover:bg-gray-100 rounded-lg">
-                      <GiRobotLeg className="w-5 h-5" />
-                      <span className="ml-3">봇핏 관리</span>
+                    <a href="https://botfit.dotories.com/botfit-management" className="flex items-center p-1.5 hover:bg-gray-100 rounded-lg">
+                      <GiRobotLeg className="w-7 h-7" />
+                      <span className="ml-2">봇핏 관리</span>
                     </a>
                   </li>
                 </ul>
               )}
             </div>
+            <div className="border-b border-gray-200" />
 
             {/* Ring 섹션 */}
-            <div className="mb-3 border-b border-gray-200 pb-2">
+            <div className="border-b border-gray-200">
               <div
                 onClick={() => setRingExpanded(!ringExpanded)}
-                className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
+                className="flex items-center justify-between w-full p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-                  {isSidebarOpen && <span className="ml-3 text-[18px] font-bold">Ring</span>}
+                  {isSidebarOpen && (
+                    <span className="ml-2 text-[18px] font-bold">Ring</span>
+                  )}
                 </div>
                 {isSidebarOpen && (
-                  ringExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
+                  ringExpanded ? <ChevronUpIcon className="w-7 h-7" /> : <ChevronDownIcon className="w-7 h-7" />
                 )}
               </div>
               {ringExpanded && isSidebarOpen && (
-                <ul className="ml-8 mt-2 space-y-2">
+                <ul className="ml-6 mt-1 space-y-0.5 mb-4">
                   <li>
                     <button
                       onClick={() => handleMenuClick('/')}
-                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                      className={`flex items-center p-1.5 w-full hover:bg-gray-100 rounded-lg ${
                         location.pathname === '/' ? 'text-[#594AE2]' : ''
                       }`}
                     >
-                      <HomeIcon className="w-5 h-5" />
-                      <span className="ml-3">Home</span>
+                      <HomeIcon className="w-7 h-7" />
+                      <span className="ml-2">Home</span>
                     </button>
                   </li>
                   <li>
                     <button
                       onClick={() => handleMenuClick('/devices')}
-                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                      className={`flex items-center p-1.5 w-full hover:bg-gray-100 rounded-lg ${
                         location.pathname === '/devices' ? 'text-[#594AE2]' : ''
                       }`}
                     >
-                      <LiaRingSolid className="w-5 h-5" />
-                      <span className="ml-3">기기 관리</span>
+                      <LiaRingSolid className="w-7 h-7" />
+                      <span className="ml-2">기기 관리</span>
                     </button>
                   </li>
                 </ul>
@@ -270,40 +273,42 @@ const Sidebar = ({
             </div>
 
             {/* User 섹션 */}
-            <div className="mb-3 border-b border-gray-200 pb-2">
+            <div className="border-b border-gray-200">
               <div
                 onClick={() => setUserExpanded(!userExpanded)}
-                className="flex items-center justify-between w-full p-2 cursor-pointer hover:bg-gray-100 rounded-lg"
+                className="flex items-center justify-between w-full p-1.5 cursor-pointer hover:bg-gray-100 rounded-lg"
               >
                 <div className="flex items-center">
-                  {isSidebarOpen && <span className="ml-3 text-[18px] font-bold">User</span>}
+                  {isSidebarOpen && (
+                    <span className="ml-2 text-[18px] font-bold">User</span>
+                  )}
                 </div>
                 {isSidebarOpen && (
-                  userExpanded ? <ChevronUpIcon className="w-5 h-5" /> : <ChevronDownIcon className="w-5 h-5" />
+                  userExpanded ? <ChevronUpIcon className="w-7 h-7" /> : <ChevronDownIcon className="w-7 h-7" />
                 )}
               </div>
               {userExpanded && isSidebarOpen && (
-                <ul className="ml-8 mt-2 space-y-2">
+                <ul className="ml-6 mt-1 space-y-0.5 mb-4">
                   <li>
                     <button
                       onClick={() => handleMenuClick('/user-management')}
-                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                      className={`flex items-center p-1.5 w-full hover:bg-gray-100 rounded-lg ${
                         location.pathname === '/user-management' ? 'text-[#594AE2]' : ''
                       }`}
                     >
-                      <UsersIcon className="w-5 h-5" />
-                      <span className="ml-3">사용자 관리</span>
+                      <UserIcon className="w-7 h-7" />
+                      <span className="ml-2">사용자 관리</span>
                     </button>
                   </li>
                   <li>
                     <button
                       onClick={() => handleMenuClick('/assign-users')}
-                      className={`flex items-center p-2 w-full hover:bg-gray-100 rounded-lg ${
+                      className={`flex items-center p-1.5 w-full hover:bg-gray-100 rounded-lg ${
                         location.pathname === '/assign-users' ? 'text-[#594AE2]' : ''
                       }`}
                     >
-                      <UserIcon className="w-5 h-5" />
-                      <span className="ml-3">관리자 할당</span>
+                      <UsersIcon className="w-7 h-7" />
+                      <span className="ml-2">관리자 할당</span>
                     </button>
                   </li>
                 </ul>
@@ -336,24 +341,26 @@ const Sidebar = ({
 
           {/* 하단 버튼 영역 */}
           <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0 mt-auto">
-            <button
-              onClick={() => handleMenuClick('/settings')}
-              className={`flex items-center w-full p-2 rounded-lg transition-colors duration-200 ${
-                location.pathname === '/settings'
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'hover:bg-gray-100'
-              }`}
-            >
-              <Cog6ToothIcon className="w-6 h-6" />
-              {isSidebarOpen && <span className="ml-3">설정</span>}
-            </button>
-            <button
-              onClick={() => setShowLogoutModal(true)}
-              className="flex items-center w-full p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 text-gray-700"
-            >
-              <ArrowRightOnRectangleIcon className="w-6 h-6" />
-              {isSidebarOpen && <span className="ml-3">로그아웃</span>}
-            </button>
+            <div className="flex justify-between gap-2">
+              <button
+                onClick={() => handleMenuClick('/settings')}
+                className={`flex flex-col items-center p-2 rounded-lg transition-colors duration-200 flex-1 justify-center ${
+                  location.pathname === '/settings'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'hover:bg-gray-100'
+                }`}
+              >
+                <Cog6ToothIcon className="w-5 h-5" />
+                {isSidebarOpen && <span className="mt-1 text-xs whitespace-nowrap">설정</span>}
+              </button>
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                className="flex flex-col items-center p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 text-gray-700 flex-1 justify-center"
+              >
+                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                {isSidebarOpen && <span className="mt-1 text-xs whitespace-nowrap">로그아웃</span>}
+              </button>
+            </div>
           </div>
         </div>
       </aside>

@@ -1,15 +1,15 @@
 // UserDetail.js
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FaEdit, FaPlus, FaHeartbeat, FaBed, 
   FaSmile, FaTint, FaWalking, FaFireAlt, FaRoute,
-  FaTemperatureHigh
+  FaTemperatureHigh, FaArrowLeft
 } from 'react-icons/fa';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend 
+  ResponsiveContainer, Legend, ReferenceLine 
 } from 'recharts';
 import Modal from './Modal';
 import CustomLegend from './CustomLegend';
@@ -18,6 +18,7 @@ import axios from 'axios';
 import isEqual from 'lodash/isEqual'; // lodash의 isEqual 함수 사용
 import 'react-datepicker/dist/react-datepicker.css';
 import { RiHeartPulseLine, RiHeartPulseFill } from 'react-icons/ri';
+import { FaExclamationTriangle } from 'react-icons/fa';
 
 // 상수 데이터 정의 (컴포넌트 외부)
 const TIME_OPTIONS = Array.from({ length: 24 }, (_, hour) => 
@@ -46,6 +47,92 @@ const VITAL_SIGNS_LEGEND_ITEMS = [
   { dataKey: 'diastolic', value: '이완기 혈압 (mmHg)', color: '#82ca9d' },
 ];
 
+// 위험 기준값 상수 추가
+const VITAL_SIGNS_THRESHOLDS = {
+  temperature: {
+    high: 37.5,
+    low: 35,
+    normal: 36.5
+  },
+  systolic: {
+    high: 140,
+    low: 90,
+    normal: 120
+  },
+  diastolic: {
+    high: 90,
+    low: 60,
+    normal: 80
+  },
+  bpm: {
+    high: 100,
+    low: 60,
+    normal: 80
+  },
+  oxygen: {
+    high: 100,
+    low: 95,
+    normal: 98
+  },
+  stress: {
+    high: 95,
+    low: 0,
+    normal: 50
+  }
+};
+
+// 위험도에 따른 색상 결정 함수
+const getLineColor = (value, type) => {
+  if (!value || !VITAL_SIGNS_THRESHOLDS[type]) return null;
+  const { high, low } = VITAL_SIGNS_THRESHOLDS[type];
+  if (value > high) return '#ff4444';  // 높은 위험
+  if (value < low) return '#ff9900';   // 낮은 위험
+  return '#82ca9d';  // 정상
+};
+
+// CustomizedDot 컴포넌트 수정
+const CustomizedDot = ({ cx, cy, value, dataKey, payload }) => {
+  // value가 null, undefined 또는 0인 경우 dot을 표시하지 않음
+  if (!value) return null;
+  
+  if (!VITAL_SIGNS_THRESHOLDS[dataKey]) return null;
+  const { high, low } = VITAL_SIGNS_THRESHOLDS[dataKey];
+  
+  const getWarningMessage = () => {
+    const type = {
+      'temperature': '체온',
+      'systolic': '수축기 혈압',
+      'diastolic': '이완기 혈압',
+      'bpm': '심박수',
+      'oxygen': '혈중산소',
+      'stress': '스트레스'
+    }[dataKey];
+
+    if (!type) return null;
+    if (value > high) return `${type}이(가) 높습니다 (${value})`;
+    if (value < low) return `${type}이(가) 낮습니다 (${value})`;
+    return null;
+  };
+
+  const message = getWarningMessage();
+  if (message) {
+    return (
+      <g transform={`translate(${cx-6},${cy-15})`}>
+        <foreignObject width="120" height="40" x="-50" y="-40" style={{ pointerEvents: 'none' }}>
+          <div className="bg-red-100 text-red-700 p-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+            {message}
+          </div>
+        </foreignObject>
+        <circle cx="6" cy="15" r="2" fill="#ff4444" />
+        <FaExclamationTriangle color="#ff4444" size={14} />
+      </g>
+    );
+  }
+  
+  // 정상 범위일 경우 작은 점만 표시
+  return <circle cx={cx} cy={cy} r="2" fill={getLineColor(value, dataKey) || '#82ca9d'} />;
+};
+
 // Helper Function to get the last non-zero value
 const getLastNonZero = (arr = []) => {
   if (!Array.isArray(arr)) {
@@ -72,39 +159,52 @@ const InfoCard = ({ icon, title, value }) => (
 );
 
 const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
-  console.log('UserDetail 렌더링'); // 컴포넌트 렌더링 확인
+  const { userId } = useParams();
+  const navigate = useNavigate();
 
-  const { userId } = useParams();  // Get userId from URL
-
-  const [selectedDate, setSelectedDate] = useState(new Date()); // 기본 날짜는 오늘
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedPeriod, setSelectedPeriod] = useState('day');
+  const [periodData, setPeriodData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null); // 에러 상태 추가
+  const [error, setError] = useState(null);
   const [tempHealthData, setTempHealthData] = useState(null);
   const [isPast, setIsPast] = useState(false);
+  const [logItems, setLogItems] = useState([]);
+  const [sortOption, setSortOption] = useState('all');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newItem, setNewItem] = useState({
+    medicine: '',
+    date: '',
+    dose: '',
+    time: '12:00',
+    taken: false,
+  });
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [visibleBpmOxygen, setVisibleBpmOxygen] = useState({
+    bpm: true,
+    oxygen: true,
+    stress: true,
+  });
+  const [visibleActivity, setVisibleActivity] = useState({
+    steps: true,
+    calories: true,
+    distance: true,
+  });
+  const [visibleVitalSigns, setVisibleVitalSigns] = useState({
+    temperature: true,
+    systolic: true,
+    diastolic: true,
+  });
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isDateRangeModalOpen, setIsDateRangeModalOpen] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
 
-  // 날짜 형식 변환 함수 (YYYY-MM-DD)
-  const formatDateYYYYMMDD = useCallback((date) => {
-    const year = date.getFullYear();
-    const month = (`0${date.getMonth() + 1}`).slice(-2); // 월은 0부터 시작하므로 +1
-    const day = (`0${date.getDate()}`).slice(-2);
-    return `${year}-${month}-${day}`; // YYYY-MM-DD 포맷
-  }, []);
-
-  // 날짜 형식 변환 함수 (YYMMDD)
-  const formatDateYYMMDD = useCallback((date) => {
-    const year = String(date.getFullYear()).slice(-2); // 마지막 두 자리
-    const month = (`0${date.getMonth() + 1}`).slice(-2); // 월은 0부터 시작하므로 +1
-    const day = (`0${date.getDate()}`).slice(-2);
-    return `${year}${month}${day}`;
-  }, []);
-
-  // 날짜 변경 핸들러
-  const handleDateChange = useCallback((e) => {
-    const dateString = e.target.value;
-    const selected = new Date(dateString);
-    setSelectedDate(selected);
-    sessionStorage.setItem('selectedDate', dateString);
-  }, []);
+  // 활력징후 데이터 상태 추가
+  const [vitalSignsData, setVitalSignsData] = useState([]);
 
   // 사용자 계산 via useMemo
   const user = useMemo(() => {
@@ -114,9 +214,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     return null;
   }, [users, userId]);
 
-  console.log('Found user:', user);
-
   const { data: userData = {} } = user || {};
+
   // 데이터 정규화 함수
   const normalizeData = useCallback((data) => {
     if (!data) return {};
@@ -168,65 +267,140 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     return normalized;
   }, []);
   
+  // 날짜 형식 변환 함수들을 먼저 선언
+  const formatDateYYYYMMDD = useCallback((date) => {
+    const year = date.getFullYear();
+    const month = (`0${date.getMonth() + 1}`).slice(-2);
+    const day = (`0${date.getDate()}`).slice(-2);
+    return `${year}-${month}-${day}`;
+  }, []);
 
-  // Sleep 점수 계산
-  const sleepScore = useMemo(() => {
-    const {
-      sleep = 0,
-      deepsleepduration = 0,
-      awakeduration = 0,
-      shallowsleepduration = 0,
-    } = normalizeData(userData); // 규화된 데이터 사용
+  const formatDateYYMMDD = useCallback((date) => {
+    const year = String(date.getFullYear()).slice(-2);
+    const month = (`0${date.getMonth() + 1}`).slice(-2);
+    const day = (`0${date.getDate()}`).slice(-2);
+    return `${year}${month}${day}`;
+  }, []);
 
-    if (
-      sleep > 0 &&
-      deepsleepduration > 0 &&
-      awakeduration > 0 &&
-      shallowsleepduration > 0
-    ) {
-      return calculateSleepScore(
-        sleep, // totalSleepDuration (분 단위)
-        deepsleepduration,
-        awakeduration,
-        shallowsleepduration
+  // lifeLogs가 변경될 때 logItems 업데이트
+  useEffect(() => {
+    const lifeLogs = user?.lifeLogs || [];
+    setLogItems(lifeLogs);
+  }, [user?.lifeLogs]);
+
+  // 일별 평균값 계산 함수
+  const calculateDailyAverage = useCallback((arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return 0;
+    const validValues = arr.filter(val => val !== 0);
+    if (validValues.length === 0) return 0;
+    return Math.round(validValues.reduce((sum, val) => sum + val, 0) / validValues.length);
+  }, []);
+
+  // 기간별 데이터 가져오기
+  const fetchPeriodData = useCallback(async (period) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const dateArray = [];
+      const end = new Date();
+      let start = new Date();
+
+      // 기간에 따른 시작일 설정
+      switch (period) {
+        case 'week':
+          start.setDate(end.getDate() - 7);
+          break;
+        case '2weeks':
+          start.setDate(end.getDate() - 14);
+          break;
+        case 'month':
+          start.setMonth(end.getMonth() - 1);
+          break;
+        default:
+          break;
+      }
+
+      // 날짜 배열 생성
+      let currentDate = new Date(start);
+      while (currentDate <= end) {
+        dateArray.push(formatDateYYMMDD(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
+      const url = 'https://api.ring.dotories.com';
+
+      const healthDataPromises = dateArray.map(date =>
+        axios.get(
+          `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${date}`,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Basic ${credentials}`,
+            },
+          }
+        ).catch(error => {
+          console.log(`${date} 데이터 없음`);
+          return { data: null }; // API 호출 실패 시 null 반환
+        })
       );
-    } else {
-      return 0;
+
+      const responses = await Promise.all(healthDataPromises);
+      const allHealthData = responses.map((response, index) => {
+        let healthData = {};
+        
+        if (response.data) {
+          const healthJson = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+          healthData = healthJson.Data?.[0] || {};
+        }
+
+        return {
+          date: dateArray[index],
+          data: normalizeData(healthData)
+        };
+      });
+
+      const processedData = allHealthData.map(dayData => ({
+        date: dayData.date,
+        bpm: calculateDailyAverage(dayData.data.heartratearr) || 0,
+        oxygen: calculateDailyAverage(dayData.data.oxygenarr) || 0,
+        stress: calculateDailyAverage(dayData.data.pressurearr) || 0,
+        steps: dayData.data.steps || 0,
+        calories: dayData.data.calories || 0,
+        distance: dayData.data.distance || 0,
+        temperature: dayData.data.temperature || 0,
+        systolic: dayData.data.bloodPressure?.systolic || 0,
+        diastolic: dayData.data.bloodPressure?.diastolic || 0
+      }));
+
+      setPeriodData(processedData);
+      setSelectedPeriod(period);
+    } catch (error) {
+      console.error('Error fetching period data:', error);
+      setError('기간별 데이터를 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [userData, normalizeData]);
+  }, [userId, siteId, formatDateYYMMDD, normalizeData, calculateDailyAverage]);
 
-  const lifeLogs = user?.lifeLogs || [];
+  // 기간 선택 핸들러
+  const handlePeriodChange = useCallback((period) => {
+    if (period === 'day') {
+      setSelectedPeriod(period);
+      setPeriodData(null);
+    } else {
+      fetchPeriodData(period);
+    }
+  }, [fetchPeriodData]);
 
-  // State variables
-  const [logItems, setLogItems] = useState(lifeLogs);
-  const [sortOption, setSortOption] = useState('all');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newItem, setNewItem] = useState({
-    medicine: '',
-    date: '',
-    dose: '', // 'dose'는 '세부 사항'을 의미합니다.
-    time: '12:00',
-    taken: false,
-  });
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [visibleBpmOxygen, setVisibleBpmOxygen] = useState({
-    bpm: true,
-    oxygen: true,
-    stress: true,
-  });
-  const [visibleActivity, setVisibleActivity] = useState({
-    steps: true,
-    calories: true,
-    distance: true,
-  });
-
-  // 상태 변수에 visibleVitalSigns 추가
-  const [visibleVitalSigns, setVisibleVitalSigns] = useState({
-    temperature: true,
-    systolic: true,
-    diastolic: true,
-  });
+  // 날짜 변경 핸들러
+  const handleDateChange = useCallback((e) => {
+    const dateString = e.target.value;
+    const selected = new Date(dateString);
+    setSelectedDate(selected);
+    sessionStorage.setItem('selectedDate', dateString);
+  }, []);
 
   // isToday 함수를 useCallback으로 메모이제이션
   const isToday = useCallback((someDate) => {
@@ -318,20 +492,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   // Normalize currentHealthData
   const currentHealthData = useMemo(() => {
     const data = isPast ? tempHealthData : userData;
-
-    console.log('normalizeData에 전달된 데이터:', data); // 디버깅용 로그 추가
-
     const normalizedData = normalizeData(data) || {};
-
-    console.log('normalizeData로부터 반환된 데이터:', normalizedData); // 디버깅용 로그 추가
-
     return normalizedData;
   }, [isPast, tempHealthData, userData]);
 
-  console.log('Current Health Data:', currentHealthData);
-
-  // Prepare data for 일별 데이터 선그래프
-  const dailyLineChartData = useMemo(() => {
+  // Prepare data for 생체 신호 그래프
+  const bioSignalChartData = useMemo(() => {
     if (!currentHealthData || Object.keys(currentHealthData).length === 0) {
       console.warn("currentHealthData is empty or undefined");
       return [];
@@ -547,7 +713,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   }, [logItems]);
 
   // XAxis Tick Marks (Every 2 hours)
-  const xAxisTicks = useMemo(() => {
+  const xAxisTicks = useCallback(() => {
     return Array.from({ length: 12 }, (_, i) => { // 24/2 = 12
       const hour = i * 2;
       return `${String(hour).padStart(2, '0')}:00`;
@@ -580,22 +746,22 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
   // Normalize logItems when lifeLogs changes
   useEffect(() => {
+    const lifeLogs = user?.lifeLogs || [];
     if (!isEqual(lifeLogs, logItems)) {
       setLogItems(lifeLogs);
     }
-  }, [lifeLogs, logItems]);
+  }, [user?.lifeLogs, logItems]);
 
-  // 이제 dailyLineChartData를 정의한 후 로그를 출력합니다.
-  console.log('dailyLineChartData:', dailyLineChartData);
+  // 이제 bioSignalChartData를 정의한 후 로그를 출력합니다.
+  console.log('bioSignalChartData:', bioSignalChartData);
   console.log('activityLineChartData:', activityLineChartData);
 
-  // 활력징후 데이터 준비
-  const vitalSignsData = useMemo(() => {
+  // 컴포넌트 마운트 시 한 번만 랜덤 데이터 생성
+  useEffect(() => {
     const baseTemp = user?.data?.temperature || 36.5;
     const baseSystolic = user?.data?.bloodPressure?.systolic || 120;
     const baseDiastolic = user?.data?.bloodPressure?.diastolic || 80;
 
-    // 랜덤 데이터 생성 함수
     const getRandomTemp = () => {
       return parseFloat((Math.random() * (38.2 - 34.8) + 34.8).toFixed(1));
     };
@@ -606,19 +772,16 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       return { systolic, diastolic };
     };
 
-    return Array.from({ length: 144 }, (_, i) => {
+    const newVitalSignsData = Array.from({ length: 144 }, (_, i) => {
       const hour = Math.floor(i / 6);
       const minute = (i % 6) * 10;
       const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       
-      // 시간에 른 변동 계수 (0시에서 12시까지 약간 증가했다가 다시 감소)
       const variation = Math.sin((hour * 60 + minute) * Math.PI / (24 * 60)) * 0.5 + 0.5;
       
-      // 기본 랜덤 값 생성
       const randomTemp = getRandomTemp();
       const randomBP = getRandomBP();
 
-      // 변동 계수를 적용하여 최종 값 계산
       const temperature = baseTemp + (randomTemp - baseTemp) * variation * 0.3;
       const systolic = baseSystolic + (randomBP.systolic - baseSystolic) * variation * 0.3;
       const diastolic = baseDiastolic + (randomBP.diastolic - baseDiastolic) * variation * 0.3;
@@ -630,7 +793,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
         diastolic: Math.round(diastolic),
       };
     });
-  }, [user]);
+
+    setVitalSignsData(newVitalSignsData);
+  }, [user?.data]); // user.data가 변경될 때만 실행
 
   // 활력징후 범례 아이템 준비
   const vitalSignsLegend = useMemo(() => 
@@ -644,10 +809,6 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     }))
   , [visibleVitalSigns]);
 
-  const [chartData, setChartData] = useState([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('1D');
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
   // 모바일 환경 감지
   useEffect(() => {
     const handleResize = () => {
@@ -658,84 +819,197 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 차트 설정
-  const chartConfigs = {
-    temperature: {
-      data: chartData,
-      margin: { top: 5, right: 20, bottom: 25, left: 0 },
-      syncId: "userChart",
-      legend: { display: !isMobile }
-    },
-    bloodPressure: {
-      data: chartData,
-      margin: { top: 5, right: 20, bottom: 25, left: 0 },
-      syncId: "userChart",
-      legend: { display: !isMobile }
-    },
-    heartRate: {
-      data: chartData,
-      margin: { top: 5, right: 20, bottom: 25, left: 0 },
-      syncId: "userChart",
-      legend: { display: !isMobile }
-    },
-    oxygen: {
-      data: chartData,
-      margin: { top: 5, right: 20, bottom: 25, left: 0 },
-      syncId: "userChart",
-      legend: { display: !isMobile }
-    },
-    stress: {
-      data: chartData,
-      margin: { top: 5, right: 20, bottom: 25, left: 0 },
-      syncId: "userChart",
-      legend: { display: !isMobile }
-    }
-  };
+  // 기간 설정 핸들러 추가
+  const handleDateRangeSubmit = useCallback(() => {
+    if (dateRange.startDate && dateRange.endDate) {
+      setSelectedPeriod('custom');
+      const start = new Date(dateRange.startDate);
+      const end = new Date(dateRange.endDate);
+      
+      // 기간별 데이터 가져오기
+      const fetchCustomPeriodData = async () => {
+        try {
+          setIsLoading(true);
+          const dateArray = [];
+          let currentDate = new Date(start);
+          
+          while (currentDate <= end) {
+            dateArray.push(formatDateYYMMDD(currentDate));
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
 
+          const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
+          const url = 'https://api.ring.dotories.com';
 
+          const healthDataPromises = dateArray.map(date =>
+            axios.get(
+              `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${date}`,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Basic ${credentials}`,
+                },
+              }
+            ).catch(error => {
+              console.log(`${date} 데이터 없음`);
+              return { data: null }; // API 호출 실패 시 null 반환
+            })
+          );
 
-  useEffect(() => {
-    const updateHourlyData = async () => {
-      try {
-        // API에서 시간별 데이터를 가져옵니다
-        const response = await axios.get(`/api/users/${userId}/hourly-data`);
-        const hourlyData = response.data;
+          const responses = await Promise.all(healthDataPromises);
+          const allHealthData = responses.map((response, index) => {
+            let healthData = {};
+            
+            if (response.data) {
+              const healthJson = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+              healthData = healthJson.Data?.[0] || {};
+            }
 
-        // 세션 스토리지의 사용자 데이터를 업데이트합니다
-        const users = JSON.parse(sessionStorage.getItem('users') || '[]');
-        const userIndex = users.findIndex(u => u.id === userId);
-        
-        if (userIndex !== -1) {
-          users[userIndex].data.hourlyData = hourlyData;
-          sessionStorage.setItem('users', JSON.stringify(users));
+            return {
+              date: dateArray[index],
+              data: normalizeData(healthData)
+            };
+          });
+
+          const processedData = allHealthData.map(dayData => ({
+            date: dayData.date,
+            bpm: calculateDailyAverage(dayData.data.heartratearr) || 0,
+            oxygen: calculateDailyAverage(dayData.data.oxygenarr) || 0,
+            stress: calculateDailyAverage(dayData.data.pressurearr) || 0,
+            steps: dayData.data.steps || 0,
+            calories: dayData.data.calories || 0,
+            distance: dayData.data.distance || 0,
+            temperature: dayData.data.temperature || 0,
+            systolic: dayData.data.bloodPressure?.systolic || 0,
+            diastolic: dayData.data.bloodPressure?.diastolic || 0
+          }));
+
+          setPeriodData(processedData);
+        } catch (error) {
+          console.error('Error fetching custom period data:', error);
+          setError('기간별 데이터를 불러오는데 실패했습니다.');
+        } finally {
+          setIsLoading(false);
+          setIsDateRangeModalOpen(false);
         }
-      } catch (error) {
-        console.error('시간별 데이터 로딩 실패:', error);
-      }
-    };
+      };
 
-    updateHourlyData();
-  }, [userId]);
+      fetchCustomPeriodData();
+    }
+  }, [dateRange, userId, siteId, formatDateYYMMDD, normalizeData, calculateDailyAverage]);
+
+  const { status, score: sleepScore } = useMemo(() => {
+    if (!user || !user.data) return { status: 'normal', score: 0 };
+    return calculateSleepScore({
+      ...user,
+      data: {
+        ...user.data,
+        sleepData: isPast ? tempHealthData?.sleepData : user.data?.sleepData
+      }
+    });
+  }, [user, isPast, tempHealthData, user.data?.sleepData]);
+
+  // userId가 변경될 때 데이터를 다시 불러오는 useEffect 수정
+  useEffect(() => {
+    if (userId) {
+      if (selectedPeriod === 'custom' && dateRange.startDate && dateRange.endDate) {
+        handleDateRangeSubmit();
+      } else if (selectedPeriod && selectedPeriod !== 'day') {
+        fetchPeriodData(selectedPeriod);
+      }
+    }
+  }, [userId, selectedPeriod]);
 
   return (
     <div className="p-4">
       {/* User Profile Header */}
       <div className="profile-header flex justify-between items-center mb-6">
         <div className="flex items-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <FaArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
           <div className="ml-4">
             <h2 className="text-2xl font-bold">{user?.name || 'N/A'}</h2>
             <p className="text-gray-600"> &nbsp;&nbsp;&nbsp;{user?.age || 'N/A'}세</p>
+            {/* 기간 정보 표시 추가 */}
+            {selectedPeriod !== 'day' && periodData && periodData.length > 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                {periodData[0].date.slice(0, 2)}/{periodData[0].date.slice(2, 4)}/{periodData[0].date.slice(4, 6)} ~ 
+                {periodData[periodData.length - 1].date.slice(0, 2)}/{periodData[periodData.length - 1].date.slice(2, 4)}/{periodData[periodData.length - 1].date.slice(4, 6)}
+              </p>
+            )}
           </div>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center space-x-2">
+          <div className="flex space-x-1">
+            <button
+              onClick={() => {
+                handlePeriodChange('day');
+                setSelectedDate(new Date());
+              }}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                selectedPeriod === 'day'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              오늘
+            </button>
+            <button
+              onClick={() => handlePeriodChange('week')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                selectedPeriod === 'week'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              1주일
+            </button>
+            <button
+              onClick={() => handlePeriodChange('2weeks')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                selectedPeriod === '2weeks'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              2주일
+            </button>
+            <button
+              onClick={() => handlePeriodChange('month')}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                selectedPeriod === 'month'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              1개월
+            </button>
+            <button
+              onClick={() => setIsDateRangeModalOpen(true)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                selectedPeriod === 'custom'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              기간설정
+            </button>
+          </div>
+          {/* 기간별 화면이 아닐 때만 날짜 선택 핸들러 표시 */}
+          {selectedPeriod === 'day' && (
           <input
             type="date"
             value={formatDateYYYYMMDD(selectedDate)}
             onChange={handleDateChange}
             className="p-2 border border-gray-300 rounded-lg"
-            max={formatDateYYYYMMDD(new Date())} // 오늘 날짜까지만 선택 가능
+              max={formatDateYYYYMMDD(new Date())}
             aria-label="날짜 선택"
           />
+          )}
         </div>
       </div>
 
@@ -743,6 +1017,188 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       {!user && <p>사용자를 찾을 수 없습니다.</p>}
 
       {user && (
+        <>
+          {/* 기간별 데이터 그래프 */}
+          {periodData && (
+            <>
+              {/* 기간별 활력징후 변화 그래프 */}
+              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                <h3 className="text-xl font-bold mb-4">기간별 활력징후 변화</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={periodData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date"
+                      tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                      tick={{ fontSize: 16 }}
+                      padding={{ left: 10, right: 10 }}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                    />
+                    {!isMobile && (
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36}
+                        content={<CustomLegend legendItems={vitalSignsLegend} />}
+                      />
+                    )}
+                    {visibleVitalSigns.temperature && (
+                      <Line
+                        type="monotone"
+                        dataKey="temperature"
+                        stroke="#ff7300"
+                        name="체온 (°C)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {visibleVitalSigns.systolic && (
+                      <Line
+                        type="monotone"
+                        dataKey="systolic"
+                        stroke="#8884d8"
+                        name="수축기 혈압 (mmHg)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {visibleVitalSigns.diastolic && (
+                      <Line
+                        type="monotone"
+                        dataKey="diastolic"
+                        stroke="#82ca9d"
+                        name="이완기 혈압 (mmHg)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 기간별 생체신호 변화 그래프 */}
+              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                <h3 className="text-xl font-bold mb-4">기간별 생체신호 변화</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={periodData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date"
+                      tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                      tick={{ fontSize: 16 }}
+                      padding={{ left: 10, right: 10 }}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                    />
+                    {!isMobile && (
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36}
+                        content={<CustomLegend legendItems={bpmOxygenLegend} />}
+                      />
+                    )}
+                    {visibleBpmOxygen.bpm && (
+                      <Line
+                        type="monotone"
+                        dataKey="bpm"
+                        stroke="red"
+                        name="심박수 (BPM)"
+                        dot={true}
+                      />
+                    )}
+                    {visibleBpmOxygen.oxygen && (
+                      <Line
+                        type="monotone"
+                        dataKey="oxygen"
+                        stroke="#1e88e5"
+                        name="혈중 산소 (%)"
+                        dot={true}
+                      />
+                    )}
+                    {visibleBpmOxygen.stress && (
+                      <Line
+                        type="monotone"
+                        dataKey="stress"
+                        stroke="#FFD700"
+                        name="스트레스 지수"
+                        dot={true}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 기간별 활동량 변화 그래프 추가 */}
+              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                <h3 className="text-xl font-bold mb-4">기간별 활동량 변화</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={periodData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date"
+                      tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                      tick={{ fontSize: 16 }}
+                      padding={{ left: 10, right: 10 }}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                    />
+                    {!isMobile && (
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36}
+                        content={<CustomLegend legendItems={activityLegend} />}
+                      />
+                    )}
+                    {visibleActivity.steps && (
+                      <Line
+                        type="monotone"
+                        dataKey="steps"
+                        stroke="#82ca9d"
+                        name="걸음수"
+                        dot={true}
+                      />
+                    )}
+                    {visibleActivity.calories && (
+                      <Line
+                        type="monotone"
+                        dataKey="calories"
+                        stroke="#ff9800"
+                        name="소모 칼로리 (kcal)"
+                        dot={true}
+                      />
+                    )}
+                    {visibleActivity.distance && (
+                      <Line
+                        type="monotone"
+                        dataKey="distance"
+                        stroke="#4caf50"
+                        name="이동거리 (km)"
+                        dot={true}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )}
+
+          {/* 상세 데이터 섹션 - 기간 선택이 'day'일 때만 표시 */}
+          {selectedPeriod === 'day' && (
         <>
           {/* 링 정보 섹션 */}
           {user.ring && !isMobile && (
@@ -756,7 +1212,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             </div>
           )}
 
-          {/* 활력징후 카드 섹션 추가 */}
+              {/* 활력징후 카드 섹션 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <InfoCard
               icon={<FaTemperatureHigh className="text-orange-500" />}
@@ -775,409 +1231,563 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             />
           </div>
 
-          {/* 활력징후 그래프 섹션 */}
-          <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-            <h3 className="text-xl font-bold mb-4">활력징후 데이터</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={vitalSignsData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                {!isMobile && (
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    content={<CustomLegend legendItems={vitalSignsLegend} />}
-                  />
-                )}
-                {visibleVitalSigns.temperature && (
-                  <Line
-                    type="monotone"
-                    dataKey="temperature"
-                    stroke="#ff7300"
-                    name="체온 (°C)"
-                    dot={false}
-                  />
-                )}
-                {visibleVitalSigns.systolic && (
-                  <Line
-                    type="monotone"
-                    dataKey="systolic"
-                    stroke="#8884d8"
-                    name="수축기 혈압 (mmHg)"
-                    dot={false}
-                  />
-                )}
-                {visibleVitalSigns.diastolic && (
-                  <Line
-                    type="monotone"
-                    dataKey="diastolic"
-                    stroke="#82ca9d"
-                    name="이완기 혈압 (mmHg)"
-                    dot={false}
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+              {/* 활력징후 그래프 */}
+              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                <h3 className="text-xl font-bold mb-4">활력징후 모니터링</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={vitalSignsData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const warnings = payload
+                          .map(entry => {
+                            const { dataKey, value } = entry;
+                            const { high, low } = VITAL_SIGNS_THRESHOLDS[dataKey] || {};
+                            if (high && value > high) {
+                              return `${entry.name}이(가) 높습니다 (${value})`;
+                            }
+                            if (low && value < low) {
+                              return `${entry.name}이(가) 낮습니다 (${value})`;
+                            }
+                            return null;
+                          })
+                          .filter(Boolean);
 
-          {/* 건강 정보 카드 */}
-          <div className="info-boxes grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <InfoCard
-              icon={<FaHeartbeat className="text-red-500" />}
-              title="심박수"
-              value={`${getLastNonZero(currentHealthData.heartratearr || [])} BPM`}
-            />
-            <InfoCard
-              icon={<FaTint className="text-blue-500" />}
-              title="혈중 산소"
-              value={`${currentHealthData.oxygen || 0}%`}
-            />
-            <InfoCard
-              icon={<FaSmile className="text-yellow-500" />}
-              title="스트레스"
-              value={`${currentHealthData.stress || 0} 점`}
-            />
-            <InfoCard
-              icon={<FaBed className="text-gray-500" />}
-              title="수면 점수"
-              value={`${sleepScore} 점`} // 수면 점수는 그대로 유지
-            />
-          </div>
+                        return (
+                          <div className="bg-white p-2 border border-gray-200 rounded shadow">
+                            <p className="text-gray-600">{payload[0].payload.time}</p>
+                            {payload.map((entry, index) => (
+                              <p key={index} style={{ color: entry.color }}>
+                                {entry.name}: {entry.value}
+                              </p>
+                            ))}
+                            {warnings.length > 0 && (
+                              <div className="mt-2 border-t pt-2">
+                                {warnings.map((warning, index) => (
+                                  <p key={index} className="text-red-600 text-sm">
+                                    ⚠️ {warning}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    {!isMobile && (
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36}
+                        content={<CustomLegend legendItems={vitalSignsLegend} />}
+                      />
+                    )}
+                    
+                    {/* 기준선 추가 (라벨 제거) */}
+                    <ReferenceLine y={VITAL_SIGNS_THRESHOLDS.temperature.high} stroke="#ff4444" strokeDasharray="3 3" />
+                    <ReferenceLine y={VITAL_SIGNS_THRESHOLDS.temperature.low} stroke="#ff9900" strokeDasharray="3 3" />
+                    <ReferenceLine y={VITAL_SIGNS_THRESHOLDS.systolic.high} stroke="#ff4444" strokeDasharray="3 3" />
+                    <ReferenceLine y={VITAL_SIGNS_THRESHOLDS.systolic.low} stroke="#ff9900" strokeDasharray="3 3" />
+                    <ReferenceLine y={VITAL_SIGNS_THRESHOLDS.diastolic.high} stroke="#ff4444" strokeDasharray="3 3" />
+                    <ReferenceLine y={VITAL_SIGNS_THRESHOLDS.diastolic.low} stroke="#ff9900" strokeDasharray="3 3" />
 
-          {/* 일별 데이터 선그래프 */}
-          <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-            <h3 className="text-xl font-bold mb-4">일별 데이터</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={dailyLineChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                {!isMobile && (
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    content={<CustomLegend legendItems={bpmOxygenLegend} />}
-                  />
-                )}
-                {visibleBpmOxygen.bpm && (
-                  <Line
-                    type="monotone"
-                    dataKey="bpm"
-                    stroke="red"
-                    name="심박수 (BPM)"
-                    dot={false}
-                  />
-                )}
-                {visibleBpmOxygen.oxygen && (
-                  <Line
-                    type="monotone"
-                    dataKey="oxygen"
-                    stroke="#1e88e5"
-                    name="혈중 산소 (%)"
-                    dot={false}
-                  />
-                )}
-                {visibleBpmOxygen.stress && (
-                  <Line
-                    type="monotone"
-                    dataKey="stress"
-                    stroke="#FFD700"
-                    name="스트레스 지수"
-                    dot={false}
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                    {visibleVitalSigns.temperature && (
+                      <Line
+                        type="monotone"
+                        dataKey="temperature"
+                        stroke="#ff7300"
+                        name="체온 (°C)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {visibleVitalSigns.systolic && (
+                      <Line
+                        type="monotone"
+                        dataKey="systolic"
+                        stroke="#8884d8"
+                        name="수축기 혈압 (mmHg)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {visibleVitalSigns.diastolic && (
+                      <Line
+                        type="monotone"
+                        dataKey="diastolic"
+                        stroke="#82ca9d"
+                        name="이완기 혈압 (mmHg)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
 
-          {/* 걸음수, 소모 칼로리, 이동거리 정보 */}
-          <div className="additional-info mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <InfoCard 
-              icon={<FaWalking className="text-green-500" />} 
-              title="걸음수" 
-              value={`${currentHealthData.steps || 0} 걸음`} 
-            />
-            <InfoCard 
-              icon={<FaFireAlt className="text-orange-500" />} 
-              title="소모 칼로리" 
-              value={`${(currentHealthData.calories || 0) / 1000} kcal`} 
-            />
-            <InfoCard 
-              icon={<FaRoute className="text-blue-500" />} 
-              title="이동거리" 
-              value={`${(currentHealthData.distance || 0) / 1000} km`} 
-            />
-          </div>
-
-          {/* 활동 데이터 그래프 */}
-          <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-            <h3 className="text-xl font-bold mb-4">활동 데이터</h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={activityLineChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="time" />
-                <YAxis />
-                <Tooltip />
-                {!isMobile && (
-                  <Legend 
-                    verticalAlign="top" 
-                    height={36}
-                    content={<CustomLegend legendItems={activityLegend} />}
-                  />
-                )}
-                {visibleActivity.steps && (
-                  <Line
-                    type="monotone"
-                    dataKey="steps"
-                    stroke="#82ca9d"
-                    name="걸음수"
-                    dot={false}
-                  />
-                )}
-                {visibleActivity.calories && (
-                  <Line
-                    type="monotone"
-                    dataKey="calories"
-                    stroke="#ff9800"
-                    name="소모 칼로리 (kcal)"
-                    dot={false}
-                  />
-                )}
-                {visibleActivity.distance && (
-                  <Line
-                    type="monotone"
-                    dataKey="distance"
-                    stroke="#4caf50"
-                    name="이동거리 (km)"
-                    dot={false}
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Life 로그 섹션 */}
-          <div className="life-log bg-white p-4 rounded-lg shadow-md mt-6">
-            <h3 className="text-xl font-bold mb-4">Life 로그</h3>
-            <div className="flex justify-between items-center mb-4">
-              <select
-                value={sortOption}
-                onChange={(e) => handleSort(e.target.value)}
-                className="border border-gray-300 p-2 rounded-lg"
-                aria-label="로그 정렬 옵션 선택"
-              >
-                <option value="all">전체</option>
-                <option value="미복용">미복용</option>
-                <option value="처방일">처방일</option>
-                <option value="복용시간">복용시간</option>
-              </select>
-              <FaPlus 
-                className="text-blue-500 text-2xl cursor-pointer" 
-                onClick={toggleAddModal} 
-                title="로그 추가"
-                aria-label="로그 추가 버튼"
-              />
-            </div>
-            <div className="overflow-y-auto" style={{ maxHeight: '300px' }}>
-              <table className="w-full table-auto">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="p-2 text-center">복용</th> {/* 새 체크박스 헤더 */}
-                    <th className="p-2">복용약</th>
-                    <th className="p-2">처방일</th>
-                    <th className="p-2">세부 사항</th> {/* 변경 */}
-                    <th className="p-2">복용 시간</th>
-                    <th className="p-2">수정</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayLogItems.map((item) => (
-                    <tr key={item.id} className={item.taken ? 'bg-green-100' : ''}>
-                      <td className="p-2 text-center">
-                        <label className="inline-flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={item.taken}
-                            onChange={() => handleCheckboxChange(item.id)}
-                            className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            aria-label={`복용 여부 체크박스: ${item.medicine}`}
-                          />
-                          <span className="ml-2 text-gray-700"></span>
-                        </label>
-                      </td>
-                      <td className="p-2">{item.medicine || 'N/A'}</td>
-                      <td className="p-2">{item.date || 'N/A'}</td>
-                      <td className="p-2">{item.dose || 'N/A'}</td>  {/* 세부 사항을 여기에 표시 */}
-                      <td className="p-2">{item.time || 'N/A'}</td>
-                      <td className="p-2">
-                        {item.id !== 'empty-1' && item.id !== null && (
-                          <button
-                            onClick={() => openEditModal(item)}
-                            className="text-blue-500 hover:text-blue-700"
-                            aria-label="수정 버튼"
-                          >
-                            <FaEdit size={20} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Life 로그 추가 모달 */}
-          {isAddModalOpen && (
-            <Modal onClose={() => setIsAddModalOpen(false)}>
-              <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-bold mb-4">새 Life 로그 추가</h3>
-
-                {/* 복용약 입력 */}
-                <label className="block mb-2">복용약</label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  placeholder="복용약 입력"
-                  value={newItem.medicine}
-                  onChange={(e) => setNewItem({ ...newItem, medicine: e.target.value })}
-                  aria-label="복용약 입력 필드"
+              {/* 건강 정보 카드 */}
+              <div className="info-boxes grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <InfoCard
+                  icon={<FaHeartbeat className="text-red-500" />}
+                  title="심박수"
+                  value={`${getLastNonZero(currentHealthData.heartratearr || [])} BPM`}
                 />
-
-                {/* 처방일 입력 */}
-                <label className="block mb-2">처방일</label>
-                <input
-                  type="date"
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  value={newItem.date}
-                  onChange={(e) => setNewItem({ ...newItem, date: e.target.value })}
-                  aria-label="처방일 입력 필드"
+                <InfoCard
+                  icon={<FaTint className="text-blue-500" />}
+                  title="혈중 산소"
+                  value={`${currentHealthData.oxygen || 0}%`}
                 />
-
-                {/* 세부 사항 입력 */}
-                <label className="block mb-2">세부 사항</label>
-                <input
-                  type="text" // number -> text로 변경
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  placeholder="세부 사항 입력"
-                  value={newItem.dose}
-                  onChange={(e) => setNewItem({ ...newItem, dose: e.target.value })}
-                  aria-label="세부 사항 입력 필드"
+                <InfoCard
+                  icon={<FaSmile className="text-yellow-500" />}
+                  title="스트레스"
+                  value={`${currentHealthData.stress || 0} 점`}
                 />
+              </div>
 
-                {/* 복용 시간 선택 */}
-                <label className="block mb-2">복용 시간</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  value={newItem.time}
-                  onChange={(e) => setNewItem({ ...newItem, time: e.target.value })}
-                  aria-label="복용 시간 선택 필드"
-                >
-                  {TIME_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+              {/* 생체 신호 그래프 */}
+              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                <h3 className="text-xl font-bold mb-4">생체신호</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={bioSignalChartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const warnings = payload
+                          .map(entry => {
+                            const { dataKey, value } = entry;
+                            if (!value) return null;
+                            
+                            let warning = null;
+                            switch(dataKey) {
+                              case 'bpm':
+                                if (value > 100) warning = `심박수가 높습니다 (${value} BPM)`;
+                                else if (value < 60) warning = `심박수가 낮습니다 (${value} BPM)`;
+                                break;
+                              case 'oxygen':
+                                if (value < 95) warning = `혈중산소가 낮습니다 (${value}%)`;
+                                break;
+                              case 'stress':
+                                if (value > 95) warning = `스트레스 지수가 높습니다 (${value})`;
+                                break;
+                            }
+                            return warning;
+                          })
+                          .filter(Boolean);
 
-                {/* 추가/닫기 버튼 */}
-                <div className="flex justify-end space-x-4">
-                  <button
-                    className="bg-blue-500 text-white py-2 px-4 rounded-lg"
-                    onClick={handleAddItem}
-                    aria-label="Life 로 추가 버튼"
+                        return (
+                          <div className="bg-white p-2 border border-gray-200 rounded shadow">
+                            <p className="text-gray-600">{payload[0].payload.time}</p>
+                            {payload.map((entry, index) => (
+                              <p key={index} style={{ color: entry.color }}>
+                                {entry.name}: {entry.value}
+                              </p>
+                            ))}
+                            {warnings.length > 0 && (
+                              <div className="mt-2 border-t pt-2">
+                                {warnings.map((warning, index) => (
+                                  <p key={index} className="text-red-600 text-sm">
+                                    ⚠️ {warning}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
+                    {!isMobile && (
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36}
+                        content={<CustomLegend legendItems={bpmOxygenLegend} />}
+                      />
+                    )}
+                    
+                    {/* 생체신호 기준선 */}
+                    {visibleBpmOxygen.bpm && (
+                      <>
+                        <ReferenceLine y={100} stroke="#ff4444" strokeDasharray="3 3" />
+                        <ReferenceLine y={60} stroke="#ff9900" strokeDasharray="3 3" />
+                      </>
+                    )}
+                    {visibleBpmOxygen.oxygen && (
+                      <ReferenceLine y={95} stroke="#ff9900" strokeDasharray="3 3" />
+                    )}
+                    {visibleBpmOxygen.stress && (
+                      <ReferenceLine y={95} stroke="#ff4444" strokeDasharray="3 3" />
+                    )}
+
+                    {visibleBpmOxygen.bpm && (
+                      <Line
+                        type="monotone"
+                        dataKey="bpm"
+                        stroke="red"
+                        name="심박수 (BPM)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {visibleBpmOxygen.oxygen && (
+                      <Line
+                        type="monotone"
+                        dataKey="oxygen"
+                        stroke="#1e88e5"
+                        name="혈중 산소 (%)"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                    {visibleBpmOxygen.stress && (
+                      <Line
+                        type="monotone"
+                        dataKey="stress"
+                        stroke="#FFD700"
+                        name="스트레스 지수"
+                        dot={<CustomizedDot />}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 걸음수, 소모 칼로리, 이동거리 정보 */}
+              <div className="additional-info mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <InfoCard 
+                  icon={<FaWalking className="text-green-500" />} 
+                  title="걸음수" 
+                  value={`${currentHealthData.steps || 0} 걸음`} 
+                />
+                <InfoCard 
+                  icon={<FaFireAlt className="text-orange-500" />} 
+                  title="소모 칼로리" 
+                  value={`${(currentHealthData.calories || 0) / 1000} kcal`} 
+                />
+                <InfoCard 
+                  icon={<FaRoute className="text-blue-500" />} 
+                  title="이동거리" 
+                  value={`${(currentHealthData.distance || 0) / 1000} km`} 
+                />
+              </div>
+
+              {/* 활동 데이터 그래프 */}
+              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                <h3 className="text-xl font-bold mb-4">일일 활동량</h3>
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={activityLineChartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip />
+                    {!isMobile && (
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36}
+                        content={<CustomLegend legendItems={activityLegend} />}
+                      />
+                    )}
+                    {visibleActivity.steps && (
+                      <Line
+                        type="monotone"
+                        dataKey="steps"
+                        stroke="#82ca9d"
+                        name="걸음수"
+                        dot={false}
+                      />
+                    )}
+                    {visibleActivity.calories && (
+                      <Line
+                        type="monotone"
+                        dataKey="calories"
+                        stroke="#ff9800"
+                        name="소모 칼로리 (kcal)"
+                        dot={false}
+                      />
+                    )}
+                    {visibleActivity.distance && (
+                      <Line
+                        type="monotone"
+                        dataKey="distance"
+                        stroke="#4caf50"
+                        name="이동거리 (km)"
+                        dot={false}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Life 로그 섹션 */}
+              <div className="life-log bg-white p-4 rounded-lg shadow-md mt-6">
+                <h3 className="text-xl font-bold mb-4">Life 로그</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <select
+                    value={sortOption}
+                    onChange={(e) => handleSort(e.target.value)}
+                    className="border border-gray-300 p-2 rounded-lg"
+                    aria-label="로그 정렬 옵션 선택"
                   >
-                    추가
-                  </button>
-                  <button
-                    onClick={() => setIsAddModalOpen(false)}
-                    className="bg-gray-500 text-white py-2 px-4 rounded-lg"
-                    aria-label="모달 닫기 버튼"
-                  >
-                    닫기
-                  </button>
+                    <option value="all">전체</option>
+                    <option value="미복용">미복용</option>
+                    <option value="처방일">처방일</option>
+                    <option value="복용시간">복용시간</option>
+                  </select>
+                  <FaPlus 
+                    className="text-blue-500 text-2xl cursor-pointer" 
+                    onClick={toggleAddModal} 
+                    title="로그 추가"
+                    aria-label="로그 추가 버튼"
+                  />
+                </div>
+                <div className="overflow-y-auto" style={{ maxHeight: '300px' }}>
+                  <table className="w-full table-auto">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="p-2 text-center">복용</th> {/* 새 체크박스 헤더 */}
+                        <th className="p-2">복용약</th>
+                        <th className="p-2">처방일</th>
+                        <th className="p-2">세부 사항</th> {/* 변경 */}
+                        <th className="p-2">복용 시간</th>
+                        <th className="p-2">수정</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayLogItems.map((item) => (
+                        <tr key={item.id} className={item.taken ? 'bg-green-100' : ''}>
+                          <td className="p-2 text-center">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={item.taken}
+                                onChange={() => handleCheckboxChange(item.id)}
+                                className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                aria-label={`복용 여부 체크박스: ${item.medicine}`}
+                              />
+                              <span className="ml-2 text-gray-700"></span>
+                            </label>
+                          </td>
+                          <td className="p-2">{item.medicine || 'N/A'}</td>
+                          <td className="p-2">{item.date || 'N/A'}</td>
+                          <td className="p-2">{item.dose || 'N/A'}</td>  {/* 세부 사항을 여기에 표시 */}
+                          <td className="p-2">{item.time || 'N/A'}</td>
+                          <td className="p-2">
+                            {item.id !== 'empty-1' && item.id !== null && (
+                              <button
+                                onClick={() => openEditModal(item)}
+                                className="text-blue-500 hover:text-blue-700"
+                                aria-label="수정 버튼"
+                              >
+                                <FaEdit size={20} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </Modal>
+
+              {/* Life 로그 추가 모달 */}
+              {isAddModalOpen && (
+                <Modal onClose={() => setIsAddModalOpen(false)}>
+                  <div className="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 className="text-xl font-bold mb-4">새 Life 로그 추가</h3>
+
+                    {/* 복용약 입력 */}
+                    <label className="block mb-2">복용약</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      placeholder="복용약 입력"
+                      value={newItem.medicine}
+                      onChange={(e) => setNewItem({ ...newItem, medicine: e.target.value })}
+                      aria-label="복용약 입력 필드"
+                    />
+
+                    {/* 처방일 입력 */}
+                    <label className="block mb-2">처방일</label>
+                    <input
+                      type="date"
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      value={newItem.date}
+                      onChange={(e) => setNewItem({ ...newItem, date: e.target.value })}
+                      aria-label="처방일 입력 필드"
+                    />
+
+                    {/* 세부 사항 입력 */}
+                    <label className="block mb-2">세부 사항</label>
+                    <input
+                      type="text" // number -> text로 변경
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      placeholder="세부 사항 입력"
+                      value={newItem.dose}
+                      onChange={(e) => setNewItem({ ...newItem, dose: e.target.value })}
+                      aria-label="세부 사항 입력 필드"
+                    />
+
+                    {/* 복용 시간 선택 */}
+                    <label className="block mb-2">복용 시간</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      value={newItem.time}
+                      onChange={(e) => setNewItem({ ...newItem, time: e.target.value })}
+                      aria-label="복용 시간 선택 필드"
+                    >
+                      {TIME_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* 추가/닫기 버튼 */}
+                    <div className="flex justify-end space-x-4">
+                      <button
+                        className="bg-blue-500 text-white py-2 px-4 rounded-lg"
+                        onClick={handleAddItem}
+                        aria-label="Life 로 추가 버튼"
+                      >
+                        추가
+                      </button>
+                      <button
+                        onClick={() => setIsAddModalOpen(false)}
+                        className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+                        aria-label="모달 닫기 버튼"
+                      >
+                        닫기
+                      </button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+
+              {/* Life 로그 수정 모달 */}
+              {isEditModalOpen && editItem && (
+                <Modal onClose={() => setIsEditModalOpen(false)}>
+                  <div className="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 className="text-xl font-bold mb-4">Life 로그 수정</h3>
+
+                    {/* 복용약 입력 */}
+                    <label className="block mb-2">복용약</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      value={editItem.medicine}
+                      onChange={(e) => setEditItem({ ...editItem, medicine: e.target.value })}
+                      aria-label="복용약 수정 필드"
+                    />
+
+                    {/* 처방일 입력 */}
+                    <label className="block mb-2">처방일</label>
+                    <input
+                      type="date"
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      value={editItem.date}
+                      onChange={(e) => setEditItem({ ...editItem, date: e.target.value })}
+                      aria-label="처방일 수정 필드"
+                    />
+
+                    {/* 세부 사항 입력 */}
+                    <label className="block mb-2">세부 사항</label>
+                    <input
+                      type="text" // number -> text로 변경
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      value={editItem.dose}
+                      onChange={(e) => setEditItem({ ...editItem, dose: e.target.value })}
+                      aria-label="세 사항 수정 필드"
+                    />
+
+                    {/* 복용 시간 선택 */}
+                    <label className="block mb-2">복용 시간</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                      value={editItem.time}
+                      onChange={(e) => setEditItem({ ...editItem, time: e.target.value })}
+                      aria-label="복용 시간 수정 필드"
+                    >
+                      {TIME_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* 저장/삭제/닫기 버튼 */}
+                    <div className="flex justify-end space-x-4">
+                      {/* 삭제 버튼 추가 */}
+                      <button
+                        className="bg-red-500 text-white py-2 px-4 rounded-lg"
+                        onClick={handleDeleteItem}
+                        aria-label="Life 로그 삭제 버튼"
+                      >
+                        삭제
+                      </button>
+                      <button
+                        className="bg-blue-500 text-white py-2 px-4 rounded-lg"
+                        onClick={handleSaveEditItem}
+                        aria-label="Life 그 저장 버튼"
+                      >
+                        저장
+                      </button>
+                      <button
+                        onClick={() => setIsEditModalOpen(false)}
+                        className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+                        aria-label="모달 닫기 버튼"
+                      >
+                        닫기
+                      </button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+            </>
           )}
 
-          {/* Life 로그 수정 모달 */}
-          {isEditModalOpen && editItem && (
-            <Modal onClose={() => setIsEditModalOpen(false)}>
+          {/* 기간 설정 모달 */}
+          {isDateRangeModalOpen && (
+            <Modal onClose={() => setIsDateRangeModalOpen(false)}>
               <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-bold mb-4">Life 로그 수정</h3>
-
-                {/* 복용약 입력 */}
-                <label className="block mb-2">복용약</label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  value={editItem.medicine}
-                  onChange={(e) => setEditItem({ ...editItem, medicine: e.target.value })}
-                  aria-label="복용약 수정 필드"
-                />
-
-                {/* 처방일 입력 */}
-                <label className="block mb-2">처방일</label>
-                <input
-                  type="date"
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  value={editItem.date}
-                  onChange={(e) => setEditItem({ ...editItem, date: e.target.value })}
-                  aria-label="처방일 수정 필드"
-                />
-
-                {/* 세부 사항 입력 */}
-                <label className="block mb-2">세부 사항</label>
-                <input
-                  type="text" // number -> text로 변경
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  value={editItem.dose}
-                  onChange={(e) => setEditItem({ ...editItem, dose: e.target.value })}
-                  aria-label="세 사항 수정 필드"
-                />
-
-                {/* 복용 시간 선택 */}
-                <label className="block mb-2">복용 시간</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg p-2 mb-4"
-                  value={editItem.time}
-                  onChange={(e) => setEditItem({ ...editItem, time: e.target.value })}
-                  aria-label="복용 시간 수정 필드"
-                >
-                  {TIME_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-
-                {/* 저장/삭제/닫기 버튼 */}
-                <div className="flex justify-end space-x-4">
-                  {/* 삭제 버튼 추가 */}
+                <h3 className="text-xl font-bold mb-4">기간 설정</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block mb-2">시작일</label>
+                    <input
+                      type="date"
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                      value={dateRange.startDate}
+                      onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                      max={formatDateYYYYMMDD(new Date())}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-2">종료일</label>
+                    <input
+                      type="date"
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                      value={dateRange.endDate}
+                      onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                      max={formatDateYYYYMMDD(new Date())}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-4 mt-6">
                   <button
-                    className="bg-red-500 text-white py-2 px-4 rounded-lg"
-                    onClick={handleDeleteItem}
-                    aria-label="Life 로그 삭제 버튼"
-                  >
-                    삭제
-                  </button>
-                  <button
+                    onClick={handleDateRangeSubmit}
                     className="bg-blue-500 text-white py-2 px-4 rounded-lg"
-                    onClick={handleSaveEditItem}
-                    aria-label="Life 그 저장 버튼"
                   >
-                    저장
+                    확인
                   </button>
                   <button
-                    onClick={() => setIsEditModalOpen(false)}
+                    onClick={() => setIsDateRangeModalOpen(false)}
                     className="bg-gray-500 text-white py-2 px-4 rounded-lg"
-                    aria-label="모달 닫기 버튼"
                   >
-                    닫기
+                    취소
                   </button>
                 </div>
               </div>

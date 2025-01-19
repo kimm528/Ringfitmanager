@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Cookies from 'js-cookie';
 
 const AssignUsers = ({ users, adminList, assignedUsers, updateManagerAssignedUsers }) => {
   const [loading, setLoading] = useState(true);
@@ -92,42 +91,26 @@ const AssignUsers = ({ users, adminList, assignedUsers, updateManagerAssignedUse
             />
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">성별</th>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">나이</th>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAssignedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.gender === 0 ? '남성' : '여성'}</div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.age}</div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleUserToggle(user.id)}
-                        className="w-full md:w-auto px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200"
-                      >
-                        할당 해제
-                      </motion.button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+            <div className="grid gap-2 p-4">
+              {filteredAssignedUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between bg-white hover:bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                    <div className="text-sm text-gray-500">{user.gender === 0 ? '남성' : '여성'}</div>
+                    <div className="text-sm text-gray-500">{user.age}세</div>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleUserToggle(user.id)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200"
+                  >
+                    할당 해제
+                  </motion.button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -157,42 +140,26 @@ const AssignUsers = ({ users, adminList, assignedUsers, updateManagerAssignedUse
             />
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">이름</th>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">성별</th>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">나이</th>
-                  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">관리</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUnassignedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.gender === 0 ? '남성' : '여성'}</div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{user.age}</div>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleUserToggle(user.id)}
-                        className="w-full md:w-auto px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
-                      >
-                        할당하기
-                      </motion.button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+            <div className="grid gap-2 p-4">
+              {filteredUnassignedUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between bg-white hover:bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                    <div className="text-sm text-gray-500">{user.gender === 0 ? '남성' : '여성'}</div>
+                    <div className="text-sm text-gray-500">{user.age}세</div>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleUserToggle(user.id)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  >
+                    할당하기
+                  </motion.button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

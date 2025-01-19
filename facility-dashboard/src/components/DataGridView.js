@@ -226,7 +226,7 @@ const DataGridView = ({ users, setShowModal }) => {
       cellRenderer: (params) => {
         const isHighRisk = 
           params.value === 'High' || 
-          (params.data.oxygenSaturation < 90 && params.data.oxygenSaturation > 0) ||
+          (params.data.oxygenSaturation > 0 && params.data.oxygenSaturation < 90) ||
           (params.data.temperature > 0 && (params.data.temperature < 35 || params.data.temperature > 38)) ||
           (params.data.bloodPressure.systolic > 0 && (params.data.bloodPressure.systolic > 140 || params.data.bloodPressure.systolic < 90)) ||
           (params.data.bloodPressure.diastolic > 0 && (params.data.bloodPressure.diastolic > 90 || params.data.bloodPressure.diastolic < 60));
@@ -274,7 +274,7 @@ const DataGridView = ({ users, setShowModal }) => {
                 textOverflow: 'ellipsis',
                 maxWidth: '150px' // 최대 너비 설정
               }}
-              title={ringName} // 툴팁을 위해 title 속성 추가
+              title={ringName} // 툴크을 위해 title 속성 추가
             >
               {ringName}
             </span>

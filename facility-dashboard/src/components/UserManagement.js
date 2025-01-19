@@ -76,6 +76,7 @@ const UserManagement = ({
     const isServerField = ['name', 'gender', 'age', 'address', 'phone', 'guardianName', 'guardianPhone', 'guardianEmail'].includes(field);
     const [localValue, setLocalValue] = useState(value);
     const isAgeField = field === 'age';
+    const isPhoneField = field === 'phone' || field === 'guardianPhone';
 
     useEffect(() => {
       if (isEditing) {
@@ -83,9 +84,23 @@ const UserManagement = ({
       }
     }, [isEditing, value]);
 
+    const formatPhoneNumber = (value) => {
+      const numbers = value.replace(/[^\d]/g, '');
+      if (numbers.length <= 3) return numbers;
+      if (numbers.length <= 7) return numbers.slice(0, 3) + '-' + numbers.slice(3);
+      return numbers.slice(0, 3) + '-' + numbers.slice(3, 7) + '-' + numbers.slice(7, 11);
+    };
+
     const handleInputChange = (e) => {
       const newValue = e.target.value;
-      setLocalValue(newValue);
+      if (isPhoneField) {
+        const formattedValue = formatPhoneNumber(newValue);
+        if (formattedValue.length <= 13) { // 010-1234-5678 형식의 최대 길이
+          setLocalValue(formattedValue);
+        }
+      } else {
+        setLocalValue(newValue);
+      }
     };
 
     const handleSaveClick = async () => {
@@ -129,8 +144,7 @@ const UserManagement = ({
     };
 
     return (
-      <div className="mb-2">
-        <span className="text-gray-500 text-sm">{label}</span>
+      <div className="mb-1">
         {isEditing ? (
           <div className={`flex mt-1 ${isAgeField ? 'relative' : ''}`}>
             {field === 'gender' ? (
@@ -148,12 +162,13 @@ const UserManagement = ({
                   type={field === 'age' ? 'number' : 'text'}
                   value={localValue}
                   onChange={handleInputChange}
-                  className={`${isAgeField ? 'w-16' : 'w-full'} border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  className={`${isAgeField ? 'w-24' : 'w-full'} border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   autoFocus
+                  maxLength={isPhoneField ? 13 : undefined}
                 />
               </div>
             )}
-            <div className={`flex gap-1 shrink-0 ${isAgeField ? 'absolute right-0 top-0' : 'ml-2'}`}>
+            <div className={`flex gap-1 shrink-0 ${isAgeField ? 'ml-2' : 'ml-2'}`}>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -175,15 +190,16 @@ const UserManagement = ({
         ) : (
           <div
             onClick={() => handleEdit(userId, field, value)}
-            className={`mt-1 px-3 py-1.5 rounded-lg cursor-pointer group transition-all duration-200 ${
-              isServerField ? 'hover:bg-blue-50' : 'hover:bg-gray-50'
-            }`}
+            className="flex items-center gap-2 cursor-pointer group transition-all duration-200"
           >
-            <div className="flex items-center justify-between">
-              <span className={`${isServerField ? 'text-blue-600' : 'text-gray-700'}`}>
+            <span className="text-gray-500 text-sm whitespace-nowrap min-w-[80px]">{label}</span>
+            <div className={`flex items-center justify-between px-3 py-1.5 rounded-lg flex-1 ${
+              isServerField ? 'hover:bg-blue-50' : 'hover:bg-gray-50'
+            }`}>
+              <span className={`${isServerField ? 'text-blue-600' : 'text-gray-700'} text-sm`}>
                 {value || '미등록'}
               </span>
-              <HiOutlinePencil className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <HiOutlinePencil className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-2" />
             </div>
           </div>
         )}
@@ -213,7 +229,7 @@ const UserManagement = ({
             className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors shadow-sm"
           >
             <HiOutlineUserAdd className="w-5 h-5" />
-            <span>사용자 추가</span>
+            <span>등록자 추가</span>
           </motion.button>
         </div>
       </div>
@@ -246,57 +262,53 @@ const UserManagement = ({
               </motion.button>
             </div>
 
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-1">
+                <div className="flex gap-4">
+                  <EditableField
+                    userId={user.id}
+                    field="gender"
+                    value={user.gender === 0 ? '남성' : '여성'}
+                    label="성별"
+                  />
+                  <EditableField
+                    userId={user.id}
+                    field="age"
+                    value={user.age.toString()}
+                    label="나이"
+                  />
+                </div>
                 <EditableField
                   userId={user.id}
-                  field="gender"
-                  value={user.gender === 0 ? '남성' : '여성'}
-                  label="성별"
-                />
-                <EditableField
-                  userId={user.id}
-                  field="age"
-                  value={user.age.toString()}
-                  label="나이"
+                  field="phone"
+                  value={user.phoneNumber || ''}
+                  label="연락처"
                 />
               </div>
-              <EditableField
-                userId={user.id}
-                field="address"
-                value={user.address}
-                label="주소"
-              />
-              <EditableField
-                userId={user.id}
-                field="phone"
-                value={user.phoneNumber}
-                label="휴대폰"
-              />
               
-              <div className="mt-6 pt-4 border-t border-gray-200 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-2 mb-4 px-4">
-                  <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
-                  <h3 className="text-base font-semibold text-gray-900">보호자 정보</h3>
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                  <h3 className="text-sm font-medium text-gray-900">보호자 정보</h3>
                 </div>
-                <div className="space-y-3 bg-white p-4 rounded-lg border border-gray-100">
+                <div className="grid grid-cols-1 gap-2">
                   <EditableField
                     userId={user.id}
                     field="guardianName"
-                    value={user.guardianName}
-                    label="이름"
+                    value={user.guardianName || ''}
+                    label="보호자 이름"
                   />
                   <EditableField
                     userId={user.id}
                     field="guardianPhone"
-                    value={user.guardianPhoneNumber}
-                    label="연락처"
+                    value={user.guardianPhoneNumber || ''}
+                    label="보호자 연락처"
                   />
                   <EditableField
                     userId={user.id}
                     field="guardianEmail"
-                    value={user.guardianEmail}
-                    label="이메일"
+                    value={user.guardianEmail || ''}
+                    label="보호자 이메일"
                   />
                 </div>
               </div>

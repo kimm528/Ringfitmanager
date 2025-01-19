@@ -1,11 +1,9 @@
 // src/components/Dashboard.js
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import Card from './Card';
 import { calculateUserStatus } from './CalculateUserStatus';
 import { motion } from 'framer-motion';
-import { Grid, AutoSizer } from 'react-virtualized';
-import 'react-virtualized/styles.css';
 
 const Dashboard = ({
   users,
@@ -18,8 +16,7 @@ const Dashboard = ({
   sortOption,
   assignedUsers
 }) => {
-  const gridRef = useRef();
-  const [gridKey, setGridKey] = useState(0);
+  const [expandedUserId, setExpandedUserId] = useState(null);
 
   const parseCreateDateTime = (createDateTime) => {
     if (!createDateTime || createDateTime.length !== 12) return new Date(0);
@@ -68,7 +65,6 @@ const Dashboard = ({
   }, [sortOption]);
 
   const sortedUsers = useMemo(() => {
-    // 할당된 사용자만 필터링
     const assignedUserIds = assignedUsers || [];
     const filtered = users
       .filter(user => assignedUserIds.includes(user.id))
@@ -82,9 +78,9 @@ const Dashboard = ({
     }));
   
     usersWithStatus.sort((a, b) => {
-      if (a.status === 'danger' && b.status !== 'danger') {
+      if (a.status.status === 'danger' && b.status.status !== 'danger') {
         return -1;
-      } else if (b.status === 'danger' && a.status !== 'danger') {
+      } else if (b.status.status === 'danger' && a.status.status !== 'danger') {
         return 1;
       } else {
         return sortByOption(a, b);
@@ -94,121 +90,84 @@ const Dashboard = ({
     return usersWithStatus;
   }, [users, searchQuery, sortOption, sortByOption, assignedUsers]);
 
-  // 그리드 강제 업데이트 함수
-  const forceGridUpdate = useCallback(() => {
-    if (gridRef.current) {
-      gridRef.current.recomputeGridSize();
-      setGridKey(prev => prev + 1);
+  const handleCardUpdate = useCallback((updatedUser, shouldExpand) => {
+    if (shouldExpand) {
+      setExpandedUserId(updatedUser.id);
+    } else {
+      setExpandedUserId(null);
     }
-  }, []);
-
-  // 창 크기 변경 이벤트 리스너
-  useEffect(() => {
-    const handleResize = () => {
-      requestAnimationFrame(() => {
-        forceGridUpdate();
-      });
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [forceGridUpdate]);
-
-  // AutoSizer의 onResize 핸들러
-  const handleAutoSizerResize = useCallback(() => {
-    requestAnimationFrame(() => {
-      forceGridUpdate();
-    });
-  }, [forceGridUpdate]);
+    updateUser(updatedUser);
+  }, [updateUser]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       <div className="flex justify-between items-center p-4">
         {/* 상단 요소가 필요하면 추가 */}
       </div> 
 
-      <div className="flex-1 px-2">
-        <AutoSizer onResize={handleAutoSizerResize}>
-          {({ width, height }) => {
-            const margin = 8;
-            const minColumnWidth = 380;
-            const isMobile = width <= 768;
-
-            // 모바일일 때는 한 열로 표시하고 카드 너비를 화면에 맞게 조정
-            const columnCount = isMobile ? 1 : Math.max(1, Math.floor((width - margin) / (minColumnWidth + margin)));
-
-            const columnWidth = isMobile 
-              ? width - (margin * 2)
-              : Math.floor((width - (margin * (columnCount + 1))) / columnCount);
-
-            const rowHeight = 500 + margin;
-            const rowCount = Math.ceil(sortedUsers.length / columnCount);
-
-            const cellRenderer = ({ columnIndex, key, rowIndex, style }) => {
-              const index = rowIndex * columnCount + columnIndex;
-              if (index >= sortedUsers.length) {
-                return null;
-              }
-              const user = sortedUsers[index];
-              return (
-                <div
-                  key={key}
-                  style={{
-                    ...style,
-                    left: isMobile ? margin : style.left + margin,
-                    top: style.top + margin,
-                    width: columnWidth,
-                    height: rowHeight - margin,
-                    padding: '8px',
-                  }}
-                >
-                  <motion.div
-                    layout
-                    whileHover={{ 
-                      scale: 1.02,
-                      transition: { duration: 0.2 }
-                    }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}
-                  >
-                    <Card
-                      user={user}
-                      toggleFavorite={toggleFavorite}
-                      updateUser={updateUser}
-                      deleteUser={deleteUser}
-                      availableRings={availableRings}
-                      users={users}
-                      disconnectInterval={disconnectInterval}
-                    />
-                  </motion.div>
-                </div>
-              );
-            };
-
-            return (
-              <Grid
-                key={gridKey}
-                ref={gridRef}
-                cellRenderer={cellRenderer}
-                columnCount={columnCount}
-                columnWidth={columnWidth}
-                height={height}
-                rowCount={rowCount}
-                rowHeight={rowHeight}
-                width={width}
-                overscanRowCount={2}
-                style={{ outline: 'none' }}
-                className="focus:outline-none"
+      <div className="flex-1 p-4 overflow-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative">
+          {sortedUsers.map((user) => (
+            <motion.div
+              key={user.id}
+              layout
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="relative"
+              style={{
+                gridColumn: 'span 1',
+                visibility: expandedUserId === user.id ? 'hidden' : 'visible',
+                opacity: expandedUserId !== null ? 0.3 : 1,
+                transition: 'opacity 0.3s ease-in-out',
+                minWidth: '320px',
+                width: '100%',
+                maxWidth: '100%'
+              }}
+            >
+              <Card
+                user={user}
+                toggleFavorite={toggleFavorite}
+                updateUser={handleCardUpdate}
+                deleteUser={deleteUser}
+                availableRings={availableRings}
+                users={users}
+                disconnectInterval={disconnectInterval}
+                isExpanded={expandedUserId === user.id}
               />
-            );
-          }}
-        </AutoSizer>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* 확장된 카드와 오버레이 */}
+        {expandedUserId !== null && (
+          <div className="fixed inset-0 left-0 right-0" style={{ zIndex: 9998 }}>
+            <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm" />
+            
+            {sortedUsers.filter(user => user.id === expandedUserId).map((user) => (
+              <div
+                key={user.id}
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ zIndex: 9999 }}
+              >
+                <div 
+                  className="absolute inset-0" 
+                  onClick={() => handleCardUpdate(user, false)}
+                />
+                <Card
+                  user={user}
+                  toggleFavorite={toggleFavorite}
+                  updateUser={handleCardUpdate}
+                  deleteUser={deleteUser}
+                  availableRings={availableRings}
+                  users={users}
+                  disconnectInterval={disconnectInterval}
+                  isExpanded={true}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

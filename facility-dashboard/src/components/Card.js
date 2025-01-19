@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStar, FaEllipsisV, FaExchangeAlt} from 'react-icons/fa';
+import { FaStar, FaEllipsisV, FaExchangeAlt, FaBrain } from 'react-icons/fa';
 import {
   BarChart,
   ReferenceArea,
@@ -13,18 +13,20 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   LabelList,
+  LineChart,
+  Line,
+  Tooltip,
+  Legend,
 } from 'recharts';
-import Modal from './Modal';
 import {
   MdDirectionsWalk,
   MdLocalFireDepartment,
-  MdLocationOn,
-  MdHotel,
+  MdLocationOn
 } from 'react-icons/md';
 import '../App.css';
-import ReactSlider from 'react-slider';
 import { calculateUserStatus, calculateSleepScore } from './CalculateUserStatus';
 import { PiSirenFill } from 'react-icons/pi';
+import ThresholdModal from './ThresholdModal';
 
 
 const Card = ({
@@ -35,6 +37,7 @@ const Card = ({
   availableRings,
   users,
   disconnectInterval,
+  isExpanded
 }) => {
   const navigate = useNavigate();
 
@@ -47,6 +50,7 @@ const Card = ({
   const [editedGender, setEditedGender] = useState(user.gender);
   const [editedAge, setEditedAge] = useState(user.age);
   const [isRingConnected, setIsRingConnected] = useState(false);
+  const [clickTimeout, setClickTimeout] = useState(null);
 
   // **새로 추가된 상태**
   const [showRingDisconnectModal, setShowRingDisconnectModal] = useState(false);
@@ -64,22 +68,9 @@ const Card = ({
     heartRateDangerHigh: user.thresholds?.heartRateDangerHigh || 110,
   });
 
-  const sleepScore = useMemo(() => {
-    const sleepData = user.data?.sleepData || {};
-    const {
-      totalSleepDuration = 0,
-      deepSleepDuration = 0,
-      awakeDuration = 0,
-      shallowSleepDuration = 0,
-    } = sleepData;
-
-    return calculateSleepScore(
-      totalSleepDuration,
-      deepSleepDuration,
-      awakeDuration,
-      shallowSleepDuration
-    );
-  }, [user.data]);
+  const { status, score: sleepScore } = useMemo(() => {
+    return calculateUserStatus(user);
+  }, [user]);
 
   useEffect(() => {
     setThresholds({
@@ -196,14 +187,6 @@ const Card = ({
     return 'normal';
   }, []);
 
-  // 스트레스 지수 상태 계산 함수
-  const getStressStatus = useCallback((value) => {
-    if (value === 0) return 'normal';
-    if (value >= 66) return 'danger';
-    if (value >= 33) return 'warning';
-    return 'normal';
-  }, []);
-
   // 체온 상태 계산 함수
   const getTemperatureStatus = useCallback((value) => {
     if (!value || value === 0) return 'normal';
@@ -217,6 +200,14 @@ const Card = ({
     if (!systolic || !diastolic || systolic === 0 || diastolic === 0) return 'normal';
     if (systolic > 140 || systolic < 90 || diastolic > 90 || diastolic < 60) return 'danger';
     if (systolic > 130 || systolic < 100 || diastolic > 85 || diastolic < 65) return 'warning';
+    return 'normal';
+  }, []);
+
+  // 수면 상태 계산 함수
+  const getSleepStatus = useCallback((value) => {
+    if (value === 0) return 'normal';
+    if (value < 30) return 'danger';
+    if (value < 50) return 'warning';
     return 'normal';
   }, []);
 
@@ -262,24 +253,16 @@ const Card = ({
       dangerHigh: 100,
     },
     {
-      name: '스트레스',
+      name: '수면',
       xValue: 5,
-      value: stress,
-      status: getStressStatus(stress),
-      dangerLow: 0,
-      warningLow: 33,
-      warningHigh: 66,
+      value: sleepScore,
+      status: getSleepStatus(sleepScore),
+      dangerLow: 30,
+      warningLow: 50,
+      warningHigh: 80,
       dangerHigh: 100,
     },
   ];
-
-  const status = useMemo(() => {
-    return calculateUserStatus({
-      ...user,
-      data: { ...user.data },
-      thresholds,
-    });
-  }, [user, thresholds]);
 
   const openThresholdModal = useCallback(
     (e) => {
@@ -332,41 +315,6 @@ const Card = ({
     };
   }, [showEditModal, showThresholdModal, showDeleteModal, showRingModal]);
 
-   const openDeleteModalHandler = useCallback(
-    (e) => {
-      e.stopPropagation();
-      setShowDeleteModal(true);
-      setMenuOpen(false);
-    },
-    []
-  );
-
-  const handleConfirmDelete = useCallback(() => {
-    deleteUser(user.id);
-    setShowDeleteModal(false);
-  }, [deleteUser, user.id]);
-
-  const handleCancelDelete = useCallback(() => {
-    setShowDeleteModal(false);
-  }, []);
-
-  const handleSaveUserInfo = useCallback(() => {
-    const updatedUser = {
-      ...user,
-      name: editedName,
-      gender: editedGender,
-      age: editedAge,
-      address: user.address,
-      stepTarget: user.stepTarget,
-      kcalTarget: user.kcalTarget,
-      kmTarget: user.kmTarget,
-      macAddr: user.macAddr,
-      albumPath: user.albumPath,
-      lifeLogs: user.lifeLogs,
-    };
-    updateUser(updatedUser, true);
-    setShowEditModal(false);
-  }, [user, editedName, editedGender, editedAge, updateUser]);
 
   const renderCustomLabel = useCallback((props) => {
     const { x, y, width, value, name } = props;
@@ -375,6 +323,8 @@ const Card = ({
       const getValueWithUnit = () => {
         if (['스트레스', '산소'].includes(name)) return `${value}%`;
         if (name === '체온') return `${value}°C`;
+        if (name === '수면' && value === 0) return '';
+        if (name === '수면') return `${value}점`;
         return value;
       };
   
@@ -413,33 +363,154 @@ const Card = ({
     [user, navigate]
   );
 
+  // 클릭 핸들러 추가
+  const handleClick = () => {
+    if (clickTimeout === null) {
+      setClickTimeout(
+        setTimeout(() => {
+          updateUser(user, !isExpanded);
+          setClickTimeout(null);
+        }, 200)
+      );
+    }
+  };
+
+  // 더블 클릭 핸들러 추가
+  const handleDoubleClick = () => {
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      setClickTimeout(null);
+    }
+    navigate(`/users/${user.id}`);
+  };
+
+  // 컴포넌트 언마운트 시 타임아웃 클리어
+  useEffect(() => {
+    return () => {
+      if (clickTimeout) {
+        clearTimeout(clickTimeout);
+      }
+    };
+  }, [clickTimeout]);
+
+  const [vitalSignsData] = useState(() => {
+    return Array.from({ length: 288 }, (_, i) => {
+      const hour = Math.floor(i / 12);
+      const baseTemp = 36.5;
+      const fourHourBlock = Math.floor(hour / 4);
+      const tempVariation = Math.sin(fourHourBlock * Math.PI / 3) * 0.3;
+      const temp = baseTemp + tempVariation;
+
+      const baseSystolic = 120;
+      const baseDiastolic = 80;
+      const bpVariation = Math.sin((fourHourBlock - 1.5) * Math.PI / 3) * 10;
+      const systolic = baseSystolic + bpVariation;
+      const diastolic = baseDiastolic + (bpVariation * 0.6);
+
+      return {
+        temp: Number(temp.toFixed(1)),
+        bp_sys: Math.round(systolic),
+        bp_dia: Math.round(diastolic)
+      };
+    });
+  });
+
+  const chartData = useMemo(() => {
+    return Array.from({ length: 288 }, (_, i) => {
+      const hour = Math.floor(i / 12);
+      const minute = (i % 12) * 5;
+      const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+      // 심박수 데이터 (5분 간격)
+      const heartRate = user.data?.heartRateArr?.[i] || null;
+      
+      // 산소포화도 데이터 (1시간 간격)
+      const oxygenIndex = Math.floor(i / 12);
+      const oxygen = user.data?.oxygenArr?.[oxygenIndex] || null;
+
+      // 수면 데이터 처리
+      let sleepState = null;
+      let sleepStateLabel = null;
+      const sleepBeans = user.data?.sleepData?.sleepBeans || [];
+      const currentTimeStr = `${String(hour).padStart(2, '0')}${String(minute).padStart(2, '0')}00`;
+      
+      const currentSleepBean = sleepBeans.find(bean => {
+        const startTime = bean.StartTime.slice(-6);
+        const endTime = bean.EndTime.slice(-6);
+        return currentTimeStr >= startTime && currentTimeStr <= endTime;
+      });
+
+      if (currentSleepBean) {
+        switch(currentSleepBean.SleepType) {
+          case 0: 
+            sleepState = 20;  // 깊은 수면을 아래로
+            sleepStateLabel = '깊은 수면';
+            break;
+          case 1: 
+            sleepState = 80;  // 얕은 수면을 위로
+            sleepStateLabel = '얕은 수면';
+            break;
+          case 2: 
+            sleepState = 60;  // REM 수면은 중간 위쪽으로
+            sleepStateLabel = 'REM 수면';
+            break;
+          case 3: 
+            sleepState = 100;  // 각성은 가장 위로
+            sleepStateLabel = '각성';
+            break;
+        }
+      }
+
+      return {
+        time,
+        heart: heartRate !== 0 ? heartRate : null,
+        oxygen: oxygen !== 0 ? oxygen : null,
+        sleep: sleepState,
+        sleepLabel: sleepStateLabel,
+        temp: user.data?.temperature || null,
+        bp_sys: user.data?.bloodPressure?.systolic || null,
+        bp_dia: user.data?.bloodPressure?.diastolic || null
+      };
+    });
+  }, [user.data]);
+
   return (
     <div
-      className={`card p-4 rounded-lg shadow-md bg-white relative cursor-pointer ${
-        status === 'warning' ? 'border-4 border-yellow-500' : ''
-      } ${
+      className={`card p-4 rounded-lg shadow-md bg-white cursor-pointer ${
+        status === 'warning' ? 'border-4 border-yellow-500' : 
         status === 'danger' ? 'border-4 border-red-500' : ''
-      }`}
+      } transition-all duration-300 ease-in-out`}
       style={{
-        width: '100%',
-        margin: '0 auto',
         fontFamily: 'Nanum Gothic, sans-serif',
-        minHeight: '400px',
-        maxWidth: '380px',
+        height: '400px',
+        maxWidth: isExpanded ? '1140px' : '380px',
+        minWidth: '320px',
+        maxHeight: '450px',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        msUserSelect: 'none',
+        MozUserSelect: 'none',
+        position: isExpanded ? 'fixed' : 'relative',
+        left: isExpanded ? '50%' : 'auto',
+        right: isExpanded ? 'auto' : 'auto',
+        top: isExpanded ? '50%' : 'auto',
+        transform: isExpanded ? 'translate(-50%, -50%)' : 'none',
+        width: isExpanded ? '1140px' : 'auto',
+        zIndex: isExpanded ? '9999' : '1',
+        backgroundColor: 'white',
+        overflow: 'hidden'
       }}
-      onClick={navigateToUserDetail}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     >
       <div className="absolute top-2 right-2 flex items-center" ref={menuRef}>
-        {/* 위험 상태일 때 알람 아이콘 추가 */}
         {status === 'danger' && (
           <PiSirenFill
-            className="text-red-500 animate-blink mr-2" // animate-blink 클래스만 아이콘에 적용
+            className="text-red-500 animate-blink mr-2"
             size={22}
             aria-label="위험 상태 알람"
           />
         )}
-
-        {/* 즐겨찾기 버튼 */}
         <button
           style={{
             padding: '5px',
@@ -456,8 +527,6 @@ const Card = ({
             size={20}
           />
         </button>
-
-        {/* 링 변경 버튼 추가 */}
         <button
           style={{
             padding: '5px',
@@ -472,28 +541,16 @@ const Card = ({
             size={20}
           />
         </button>
-
-        {/* 메뉴 버튼 */}
         <button onClick={toggleMenu} aria-label="메뉴 보기">
           <FaEllipsisV size={20} />
         </button>
         {menuOpen && (
-          <div
-            className="absolute right-0 mt-2 py-2 w-48 bg-white border rounded shadow-lg z-50"
-            onClick={(e) => e.stopPropagation()}
-            style={{ position: 'absolute', top: '100%', right: '0', transform: 'none' }}
-          >
+          <div className="absolute right-0 mt-2 py-2 w-48 bg-white rounded-md shadow-xl z-50">
             <button
-              className="block px-4 py-2 text-gray-800 hover:bg-gray-200 hover:shadow-inner w-full text-left"
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
               onClick={openThresholdModal}
             >
-              심박수 위험도 수정
-            </button>
-            <button
-              className="block px-4 py-2 text-red-600 hover:bg-gray-200 hover:shadow-inner w-full text-left"
-              onClick={openDeleteModalHandler}
-            >
-              삭제
+              심박수 위험지수 수정
             </button>
           </div>
         )}
@@ -505,13 +562,194 @@ const Card = ({
         </h2>
         <p className="text-sm text-gray-600">
           {user.ring ? `연결된 링: ${user.ring.Name || '없음'}` : '링 없음'}
+          {isExpanded && (
+            <span className="ml-4">
+              {new Date().toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })} 
+            </span>
+          )}
         </p>
       </div>
 
+      {isExpanded ? (
+        <div className="expanded-view h-[calc(100%-120px)]">
+          <div className="h-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={chartData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 10 }}
+                animationDuration={300}
+                animationBegin={0}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="time" 
+                  interval={23}
+                  tickFormatter={(value) => value.split(':')[0]}
+                  axisLine={{ stroke: '#f0f0f0' }}
+                  tickLine={true}
+                />
+                <YAxis 
+                  yAxisId="left" 
+                  orientation="left"
+                  domain={[0, 200]}
+                  ticks={[0, 50, 100, 150, 200]}
+                  axisLine={{ stroke: '#f0f0f0' }}
+                  tickLine={true}
+                />
+                
+                <Tooltip 
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-white p-3 border rounded shadow">
+                          <p className="text-sm font-bold">{label}</p>
+                          {payload.map((entry, index) => {
+                            if (entry.dataKey === 'sleep' && entry.value !== null) {
+                              return (
+                                <p key={index} style={{ color: entry.color }}>
+                                  수면 상태: {chartData.find(d => d.time === label)?.sleepLabel || '없음'}
+                                </p>
+                              );
+                            }
+                            return (
+                              <p key={index} style={{ color: entry.color }}>
+                                {entry.name}: {entry.value}
+                              </p>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend />
+                
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="temp" 
+                  stroke="#ff7300" 
+                  name="체온" 
+                  dot={false} 
+                  isAnimationActive={false}
+                  strokeWidth={1.5}
+                />
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="bp_sys" 
+                  stroke="#8884d8" 
+                  name="수축기 혈압" 
+                  dot={false} 
+                  isAnimationActive={false}
+                  strokeWidth={1.5}
+                />
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="bp_dia" 
+                  stroke="#82ca9d" 
+                  name="이완기 혈압" 
+                  dot={false} 
+                  isAnimationActive={false}
+                  strokeWidth={1.5}
+                />
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="heart" 
+                  stroke="#ff4444" 
+                  name="심박수" 
+                  dot={false} 
+                  isAnimationActive={false}
+                  strokeWidth={1.5}
+                />
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="oxygen" 
+                  stroke="#1e88e5" 
+                  name="산소포화도" 
+                  dot={false} 
+                  isAnimationActive={false}
+                  strokeWidth={1.5}
+                />
+                <Line 
+                  yAxisId="left" 
+                  type="stepAfter" 
+                  dataKey="sleep" 
+                  stroke="#9c27b0" 
+                  name="수면 상태" 
+                  dot={false}
+                  isAnimationActive={false}
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="card-body">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart
-            data={barChartData}
+            data={[
+              {
+                name: '체온',
+                xValue: 1,
+                value: user.data?.temperature ? user.data.temperature : 0,
+                status: getTemperatureStatus(user.data?.temperature),
+                dangerLow: 35,
+                warningLow: 36,
+                warningHigh: 37.5,
+                dangerHigh: 38,
+              },
+              {
+                name: '혈압',
+                xValue: 2,
+                value: user.data?.bloodPressure?.systolic || 0,
+                valueLow: user.data?.bloodPressure?.diastolic || 0,
+                status: getBloodPressureStatus(
+                  user.data?.bloodPressure?.systolic,
+                  user.data?.bloodPressure?.diastolic
+                ),
+              },
+              {
+                name: '심박수',
+                xValue: 3,
+                value: bpm,
+                status: getHeartRateStatus(bpm),
+                dangerLow: thresholds.heartRateDangerLow,
+                warningLow: thresholds.heartRateWarningLow,
+                warningHigh: thresholds.heartRateWarningHigh,
+                dangerHigh: thresholds.heartRateDangerHigh,
+              },
+              {
+                name: '산소',
+                xValue: 4,
+                value: oxygen,
+                status: getOxygenStatus(oxygen),
+                dangerLow: OXYGEN_DANGER_THRESHOLD,
+                warningLow: OXYGEN_WARNING_THRESHOLD,
+                warningHigh: 100,
+                dangerHigh: 100,
+              },
+              {
+                name: '수면',
+                xValue: 5,
+                value: sleepScore,
+                status: getSleepStatus(sleepScore),
+                dangerLow: 30,
+                warningLow: 50,
+                warningHigh: 80,
+                dangerHigh: 100,
+              },
+            ]}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="2 2" />
@@ -694,7 +932,6 @@ const Card = ({
         </ResponsiveContainer>
       </div>
 
-      {/* Footer with Last Non-Zero Steps, Calories, Distance, Sleep Score */}
       <div className="card-footer mt-4 grid grid-cols-4 gap-2 text-center text-sm p-2 bg-gray-100 rounded-md">
         {[
           {
@@ -710,423 +947,33 @@ const Card = ({
           {
             icon: <MdLocationOn size={24} color="#4caf50" />,
             label: '이동거리',
-            value: `${(processedDistance / 1000).toFixed(2)} km`, // 리 단위를 km로 변환
+            value: `${(processedDistance / 1000).toFixed(2)} km`,
           },
           {
-            icon: <MdHotel size={24} color="#9c27b0" />,
-            label: '수면점수',
-            value: `${sleepScore}점`,
+            icon: <FaBrain size={24} color="#9c27b0" />,
+            label: '스트레스',
+            value: `${user.data?.stress || 0}점`,
           },
         ].map((item, index) => (
-          <div key={index}>
-            <div className="flex flex-col items-center">
+          <div key={index} className="flex flex-col items-center justify-center">
               {item.icon}
-              <p>{item.label}</p>
-              <p>{item.value}</p>
-            </div>
+            <span className="text-xs text-gray-600">{item.label}</span>
+            <span className="font-semibold">{item.value}</span>
           </div>
         ))}
       </div>
+        </>
+      )}
 
-      {/* Threshold Setting Modal */}
       {showThresholdModal && (
-        <div 
-          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
-          style={{ zIndex: 1000 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowThresholdModal(false);
-          }}
-        >
-          <div
-            ref={modalRef}
-            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
-            style={{ maxHeight: '90%', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold mb-4">위험도 수정</h2>
-            <div className="mb-6">
-              <h3 className="font-semibold mb-8">심박수 임계값</h3>
-
-              {/* 다중 핸들 슬라이더 */}
-              <div className="relative mb-6">
-                <ReactSlider
-                  className="horizontal-slider"
-                  min={30}
-                  max={200}
-                  value={[
-                    thresholds.heartRateDangerLow,
-                    thresholds.heartRateWarningLow,
-                    thresholds.heartRateWarningHigh,
-                    thresholds.heartRateDangerHigh,
-                  ]}
-                  onChange={(values) => {
-                    setThresholds({
-                      ...thresholds,
-                      heartRateDangerLow: values[0],
-                      heartRateWarningLow: values[1],
-                      heartRateWarningHigh: values[2],
-                      heartRateDangerHigh: values[3],
-                    });
-                  }}
-                  withTracks={true}
-                  pearling={true}
-                  minDistance={1}
-                  renderThumb={(props, state) => (
-                    <div
-                      {...props}
-                      style={{
-                        ...props.style,
-                        height: '25px',
-                        width: '25px',
-                        backgroundColor:
-                          state.index === 0 || state.index === 3
-                            ? '#f44336'
-                            : '#ff9800',
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        position: 'absolute',
-                      }}
-                    ></div>
-                  )}
-                  renderTrack={(props, state) => (
-                    <div
-                      {...props}
-                      style={{
-                        ...props.style,
-                        height: '10px',
-                        backgroundColor: (() => {
-                          switch (state.index) {
-                            case 0:
-                              return '#f44336';
-                            case 1:
-                              return '#ff9800';
-                            case 2:
-                              return '#4caf50';
-                            case 3:
-                              return '#ff9800';
-                            case 4:
-                              return '#f44336';
-                            default:
-                              return '#ddd';
-                          }
-                        })(),
-                      }}
-                    />
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-4 gap-4 mt-6 text-sm">
-                <div className="text-center">
-                  <div
-                    className="w-4 h-4 mx-auto mb-1"
-                    style={{ backgroundColor: '#f44336' }}
-                  ></div>
-                  <p>위험 (하한)</p>
-                  <p>{thresholds.heartRateDangerLow} bpm</p>
-                </div>
-                <div className="text-center">
-                  <div
-                    className="w-4 h-4 mx-auto mb-1"
-                    style={{ backgroundColor: '#ff9800' }}
-                  ></div>
-                  <p>경고 (하한)</p>
-                  <p>{thresholds.heartRateWarningLow} bpm</p>
-                </div>
-                <div className="text-center">
-                  <div
-                    className="w-4 h-4 mx-auto mb-1"
-                    style={{ backgroundColor: '#ff9800' }}
-                  ></div>
-                  <p>경고 (상한)</p>
-                  <p>{thresholds.heartRateWarningHigh} bpm</p>
-                </div>
-                <div className="text-center">
-                  <div
-                    className="w-4 h-4 mx-auto mb-1"
-                    style={{ backgroundColor: '#f44336' }}
-                  ></div>
-                  <p>위험 (상한)</p>
-                  <p>{thresholds.heartRateDangerHigh} bpm</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  const updatedUser = {
-                    ...user,
-                    thresholds: { ...thresholds },
-                  };
-                  updateUser(updatedUser, true);
-                  setShowThresholdModal(false);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Ring Disconnect Modal */}
-      {showRingDisconnectModal && (
-        <div 
-          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
-          style={{ zIndex: 1000 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowRingDisconnectModal(false);
-          }}
-        >
-          <div
-            ref={modalRef}
-            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
-            style={{ maxHeight: '90%', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold mb-4">링 해제</h2>
-            <p>링을 해제하시겠습니까?</p>
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setShowRingDisconnectModal(false)}
-                className="px-4 py-2 bg-gray-300 text-black rounded-md mr-2"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => {
-                  const updatedUser = {
-                    ...user,
-                    ring: null,
-                    macAddr: '',
-                  };
-                  updateUser(updatedUser, true);
-                  setShowRingDisconnectModal(false);
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded-md"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {showEditModal && (
-        <div 
-          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
-          style={{ zIndex: 1000 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowEditModal(false);
-          }}
-        >
-          <div
-            ref={modalRef}
-            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
-            style={{ maxHeight: '90%', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold mb-4">사용자 정보 수정</h2>
-
-            {/* Name Edit */}
-            <div className="mb-4">
-              <label className="block">이름</label>
-              <input
-                type="text"
-                value={editedName}
-                onChange={(e) => setEditedName(e.target.value)}
-                className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            {/* Gender Edit */}
-            <div className="mb-4">
-              <label className="block">성별</label>
-              <select
-                value={editedGender}
-                onChange={(e) => setEditedGender(Number(e.target.value))}
-                className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value={0}>남성</option>
-                <option value={1}>여성</option>
-              </select>
-            </div>
-
-            {/* Age Edit */}
-            <div className="mb-4">
-              <label className="block">나이</label>
-              <input
-                type="number"
-                value={editedAge}
-                onChange={(e) => setEditedAge(e.target.value)}
-                className="block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSaveUserInfo}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md"
-              >
-                저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Ring Connection Status */}
-      <div className="ring-status mt-4 flex items-center justify-center gap-4">
-        {user.ring ? (
-          isRingConnected ? (
-            <>
-              <span className="text-green-500 font-semibold">링 연결됨</span>
-              <span className="text-gray-700 font-medium">
-                배터리: {user.ring.BatteryLevel || 'N/A'}%
-              </span>
-            </>
-          ) : (
-            <span className="text-red-500 font-semibold blink">링 확인요망</span>
-          )
-        ) : (
-          <span className="text-red-500 font-semibold">링 미연결</span>
-        )}
-      </div>
-
-      {/* Ring Management Modal */}
-      {showRingModal && (
-        <Modal onClose={() => setShowRingModal(false)} ref={modalRef}>
-          <h2 className="text-xl font-semibold mb-4">링 관리</h2>
-          {user.ring ? (
-            <div className="mb-4">
-              <p>현재 연결된 링: {user.ring.Name || 'Unknown Ring'}</p>
-              <button
-                onClick={() => {
-                  const updatedUser = {
-                    ...user,
-                    ring: null,
-                    macAddr: '',
-                    name: user.name,
-                    gender: user.gender,
-                    age: user.age,
-                    profileImage: user.profileImage,
-                    address: user.address,
-                    stepTarget: user.stepTarget,
-                    kcalTarget: user.kcalTarget,
-                    kmTarget: user.kmTarget,
-                    albumPath: user.albumPath,
-                    lifeLogs: user.lifeLogs,
-                  };
-                  updateUser(updatedUser, true);
-                  setShowRingModal(false);
-                }}
-                className="mt-2 px-4 py-2 bg-red-500 text-white rounded-md"
-              >
-                연결 해제
-              </button>
-            </div>
-          ) : (
-            <p>현재 연결된 링이 없습니다.</p>
-          )}
-
-          <div className="mt-4">
-            <h3 className="text-lg font-medium mb-2">링 목록</h3>
-            <ul>
-              {availableRings.length > 0 ? (
-                availableRings
-                  .filter((ring) => !users.some((otherUser) => otherUser.macAddr === ring.MacAddr))
-                  .map((ring) => (
-                    <li key={ring.MacAddr} className="flex justify-between items-center mb-2">
-                      <span>{ring.Name || 'Unknown Ring'}</span>
-                      <button
-                        onClick={() => {
-                          const updatedUser = {
-                            ...user,
-                            ring: ring,
-                            macAddr: ring.MacAddr,
-                            name: user.name,
-                            gender: user.gender,
-                            age: user.age,
-                            profileImage: user.profileImage,
-                            address: user.address,
-                            stepTarget: user.stepTarget,
-                            kcalTarget: user.kcalTarget,
-                            kmTarget: user.kmTarget,
-                            albumPath: user.albumPath,
-                            lifeLogs: user.lifeLogs,
-                          };
-                          updateUser(updatedUser, true);
-                          setShowRingModal(false);
-                        }}
-                        className="px-2 py-1 bg-blue-500 text-white rounded-md"
-                      >
-                        연결
-                      </button>
-                    </li>
-                  ))
-              ) : (
-                <p>사용 가능한 링이 없습니다.</p>
-              )}
-            </ul>
-          </div>
-
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={() => setShowRingModal(false)}
-              className="px-4 py-2 bg-gray-300 text-black rounded-md"
-            >
-              닫기
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div 
-          className="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center"
-          style={{ zIndex: 1000 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowDeleteModal(false);
-          }}
-        >
-          <div
-            ref={modalRef}
-            className="bg-white rounded-lg shadow-lg p-6 relative mx-4"
-            style={{ maxHeight: '90%', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold mb-4">삭제 하시겠습니까?</h2>
-            <div className="flex justify-end">
-              <button
-                onClick={handleCancelDelete}
-                className="mr-4 px-4 py-2 bg-gray-300 text-black rounded-md"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded-md"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
+        <ThresholdModal
+          thresholds={thresholds}
+          setThresholds={setThresholds}
+          user={user}
+          updateUser={updateUser}
+          setShowThresholdModal={setShowThresholdModal}
+          modalRef={modalRef}
+        />
       )}
     </div>
   );

@@ -73,7 +73,6 @@ const DeviceManagement = ({
       return;
     }
 
-    console.log('classifyDevices 호출:', { availableRings, users });
 
     // 들의 MacAddr 목록 수집
     const userMacAddrs = users.map(user => user.macAddr).filter(mac => mac);
