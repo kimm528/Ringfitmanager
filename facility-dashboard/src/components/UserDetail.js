@@ -71,7 +71,7 @@ const VITAL_SIGNS_THRESHOLDS = {
   },
   oxygen: {
     high: 100,
-    low: 95,
+    low: 90,
     normal: 98
   },
   stress: {
@@ -367,8 +367,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
         oxygen: calculateDailyAverage(dayData.data.oxygenarr) || 0,
         stress: calculateDailyAverage(dayData.data.pressurearr) || 0,
         steps: dayData.data.steps || 0,
-        calories: dayData.data.calories || 0,
-        distance: dayData.data.distance || 0,
+        calories: (dayData.data.calories || 0) / 1000, // M을 kcal로 변환
+        distance: (dayData.data.distance || 0) / 1000, // m를 km로 변환
         temperature: dayData.data.temperature || 0,
         systolic: dayData.data.bloodPressure?.systolic || 0,
         diastolic: dayData.data.bloodPressure?.diastolic || 0
@@ -546,7 +546,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       time: `${String(index).padStart(2, '0')}:00`,
       steps: steps[index],
       calories: calories[index] / 1000,
-      distance: distance[index],
+      distance: distance[index] / 1000,
     }));
   }, [currentHealthData.hourlyData]);
 
@@ -877,8 +877,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             oxygen: calculateDailyAverage(dayData.data.oxygenarr) || 0,
             stress: calculateDailyAverage(dayData.data.pressurearr) || 0,
             steps: dayData.data.steps || 0,
-            calories: dayData.data.calories || 0,
-            distance: dayData.data.distance || 0,
+            calories: (dayData.data.calories || 0) / 1000, // M을 kcal로 변환
+            distance: (dayData.data.distance || 0) / 1000, // m를 km로 변환
             temperature: dayData.data.temperature || 0,
             systolic: dayData.data.bloodPressure?.systolic || 0,
             diastolic: dayData.data.bloodPressure?.diastolic || 0
@@ -1156,6 +1156,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                     <YAxis />
                     <Tooltip 
                       labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                      formatter={(value, name) => {
+                        if (name === "소모 칼로리 (kcal)" || name === "이동거리 (km)") {
+                          return [value.toFixed(2), name];
+                        }
+                        return [value, name];
+                      }}
                     />
                     {!isMobile && (
                       <Legend 
@@ -1239,44 +1245,41 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis dataKey="time" />
                     <YAxis />
-                    <Tooltip content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const warnings = payload
-                          .map(entry => {
-                            const { dataKey, value } = entry;
-                            const { high, low } = VITAL_SIGNS_THRESHOLDS[dataKey] || {};
-                            if (high && value > high) {
-                              return `${entry.name}이(가) 높습니다 (${value})`;
-                            }
-                            if (low && value < low) {
-                              return `${entry.name}이(가) 낮습니다 (${value})`;
-                            }
-                            return null;
-                          })
-                          .filter(Boolean);
-
-                        return (
-                          <div className="bg-white p-2 border border-gray-200 rounded shadow">
-                            <p className="text-gray-600">{payload[0].payload.time}</p>
-                            {payload.map((entry, index) => (
-                              <p key={index} style={{ color: entry.color }}>
-                                {entry.name}: {entry.value}
-                              </p>
-                            ))}
-                            {warnings.length > 0 && (
-                              <div className="mt-2 border-t pt-2">
-                                {warnings.map((warning, index) => (
-                                  <p key={index} className="text-red-600 text-sm">
-                                    ⚠️ {warning}
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white p-3 border rounded shadow">
+                              <p className="text-sm font-bold">{label}</p>
+                              {payload.map((entry, index) => {
+                                if (entry.dataKey === 'sleep' && entry.value !== null) {
+                                  const currentData = vitalSignsData.find(d => d.time === label);
+                                  return (
+                                    <p key={index} style={{ color: entry.color }}>
+                                      수면 상태: {currentData?.sleepLabel || '없음'}
+                                    </p>
+                                  );
+                                }
+                                // 이동거리인 경우 미터를 킬로미터로 변환
+                                if (entry.dataKey === 'distance') {
+                                  return (
+                                    <p key={index} style={{ color: entry.color }}>
+                                      {entry.name}: {(entry.value / 1000).toFixed(2)} km
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <p key={index} style={{ color: entry.color }}>
+                                    {entry.name}: {entry.value}
                                   </p>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    }} />
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
                     {!isMobile && (
                       <Legend 
                         verticalAlign="top" 
@@ -1354,52 +1357,41 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis dataKey="time" />
                     <YAxis />
-                    <Tooltip content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const warnings = payload
-                          .map(entry => {
-                            const { dataKey, value } = entry;
-                            if (!value) return null;
-                            
-                            let warning = null;
-                            switch(dataKey) {
-                              case 'bpm':
-                                if (value > 100) warning = `심박수가 높습니다 (${value} BPM)`;
-                                else if (value < 60) warning = `심박수가 낮습니다 (${value} BPM)`;
-                                break;
-                              case 'oxygen':
-                                if (value < 95) warning = `혈중산소가 낮습니다 (${value}%)`;
-                                break;
-                              case 'stress':
-                                if (value > 95) warning = `스트레스 지수가 높습니다 (${value})`;
-                                break;
-                            }
-                            return warning;
-                          })
-                          .filter(Boolean);
-
-                        return (
-                          <div className="bg-white p-2 border border-gray-200 rounded shadow">
-                            <p className="text-gray-600">{payload[0].payload.time}</p>
-                            {payload.map((entry, index) => (
-                              <p key={index} style={{ color: entry.color }}>
-                                {entry.name}: {entry.value}
-                              </p>
-                            ))}
-                            {warnings.length > 0 && (
-                              <div className="mt-2 border-t pt-2">
-                                {warnings.map((warning, index) => (
-                                  <p key={index} className="text-red-600 text-sm">
-                                    ⚠️ {warning}
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white p-3 border rounded shadow">
+                              <p className="text-sm font-bold">{label}</p>
+                              {payload.map((entry, index) => {
+                                if (entry.dataKey === 'sleep' && entry.value !== null) {
+                                  const currentData = vitalSignsData.find(d => d.time === label);
+                                  return (
+                                    <p key={index} style={{ color: entry.color }}>
+                                      수면 상태: {currentData?.sleepLabel || '없음'}
+                                    </p>
+                                  );
+                                }
+                                // 이동거리인 경우 미터를 킬로미터로 변환
+                                if (entry.dataKey === 'distance') {
+                                  return (
+                                    <p key={index} style={{ color: entry.color }}>
+                                      {entry.name}: {(entry.value).toFixed(2)} km
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <p key={index} style={{ color: entry.color }}>
+                                    {entry.name}: {entry.value}
                                   </p>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    }} />
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
                     {!isMobile && (
                       <Legend 
                         verticalAlign="top" 
@@ -1483,7 +1475,41 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                     <XAxis dataKey="time" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white p-3 border rounded shadow">
+                              <p className="text-sm font-bold">{label}</p>
+                              {payload.map((entry, index) => {
+                                if (entry.dataKey === 'sleep' && entry.value !== null) {
+                                  const currentData = vitalSignsData.find(d => d.time === label);
+                                  return (
+                                    <p key={index} style={{ color: entry.color }}>
+                                      수면 상태: {currentData?.sleepLabel || '없음'}
+                                    </p>
+                                  );
+                                }
+                                // 칼로리와 이동거리는 소수점 2자리까지 표시
+                                if (entry.dataKey === 'calories' || entry.dataKey === 'distance') {
+                                  return (
+                                    <p key={index} style={{ color: entry.color }}>
+                                      {entry.name}: {entry.value.toFixed(2)}
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <p key={index} style={{ color: entry.color }}>
+                                    {entry.name}: {entry.value}
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
                     {!isMobile && (
                       <Legend 
                         verticalAlign="top" 
@@ -1512,7 +1538,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                     {visibleActivity.distance && (
                       <Line
                         type="monotone"
-                        dataKey="distance"
+                        dataKey={(dataPoint) => dataPoint.distance}
                         stroke="#4caf50"
                         name="이동거리 (km)"
                         dot={false}

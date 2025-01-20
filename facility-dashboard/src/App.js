@@ -100,8 +100,8 @@ function App() {
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
     Cookies.set('isLoggedIn', 'true');
-    Cookies.set('siteId', 'Dotories');  // 원하는 사이트 ID로 변경
-    Cookies.set('adminId', 'yskim');     // 원하는 관리자 ID로 변경
+    Cookies.set('siteId', 'Demo');  // 원하는 사이트 ID로 변경
+    Cookies.set('adminId', 'Demo');     // 원하는 관리자 ID로 변경
   }, []);
   // ======= 테스트 설정 끝 =======*/
 
@@ -203,15 +203,15 @@ function App() {
   }, []);
 
   const getRandomTemperature = useCallback(() => {
-    // 체온 범위: 34.8°C ~ 38.2°C
-    return parseFloat((Math.random() * (38.2 - 34.8) + 34.8).toFixed(1));
+    // 체온 범위: 35.5°C ~ 37.8°C
+    return parseFloat((Math.random() * (37.8 - 35.5) + 35.5).toFixed(1));
   }, []);
 
   // 랜덤 혈압 생성 함수
   const getRandomBloodPressure = useCallback(() => {
     // 혈압 범위: 수축기 88~142 mmHg, 이완기 58~92 mmHg
-    const systolic = Math.floor(Math.random() * (142 - 88 + 1) + 88); // 88 ~ 142 mmHg
-    const diastolic = Math.floor(Math.random() * (92 - 58 + 1) + 58); // 58 ~ 92 mmHg
+    const systolic = Math.floor(Math.random() * (141 - 89 + 1) + 89); // 88 ~ 142 mmHg
+    const diastolic = Math.floor(Math.random() * (91 - 59 + 1) + 59); // 58 ~ 92 mmHg
     return { systolic, diastolic };
   }, []);
 

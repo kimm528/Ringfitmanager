@@ -1,7 +1,7 @@
 // src/utils/calculateUserStatus.js
 
 export const calculateUserStatus = (user) => {
-  if (!user || !user.data) return 'normal';
+  if (!user || !user.data) return { status: 'normal', score: 0 };
 
   const sleepScore = calculateSleepScore(user.data);
   const status = {
@@ -9,12 +9,59 @@ export const calculateUserStatus = (user) => {
     status: 'normal'
   };
 
-  // 수면 점수에 따른 상태 결정 (0은 정상으로 처리)
+  const data = user.data;
+  const thresholds = user.thresholds || {
+    heartRateWarningLow: 60,
+    heartRateWarningHigh: 100,
+    heartRateDangerLow: 50,
+    heartRateDangerHigh: 110
+  };
+
+  // 심박수 체크
+  if (data.bpm > 0) {
+    if (data.bpm >= thresholds.heartRateDangerHigh || data.bpm <= thresholds.heartRateDangerLow) {
+      status.status = 'danger';
+    } else if (data.bpm >= thresholds.heartRateWarningHigh || data.bpm <= thresholds.heartRateWarningLow) {
+      status.status = status.status === 'danger' ? 'danger' : 'warning';
+    }
+  }
+
+  // 산소포화도 체크
+  if (data.oxygen > 0) {
+    if (data.oxygen < 90) {
+      status.status = 'danger';
+    } else if (data.oxygen < 95) {
+      status.status = status.status === 'danger' ? 'danger' : 'warning';
+    }
+  }
+
+  // 체온 체크
+  if (data.temperature > 0) {
+    if (data.temperature < 35 || data.temperature > 38) {
+      status.status = 'danger';
+    } else if (data.temperature < 36 || data.temperature > 37.5) {
+      status.status = status.status === 'danger' ? 'danger' : 'warning';
+    }
+  }
+
+  // 혈압 체크
+  if (data.bloodPressure) {
+    const { systolic, diastolic } = data.bloodPressure;
+    if (systolic > 0 && diastolic > 0) {
+      if (systolic > 140 || systolic < 90 || diastolic > 90 || diastolic < 60) {
+        status.status = 'danger';
+      } else if (systolic > 130 || systolic < 100 || diastolic > 85 || diastolic < 65) {
+        status.status = status.status === 'danger' ? 'danger' : 'warning';
+      }
+    }
+  }
+
+  // 수면 점수 체크
   if (sleepScore > 0) {
     if (sleepScore < 30) {
-      status.status = 'danger';
+      status.status = status.status === 'danger' ? 'danger' : 'danger';
     } else if (sleepScore < 50) {
-      status.status = 'warning';
+      status.status = status.status === 'danger' ? 'danger' : 'warning';
     }
   }
 
