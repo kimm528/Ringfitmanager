@@ -295,7 +295,12 @@ const ReportContainer = styled.div`
         padding: 0.3rem;
         margin-bottom: 0.3rem;
         border: 1px solid #e9ecef;
+        width: 100%;
       }
+    }
+
+    .activity-chart {
+      width: 100%;
     }
 
     h2 {
@@ -387,6 +392,21 @@ const HealthReportDetail = ({ users }) => {
           // 체온 랜덤 데이터 생성 (36.5-37.0)
           const temperature = (Math.random() * (37.0 - 36.5) + 36.5).toFixed(1);
 
+          // 수면 데이터 랜덤 생성
+          const totalSleepTime = Math.floor(Math.random() * (480 - 420 + 1)) + 420; // 7-8시간
+          const deepSleepPercent = Math.floor(Math.random() * (23 - 15 + 1)) + 15; // 15-23%
+          const remSleepPercent = Math.floor(Math.random() * (25 - 20 + 1)) + 20; // 20-25%
+          const awakeSleepPercent = Math.floor(Math.random() * (5 - 2 + 1)) + 2; // 2-5%
+          const lightSleepPercent = 100 - deepSleepPercent - remSleepPercent - awakeSleepPercent;
+
+          const sleepData = {
+            totalDuration: totalSleepTime,
+            deepDuration: Math.floor(totalSleepTime * deepSleepPercent / 100),
+            remDuration: Math.floor(totalSleepTime * remSleepPercent / 100),
+            awakeDuration: Math.floor(totalSleepTime * awakeSleepPercent / 100),
+            lightDuration: Math.floor(totalSleepTime * lightSleepPercent / 100)
+          };
+
           return {
             date: dayData.date,
             heartRate: calculateDailyAverage(dayData.HeartRateArr),
@@ -398,10 +418,7 @@ const HealthReportDetail = ({ users }) => {
             systolic,
             diastolic,
             temperature,
-            sleepData: {
-              ...calculateSleepDuration(dayData.Sleep?.SleepBeans || []),
-              sleepBeans: dayData.Sleep?.SleepBeans || []
-            }
+            sleepData
           };
         });
 
@@ -469,41 +486,77 @@ const HealthReportDetail = ({ users }) => {
     // PDF 저장 버튼 숨기기
     const downloadButton = document.querySelector('.download-button');
     if (downloadButton) downloadButton.style.display = 'none';
-    
+
     try {
-      const options = {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        windowWidth: 1600,
-        width: 1600,
-      };
+      // 임시 스타일 적용
+      const tempStyle = document.createElement('style');
+      tempStyle.innerHTML = `
+        #report-content .recharts-wrapper,
+        #report-content .recharts-responsive-container {
+          width: 700px !important;
+          min-width: 700px !important;
+          max-width: 700px !important;
+        }
+        #report-content .vital-monitoring .recharts-wrapper,
+        #report-content .vital-monitoring .recharts-responsive-container {
+          height: 130px !important;
+          min-height: 130px !important;
+          max-height: 130px !important;
+        }
+        #report-content .activity-chart .recharts-wrapper,
+        #report-content .activity-chart .recharts-responsive-container {
+          height: 300px !important;
+          min-height: 300px !important;
+          max-height: 300px !important;
+        }
+        #report-content .sleep-analysis .recharts-wrapper,
+        #report-content .sleep-analysis .recharts-responsive-container {
+          height: 250px !important;
+          min-height: 250px !important;
+          max-height: 250px !important;
+        }
+        #report-content .recharts-legend-wrapper {
+          width: 700px !important;
+        }
+      `;
+      document.head.appendChild(tempStyle);
 
       // 첫 페이지 캡처
       const firstPageElement = document.getElementById('first-page');
+      await new Promise(resolve => setTimeout(resolve, 500)); // 스타일 적용을 위한 대기
       const firstCanvas = await html2canvas(firstPageElement, {
-        ...options,
-        height: firstPageElement.scrollHeight
+        scale: 1,
+        useCORS: true,
+        logging: false,
+        width: 794,
+        windowWidth: 794,
+        backgroundColor: '#ffffff'
       });
       const firstImgData = firstCanvas.toDataURL('image/png');
-      const firstImgWidth = pdfWidth - 2;
+      const firstImgWidth = pdfWidth - 20;
       const firstImgHeight = (firstCanvas.height * firstImgWidth) / firstCanvas.width;
       
-      pdf.addImage(firstImgData, 'PNG', 1, 5, firstImgWidth, Math.min(firstImgHeight, pdfHeight - 10));
+      pdf.addImage(firstImgData, 'PNG', 10, 10, firstImgWidth, Math.min(firstImgHeight, pdfHeight - 20));
 
       // 두 번째 페이지 캡처
       pdf.addPage();
       const secondPageElement = document.getElementById('second-page');
       const secondCanvas = await html2canvas(secondPageElement, {
-        ...options,
-        height: secondPageElement.scrollHeight
+        scale: 1,
+        useCORS: true,
+        logging: false,
+        width: 794,
+        windowWidth: 794,
+        backgroundColor: '#ffffff'
       });
       const secondImgData = secondCanvas.toDataURL('image/png');
-      const secondImgWidth = pdfWidth - 2;
+      const secondImgWidth = pdfWidth - 20;
       const secondImgHeight = (secondCanvas.height * secondImgWidth) / secondCanvas.width;
       
-      pdf.addImage(secondImgData, 'PNG', 1, 5, secondImgWidth, Math.min(secondImgHeight, pdfHeight - 10));
+      pdf.addImage(secondImgData, 'PNG', 10, 10, secondImgWidth, Math.min(secondImgHeight, pdfHeight - 20));
+
+      // 임시 스타일 제거
+      document.head.removeChild(tempStyle);
 
     } catch (error) {
       console.error('PDF 생성 중 오류 발생:', error);
@@ -739,7 +792,7 @@ const HealthReportDetail = ({ users }) => {
               <ResponsiveContainer width="100%" height={130}>
                 <LineChart 
                   data={dailyData}
-                  margin={{ top: 20, right: 30 }}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -749,6 +802,7 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={40}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis domain={[40, 160]} />
                   <Tooltip />
@@ -761,30 +815,15 @@ const HealthReportDetail = ({ users }) => {
                     fillOpacity={0.1}
                     stroke="none"
                     baseLine={NORMAL_RANGES.heartRate.min}
+                    isAnimationActive={false}
                   />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey="heartRate" 
                     stroke="#8884d8"
-                    dot={(props) => {
-                      const value = props.payload.heartRate;
-                      const isAbnormal = value < NORMAL_RANGES.heartRate.min || value > NORMAL_RANGES.heartRate.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#8884d8'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
+                    name="심박수"
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -810,7 +849,7 @@ const HealthReportDetail = ({ users }) => {
               <ResponsiveContainer width="100%" height={130}>
                 <LineChart 
                   data={dailyData}
-                  margin={{ top: 20, right: 30 }}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -820,6 +859,7 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={40}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis domain={[50, 150]} />
                   <Tooltip />
@@ -828,54 +868,20 @@ const HealthReportDetail = ({ users }) => {
                   <ReferenceLine y={NORMAL_RANGES.diastolic.max} stroke="#82ca9d" strokeDasharray="3 3" />
                   <ReferenceLine y={NORMAL_RANGES.diastolic.min} stroke="#82ca9d" strokeDasharray="3 3" />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey="systolic" 
                     stroke="#ff7300" 
                     name="수축기"
-                    dot={(props) => {
-                      const value = props.payload.systolic;
-                      const isAbnormal = value < NORMAL_RANGES.systolic.min || value > NORMAL_RANGES.systolic.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#ff7300'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                   />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey="diastolic" 
                     stroke="#82ca9d" 
                     name="이완기"
-                    dot={(props) => {
-                      const value = props.payload.diastolic;
-                      const isAbnormal = value < NORMAL_RANGES.diastolic.min || value > NORMAL_RANGES.diastolic.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#82ca9d'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -896,7 +902,7 @@ const HealthReportDetail = ({ users }) => {
               <ResponsiveContainer width="100%" height={130}>
                 <LineChart 
                   data={dailyData}
-                  margin={{ top: 20, right: 30}}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -906,34 +912,19 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={40}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis domain={[35, 38]} />
                   <Tooltip />
                   <ReferenceLine y={NORMAL_RANGES.temperature.max} stroke="#666" strokeDasharray="3 3" />
                   <ReferenceLine y={NORMAL_RANGES.temperature.min} stroke="#666" strokeDasharray="3 3" />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey="temperature" 
                     stroke="#ff4757"
-                    dot={(props) => {
-                      const value = props.payload.temperature;
-                      const isAbnormal = value < NORMAL_RANGES.temperature.min || value > NORMAL_RANGES.temperature.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#ff4757'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
+                    name="체온"
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -954,7 +945,7 @@ const HealthReportDetail = ({ users }) => {
               <ResponsiveContainer width="100%" height={130}>
                 <LineChart 
                   data={dailyData}
-                  margin={{ top: 20, right: 30, bottom: 20, left: 10 }}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -964,34 +955,19 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={40}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis domain={[90, 100]} />
                   <Tooltip />
                   <ReferenceLine y={NORMAL_RANGES.oxygen.max} stroke="#666" strokeDasharray="3 3" />
                   <ReferenceLine y={NORMAL_RANGES.oxygen.min} stroke="#666" strokeDasharray="3 3" />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey="oxygen" 
                     stroke="#82ca9d"
-                    dot={(props) => {
-                      const value = props.payload.oxygen;
-                      const isAbnormal = value < NORMAL_RANGES.oxygen.min || value > NORMAL_RANGES.oxygen.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#82ca9d'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
+                    name="산소포화도"
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1012,7 +988,7 @@ const HealthReportDetail = ({ users }) => {
               <ResponsiveContainer width="100%" height={130}>
                 <LineChart 
                   data={dailyData}
-                  margin={{ top: 20, right: 30}}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -1022,33 +998,18 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={40}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis domain={[0, 100]} />
                   <Tooltip />
                   <ReferenceLine y={NORMAL_RANGES.stress.max} stroke="#ff4757" strokeDasharray="3 3" />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey="stress" 
                     stroke="#ffc658"
-                    dot={(props) => {
-                      const value = props.payload.stress;
-                      const isAbnormal = value > NORMAL_RANGES.stress.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#ffc658'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
+                    name="스트레스"
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1058,7 +1019,10 @@ const HealthReportDetail = ({ users }) => {
             <h3 className="section-title">운동량 분석</h3>
             <div className="activity-chart">
               <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={dailyData}>
+                <ComposedChart 
+                  data={dailyData}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
                     dataKey="date" 
@@ -1067,14 +1031,38 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={60}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis yAxisId="left" />
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="steps" fill="#8884d8" name="걸음 수" />
-                  <Line yAxisId="right" type="monotone" dataKey="distance" stroke="#82ca9d" name="이동거리 (km)" />
-                  <Line yAxisId="right" type="monotone" dataKey="calories" stroke="#ffc658" name="소모 칼로리 (kcal)" />
+                  <Bar 
+                    yAxisId="left" 
+                    dataKey="steps" 
+                    fill="#8884d8" 
+                    name="걸음 수" 
+                    barSize={20}
+                    isAnimationActive={false}
+                  />
+                  <Line 
+                    yAxisId="right" 
+                    type="monotoneX" 
+                    dataKey="distance" 
+                    stroke="#82ca9d" 
+                    name="이동거리 (km)"
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
+                  />
+                  <Line 
+                    yAxisId="right" 
+                    type="monotoneX" 
+                    dataKey="calories" 
+                    stroke="#ffc658" 
+                    name="소모 칼로리 (kcal)"
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1102,10 +1090,7 @@ const HealthReportDetail = ({ users }) => {
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart 
                   data={dailyData}
-                  margin={{
-                    top: 20,
-                    right: 30            
-                  }}
+                  margin={{ top: 10, right: 20, bottom: 20, left: 10 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
@@ -1115,6 +1100,7 @@ const HealthReportDetail = ({ users }) => {
                     angle={-45}
                     textAnchor="end"
                     height={60}
+                    padding={{ left: 10, right: 10 }}
                   />
                   <YAxis domain={[0, 100]} />
                   <Tooltip 
@@ -1144,34 +1130,13 @@ const HealthReportDetail = ({ users }) => {
                     }}
                   />
                   <Line 
-                    type="monotone" 
+                    type="monotoneX" 
                     dataKey={(data) => calculateSleepScore(data.sleepData)}
                     stroke="#4a90e2"
                     strokeWidth={2}
-                    dot={(props) => {
-                      const data = props.payload;
-                      const ratios = calculateSleepRatios(data.sleepData);
-                      const isAbnormal = ratios.deep < NORMAL_RANGES.deepSleep.min || 
-                                       ratios.deep > NORMAL_RANGES.deepSleep.max ||
-                                       ratios.rem < NORMAL_RANGES.remSleep.min ||
-                                       ratios.rem > NORMAL_RANGES.remSleep.max;
-                      return (
-                        <circle
-                          cx={props.cx}
-                          cy={props.cy}
-                          r={4}
-                          stroke={isAbnormal ? '#ff4757' : '#4a90e2'}
-                          strokeWidth={2}
-                          fill={isAbnormal ? '#ff4757' : '#fff'}
-                        />
-                      );
-                    }}
+                    isAnimationActive={false}
+                    dot={{ strokeWidth: 2, r: 4, fill: "#fff" }}
                     name="수면 점수"
-                    label={{ 
-                      position: 'top',
-                      formatter: (value) => value,
-                      style: { fill: '#666' }
-                    }}
                   />
                 </LineChart>
               </ResponsiveContainer>

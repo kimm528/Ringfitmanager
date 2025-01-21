@@ -97,8 +97,8 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
-  /*//======= 테스트 설정 시작 ======= 
-  // TODO: 실제 배포 전 이 부분 제거 필요
+  //======= 테스트 설정 시작 ======= 
+  /*// TODO: 실제 배포 전 이 부분 제거 필요
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
     Cookies.set('isLoggedIn', 'true');
