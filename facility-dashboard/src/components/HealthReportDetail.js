@@ -87,13 +87,13 @@ const ReportContainer = styled.div`
     padding: 1rem;
     background: white;
     
-    #first-page, #second-page, #third-page {
+    #first-page, #second-page {
       margin-bottom: 2rem;
     }
 
     .vital-monitoring, .activity-analysis, .sleep-analysis, .report-summary {
-      margin-bottom: 2rem;
-      padding: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
       background: white;
       border-radius: 15px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -114,6 +114,7 @@ const ReportContainer = styled.div`
     .report-summary {
       border-left: 4px solid #2c3e50;
       padding: 2rem;
+      margin-top: 0;
       background: white;
       border-radius: 15px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
@@ -231,29 +232,6 @@ const ReportContainer = styled.div`
             }
           }
         }
-      }
-    }
-
-    @media print {
-      #first-page {
-        height: 100vh;
-        page-break-after: always;
-        break-after: page;
-        margin-bottom: 0;
-      }
-      
-      #second-page {
-        height: 100vh;
-        page-break-after: always;
-        break-after: page;
-        margin-bottom: 0;
-      }
-
-      #third-page {
-        height: 100vh;
-        page-break-before: always;
-        break-before: page;
-        margin-bottom: 0;
       }
     }
 
@@ -493,52 +471,39 @@ const HealthReportDetail = ({ users }) => {
     if (downloadButton) downloadButton.style.display = 'none';
     
     try {
+      const options = {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        windowWidth: 1600,
+        width: 1600,
+      };
+
       // 첫 페이지 캡처
       const firstPageElement = document.getElementById('first-page');
       const firstCanvas = await html2canvas(firstPageElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        useCORS: true,
+        ...options,
         height: firstPageElement.scrollHeight
       });
       const firstImgData = firstCanvas.toDataURL('image/png');
-      const firstImgWidth = pdfWidth - 20;
+      const firstImgWidth = pdfWidth - 2;
       const firstImgHeight = (firstCanvas.height * firstImgWidth) / firstCanvas.width;
       
-      pdf.addImage(firstImgData, 'PNG', 10, 10, firstImgWidth, Math.min(firstImgHeight, pdfHeight - 20));
+      pdf.addImage(firstImgData, 'PNG', 1, 5, firstImgWidth, Math.min(firstImgHeight, pdfHeight - 10));
 
       // 두 번째 페이지 캡처
+      pdf.addPage();
       const secondPageElement = document.getElementById('second-page');
       const secondCanvas = await html2canvas(secondPageElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        useCORS: true,
+        ...options,
         height: secondPageElement.scrollHeight
       });
       const secondImgData = secondCanvas.toDataURL('image/png');
-      const secondImgWidth = pdfWidth - 20;
+      const secondImgWidth = pdfWidth - 2;
       const secondImgHeight = (secondCanvas.height * secondImgWidth) / secondCanvas.width;
       
-      pdf.addPage();
-      pdf.addImage(secondImgData, 'PNG', 10, 10, secondImgWidth, Math.min(secondImgHeight, pdfHeight - 20));
-
-      // 세 번째 페이지 캡처
-      const thirdPageElement = document.getElementById('third-page');
-      const thirdCanvas = await html2canvas(thirdPageElement, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        height: thirdPageElement.scrollHeight
-      });
-      const thirdImgData = thirdCanvas.toDataURL('image/png');
-      const thirdImgWidth = pdfWidth - 20;
-      const thirdImgHeight = (thirdCanvas.height * thirdImgWidth) / thirdCanvas.width;
-      
-      pdf.addPage();
-      pdf.addImage(thirdImgData, 'PNG', 10, 10, thirdImgWidth, Math.min(thirdImgHeight, pdfHeight - 20));
+      pdf.addImage(secondImgData, 'PNG', 1, 5, secondImgWidth, Math.min(secondImgHeight, pdfHeight - 10));
 
     } catch (error) {
       console.error('PDF 생성 중 오류 발생:', error);
@@ -1089,9 +1054,6 @@ const HealthReportDetail = ({ users }) => {
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
-
-        <div id="second-page">
           <div className="activity-analysis">
             <h3 className="section-title">운동량 분석</h3>
             <div className="activity-chart">
@@ -1117,7 +1079,6 @@ const HealthReportDetail = ({ users }) => {
               </ResponsiveContainer>
             </div>
           </div>
-
           <div className="sleep-analysis">
             <h3 className="section-title">수면 분석</h3>
             <div className="chart-container">
@@ -1218,7 +1179,7 @@ const HealthReportDetail = ({ users }) => {
           </div>
         </div>
 
-        <div id="third-page">
+        <div id="second-page">
           <div className="report-summary">
             <h3 className="section-title">종합 분석</h3>
             <div className="summary-content">
