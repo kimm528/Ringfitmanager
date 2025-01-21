@@ -20,6 +20,8 @@ import DataGridView from './components/DataGridView.js';
 import Modal from './components/Modal.js';
 import UserManagement from './components/UserManagement.js';
 import AssignUsers from './components/AssignUsers.js';
+import HealthReport from './components/HealthReport';
+import HealthReportDetail from './components/HealthReportDetail';
 
 // React.memo로 컴포넌트 래핑
 const MemoizedSidebar = memo(Sidebar);
@@ -95,8 +97,8 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
-  //======= 테스트 설정 시작 ======= 
-  /*// TODO: 실제 배포 전 이 부분 제거 필요
+  /*//======= 테스트 설정 시작 ======= 
+  // TODO: 실제 배포 전 이 부분 제거 필요
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
     Cookies.set('isLoggedIn', 'true');
@@ -1268,11 +1270,26 @@ function App() {
                     }
                   />
                   <Route
+                    path="/health-report"
+                    element={
+                      <HealthReport
+                        users={users}
+                      />
+                    }
+                  />
+                  <Route
+                    path="/health-report/detail/:userId"
+                    element={
+                      <HealthReportDetail
+                        users={users}
+                        siteId={Cookies.get('siteId')}
+                      />
+                    }
+                  />
+                  <Route
                     path="/datagridview"
                     element={
-                      <>
-                        <DataGridView users={users} setShowModal={setShowModal} />
-                      </>
+                      <DataGridView users={users} setShowModal={setShowModal} />
                     }
                   />
                 </Routes>

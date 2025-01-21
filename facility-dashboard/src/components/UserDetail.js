@@ -1490,11 +1490,11 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                                     </p>
                                   );
                                 }
-                                // 칼로리와 이동거리는 소수점 2자리까지 표시
-                                if (entry.dataKey === 'calories' || entry.dataKey === 'distance') {
+                                // 이동거리인 경우 미터를 킬로미터로 변환
+                                if (entry.dataKey === 'distance') {
                                   return (
                                     <p key={index} style={{ color: entry.color }}>
-                                      {entry.name}: {entry.value.toFixed(2)}
+                                      {entry.name}: {(entry.value).toFixed(2)} km
                                     </p>
                                   );
                                 }
