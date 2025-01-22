@@ -146,17 +146,40 @@ const HealthReportContainer = styled.div.attrs({
         }
 
         button.btn-primary {
-          background-color: #4a90e2;
+          background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
           border: none;
-          border-radius: 6px;
-          padding: 0.4rem 0.8rem;
-          font-size: 0.85rem;
+          border-radius: 20px;
+          padding: 0.5rem 1rem;
+          font-size: 0.9rem;
           font-weight: 500;
-          transition: all 0.2s;
+          color: white;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 120px;
+          justify-content: center;
+          box-shadow: 0 2px 4px rgba(74, 144, 226, 0.25);
 
           &:hover {
-            background-color: #357abd;
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #357abd 0%, #2868a9 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
+          }
+
+          &:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(74, 144, 226, 0.25);
+          }
+
+          svg {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.3s ease;
+          }
+
+          &:hover svg {
+            transform: translateX(2px);
           }
         }
 
@@ -276,6 +299,9 @@ const HealthReport = ({ users }) => {
               navigate('/health-report/detail/' + params.data.id + '?' + searchParams.toString());
             }}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V19.5a2.25 2.25 0 0 0 2.25 2.25h.75m0-3.75h3.75M9 15h3.75M9 12h3.75m3-3h3.75m-3 3h3.75m-3 3h3.75M6.75 3h.008v.008h-.008V3Z" />
+            </svg>
             리포트 보기
           </Button>
         </div>
@@ -449,48 +475,138 @@ const HealthReport = ({ users }) => {
           <Card>
             <Card.Body>
               <Card.Title>건강 리포트</Card.Title>
-              <div className="d-flex align-items-center mb-4 bg-light p-3 rounded">
-                <span className="date-picker-label me-2">시작일:</span>
-                <DatePicker
-                  selected={startDate}
-                  onChange={(date) => {
-                    setStartDate(date);
-                    if (endDate < date) {
+              <div className="d-flex align-items-center mb-4 bg-light p-3 rounded" style={{ 
+                display: 'flex', 
+                flexWrap: 'nowrap', 
+                overflowX: 'auto', 
+                gap: '1rem',
+                width: '100%'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <span className="date-picker-label me-2">시작일:</span>
+                  <DatePicker
+                    selected={startDate}
+                    onChange={(date) => {
+                      setStartDate(date);
+                      if (endDate < date) {
+                        setEndDate(date);
+                      }
+                    }}
+                    maxDate={new Date()}
+                    minDate={new Date('2024-01-01')}
+                    open={startPickerOpen}
+                    onSelect={() => setStartPickerOpen(false)}
+                    onClickOutside={() => setStartPickerOpen(false)}
+                    onInputClick={() => setStartPickerOpen(true)}
+                    locale={ko}
+                    dateFormat="yyyy-MM-dd"
+                    className="form-control"
+                    popperContainer={({ children }) => (
+                      <div style={{ position: 'absolute', zIndex: 99999 }}>{children}</div>
+                    )}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <span className="date-picker-label me-2">종료일:</span>
+                  <DatePicker
+                    selected={endDate}
+                    onChange={(date) => {
                       setEndDate(date);
-                    }
-                  }}
-                  maxDate={new Date()}
-                  minDate={new Date('2024-01-01')}
-                  open={startPickerOpen}
-                  onSelect={() => setStartPickerOpen(false)}
-                  onClickOutside={() => setStartPickerOpen(false)}
-                  onInputClick={() => setStartPickerOpen(true)}
-                  locale={ko}
-                  dateFormat="yyyy-MM-dd"
-                  className="form-control"
-                  popperContainer={({ children }) => (
-                    <div style={{ position: 'absolute', zIndex: 99999 }}>{children}</div>
-                  )}
-                />
-                <span className="date-picker-label ms-4 me-2">종료일:</span>
-                <DatePicker
-                  selected={endDate}
-                  onChange={(date) => {
-                    setEndDate(date);
-                  }}
-                  maxDate={new Date()}
-                  minDate={startDate}
-                  open={endPickerOpen}
-                  onSelect={() => setEndPickerOpen(false)}
-                  onClickOutside={() => setEndPickerOpen(false)}
-                  onInputClick={() => setEndPickerOpen(true)}
-                  locale={ko}
-                  dateFormat="yyyy-MM-dd"
-                  className="form-control"
-                  popperContainer={({ children }) => (
-                    <div style={{ position: 'absolute', zIndex: 99999 }}>{children}</div>
-                  )}
-                />
+                    }}
+                    maxDate={new Date()}
+                    minDate={startDate}
+                    open={endPickerOpen}
+                    onSelect={() => setEndPickerOpen(false)}
+                    onClickOutside={() => setEndPickerOpen(false)}
+                    onInputClick={() => setEndPickerOpen(true)}
+                    locale={ko}
+                    dateFormat="yyyy-MM-dd"
+                    className="form-control"
+                    popperContainer={({ children }) => (
+                      <div style={{ position: 'absolute', zIndex: 99999 }}>{children}</div>
+                    )}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setDate(end.getDate() - 6);
+                      setStartDate(start);
+                      setEndDate(end);
+                    }}
+                    style={{
+                      borderRadius: '20px',
+                      padding: '0.5rem 1.2rem',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      minWidth: '70px',
+                      whiteSpace: 'nowrap',
+                      backgroundColor: 'white',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      border: '1px solid #dee2e6',
+                      transition: 'all 0.2s ease'
+                    }}
+                    className="hover-shadow"
+                  >
+                    1주
+                  </Button>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setDate(end.getDate() - 13);
+                      setStartDate(start);
+                      setEndDate(end);
+                    }}
+                    style={{
+                      borderRadius: '20px',
+                      padding: '0.5rem 1.2rem',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      minWidth: '70px',
+                      whiteSpace: 'nowrap',
+                      backgroundColor: 'white',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      border: '1px solid #dee2e6',
+                      transition: 'all 0.2s ease'
+                    }}
+                    className="hover-shadow"
+                  >
+                    2주
+                  </Button>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setMonth(end.getMonth() - 1);
+                      setStartDate(start);
+                      setEndDate(end);
+                    }}
+                    style={{
+                      borderRadius: '20px',
+                      padding: '0.5rem 1.2rem',
+                      fontSize: '0.9rem',
+                      fontWeight: '600',
+                      minWidth: '70px',
+                      whiteSpace: 'nowrap',
+                      backgroundColor: 'white',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                      border: '1px solid #dee2e6',
+                      transition: 'all 0.2s ease'
+                    }}
+                    className="hover-shadow"
+                  >
+                    1개월
+                  </Button>
+                </div>
               </div>
               <div className="ag-theme-alpine" style={{ width: '100%', height: '500px' }}>
                 <AgGridReact

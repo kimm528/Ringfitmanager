@@ -220,7 +220,7 @@ const Sidebar = ({
                     </a>
                   </li>
                   <li>
-                    <a href="https://botfit.dotories.com/botfit-management" className="flex items-center p-1.5 hover:bg-gray-100 rounded-lg">
+                    <a href="https://botfit.dotories.com/exercise-report" className="flex items-center p-1.5 hover:bg-gray-100 rounded-lg">
                       <GiRobotLeg className="w-7 h-7" />
                       <span className="ml-2">봇핏 관리</span>
                     </a>
