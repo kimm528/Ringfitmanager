@@ -169,6 +169,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   const [error, setError] = useState(null);
   const [tempHealthData, setTempHealthData] = useState(null);
   const [isPast, setIsPast] = useState(false);
+  const [hasNoData, setHasNoData] = useState(false);  // 데이터 없음 상태 추가
   const [logItems, setLogItems] = useState([]);
   const [sortOption, setSortOption] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -459,25 +460,34 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
         if (healthDataArray.length > 0) {
           const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
-          // 기존 데이터가 있는 경우에만 업데이트
-          setTempHealthData(prev => {
-            if (!prev || !isEqual(prev, normalizeData(latestHealthData))) {
-              return normalizeData(latestHealthData);
-            }
-            return prev;
-          });
-          console.log(`사용자 ${userId}의 건강 데이터 가져오기 성공:`, latestHealthData);
+          const normalizedData = normalizeData(latestHealthData);
+          if (Object.keys(normalizedData).length > 0) {
+            setTempHealthData(normalizedData);
+            setHasNoData(false);
+          } else {
+            setHasNoData(true);
+          }
         } else {
-          console.log(`사용자 ${userId}의 건강 데이터가 없습니다.`);
+          setHasNoData(true);
         }
       } else {
         setIsPast(false);
-        setTempHealthData(normalizeData(userData));
-        console.log("오늘 날짜입니다. 현재 데이터로 업데이트합니다.");
+        if (Object.keys(userData || {}).length > 0) {
+          const normalizedData = normalizeData(userData);
+          if (Object.keys(normalizedData).length > 0) {
+            setTempHealthData(normalizedData);
+            setHasNoData(false);
+          } else {
+            setHasNoData(true);
+          }
+        } else {
+          setHasNoData(true);
+        }
       }
     } catch (error) {
       console.error('Error fetching past data:', error);
       setError('데이터를 불러오는데 실패했습니다.');
+      setHasNoData(true);
     } finally {
       setIsLoading(false);
     }
@@ -920,6 +930,22 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     }
   }, [userId, selectedPeriod]);
 
+  // 실시간 업데이트를 위한 interval 설정
+  useEffect(() => {
+    // 오늘 날짜이고, 데이터가 있고, 에러가 없는 경우에만 실시간 업데이트
+    if (userId && selectedDate && isToday(selectedDate) && !error && !isPast && !hasNoData) {
+      console.log('실시간 업데이트 시작');
+      const intervalId = setInterval(() => {
+        getPastData(userId, selectedDate);
+      }, 30000);
+
+      return () => {
+        console.log('실시간 업데이트 중지');
+        clearInterval(intervalId);
+      };
+    }
+  }, [userId, selectedDate, getPastData, isToday, error, isPast, hasNoData]);
+
   return (
     <div className="p-4">
       {/* User Profile Header */}
@@ -1018,224 +1044,55 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
       {user && (
         <>
-          {/* 기간별 데이터 그래프 */}
-          {periodData && (
-            <>
-              {/* 기간별 활력징후 변화 그래프 */}
-              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-                <h3 className="text-xl font-bold mb-4">기간별 활력징후 변화</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={periodData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="date"
-                      tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      tick={{ fontSize: 16 }}
-                      padding={{ left: 10, right: 10 }}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
-                    />
-                    {!isMobile && (
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36}
-                        content={<CustomLegend legendItems={vitalSignsLegend} />}
-                      />
-                    )}
-                    {visibleVitalSigns.temperature && (
-                      <Line
-                        type="monotone"
-                        dataKey="temperature"
-                        stroke="#ff7300"
-                        name="체온 (°C)"
-                        dot={<CustomizedDot />}
-                        strokeWidth={2}
-                      />
-                    )}
-                    {visibleVitalSigns.systolic && (
-                      <Line
-                        type="monotone"
-                        dataKey="systolic"
-                        stroke="#8884d8"
-                        name="수축기 혈압 (mmHg)"
-                        dot={<CustomizedDot />}
-                        strokeWidth={2}
-                      />
-                    )}
-                    {visibleVitalSigns.diastolic && (
-                      <Line
-                        type="monotone"
-                        dataKey="diastolic"
-                        stroke="#82ca9d"
-                        name="이완기 혈압 (mmHg)"
-                        dot={<CustomizedDot />}
-                        strokeWidth={2}
-                      />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* 기간별 생체신호 변화 그래프 */}
-              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-                <h3 className="text-xl font-bold mb-4">기간별 생체신호 변화</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={periodData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="date"
-                      tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      tick={{ fontSize: 16 }}
-                      padding={{ left: 10, right: 10 }}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
-                    />
-                    {!isMobile && (
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36}
-                        content={<CustomLegend legendItems={bpmOxygenLegend} />}
-                      />
-                    )}
-                    {visibleBpmOxygen.bpm && (
-                      <Line
-                        type="monotone"
-                        dataKey="bpm"
-                        stroke="red"
-                        name="심박수 (BPM)"
-                        dot={true}
-                      />
-                    )}
-                    {visibleBpmOxygen.oxygen && (
-                      <Line
-                        type="monotone"
-                        dataKey="oxygen"
-                        stroke="#1e88e5"
-                        name="혈중 산소 (%)"
-                        dot={true}
-                      />
-                    )}
-                    {visibleBpmOxygen.stress && (
-                      <Line
-                        type="monotone"
-                        dataKey="stress"
-                        stroke="#FFD700"
-                        name="스트레스 지수"
-                        dot={true}
-                      />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* 기간별 활동량 변화 그래프 추가 */}
-              <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-                <h3 className="text-xl font-bold mb-4">기간별 활동량 변화</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={periodData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="date"
-                      tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      tick={{ fontSize: 16 }}
-                      padding={{ left: 10, right: 10 }}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
-                      formatter={(value, name) => {
-                        if (name === "소모 칼로리 (kcal)" || name === "이동거리 (km)") {
-                          return [value.toFixed(2), name];
-                        }
-                        return [value, name];
-                      }}
-                    />
-                    {!isMobile && (
-                      <Legend 
-                        verticalAlign="top" 
-                        height={36}
-                        content={<CustomLegend legendItems={activityLegend} />}
-                      />
-                    )}
-                    {visibleActivity.steps && (
-                      <Line
-                        type="monotone"
-                        dataKey="steps"
-                        stroke="#82ca9d"
-                        name="걸음수"
-                        dot={true}
-                      />
-                    )}
-                    {visibleActivity.calories && (
-                      <Line
-                        type="monotone"
-                        dataKey="calories"
-                        stroke="#ff9800"
-                        name="소모 칼로리 (kcal)"
-                        dot={true}
-                      />
-                    )}
-                    {visibleActivity.distance && (
-                      <Line
-                        type="monotone"
-                        dataKey="distance"
-                        stroke="#4caf50"
-                        name="이동거리 (km)"
-                        dot={true}
-                      />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          )}
-
-          {/* 상세 데이터 섹션 - 기간 선택이 'day'일 때만 표시 */}
-          {selectedPeriod === 'day' && (
-        <>
-          {/* 링 정보 섹션 */}
-          {user.ring && !isMobile && (
-            <div className="ring-info bg-white p-4 rounded-lg shadow-md mb-6">
-              <h3 className="text-xl font-bold mb-4">링 정보</h3>
-              <div className="flex space-x-8 items-center">
-                <p><strong>이름:</strong> {user.ring.Name || 'N/A'}</p>
-                <p><strong>연결 시간:</strong> {user.ring.ConnectedTime ? formatConnectedTime(user.ring.ConnectedTime) : 'N/A'}</p>
-                <p><strong>배터리 수준:</strong> {user.ring.BatteryLevel !== undefined ? `${user.ring.BatteryLevel}%` : 'N/A'}</p>
+          {selectedPeriod === 'day' && hasNoData && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    선택하신 날짜({formatDateYYYYMMDD(selectedDate)})의 데이터가 없습니다.
+                  </p>
+                </div>
               </div>
             </div>
           )}
 
+          {selectedPeriod === 'day' && !hasNoData && (
+            <>
+              {/* 링 정보 섹션 */}
+              {user.ring && !isMobile && (
+                <div className="ring-info bg-white p-4 rounded-lg shadow-md mb-6">
+                  <h3 className="text-xl font-bold mb-4">링 정보</h3>
+                  <div className="flex space-x-8 items-center">
+                    <p><strong>이름:</strong> {user.ring.Name || 'N/A'}</p>
+                    <p><strong>연결 시간:</strong> {user.ring.ConnectedTime ? formatConnectedTime(user.ring.ConnectedTime) : 'N/A'}</p>
+                    <p><strong>배터리 수준:</strong> {user.ring.BatteryLevel !== undefined ? `${user.ring.BatteryLevel}%` : 'N/A'}</p>
+                  </div>
+                </div>
+              )}
+
               {/* 활력징후 카드 섹션 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <InfoCard
-              icon={<FaTemperatureHigh className="text-orange-500" />}
-              title="체온"
-              value={`${user?.data?.temperature || 0}°C`}
-            />
-            <InfoCard
-              icon={<RiHeartPulseLine className="text-red-500" size={28} />}
-              title="수축기 혈압"
-              value={`${user?.data?.bloodPressure?.systolic || 0} mmHg`}
-            />
-            <InfoCard
-              icon={<RiHeartPulseFill className="text-blue-500" size={28} />}
-              title="이완기 혈압"
-              value={`${user?.data?.bloodPressure?.diastolic || 0} mmHg`}
-            />
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <InfoCard
+                  icon={<FaTemperatureHigh className="text-orange-500" />}
+                  title="체온"
+                  value={`${user?.data?.temperature?.toFixed(1) || '0.0'}°C`}
+                />
+                <InfoCard
+                  icon={<RiHeartPulseLine className="text-red-500" size={28} />}
+                  title="수축기 혈압"
+                  value={`${user?.data?.bloodPressure?.systolic || 0} mmHg`}
+                />
+                <InfoCard
+                  icon={<RiHeartPulseFill className="text-blue-500" size={28} />}
+                  title="이완기 혈압"
+                  value={`${user?.data?.bloodPressure?.diastolic || 0} mmHg`}
+                />
+              </div>
 
               {/* 활력징후 그래프 */}
               <div className="bg-white p-4 rounded-lg shadow-md mb-6">
@@ -1249,31 +1106,18 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-white p-3 border rounded shadow">
-                              <p className="text-sm font-bold">{label}</p>
-                              {payload.map((entry, index) => {
-                                if (entry.dataKey === 'sleep' && entry.value !== null) {
-                                  const currentData = vitalSignsData.find(d => d.time === label);
-                                  return (
-                                    <p key={index} style={{ color: entry.color }}>
-                                      수면 상태: {currentData?.sleepLabel || '없음'}
-                                    </p>
-                                  );
-                                }
-                                // 이동거리인 경우 미터를 킬로미터로 변환
-                                if (entry.dataKey === 'distance') {
-                                  return (
-                                    <p key={index} style={{ color: entry.color }}>
-                                      {entry.name}: {(entry.value / 1000).toFixed(2)} km
-                                    </p>
-                                  );
-                                }
-                                return (
-                                  <p key={index} style={{ color: entry.color }}>
-                                    {entry.name}: {entry.value}
-                                  </p>
-                                );
-                              })}
+                            <div className="bg-white p-2 border rounded shadow">
+                              <p className="text-sm font-semibold mb-1">{label}</p>
+                              {payload.map((entry, index) => (
+                                <p key={index} style={{ color: entry.color }}>
+                                  {entry.name}: {
+                                    entry.dataKey === 'temperature' ? entry.value.toFixed(1) :
+                                    entry.dataKey === 'calories' ? Math.round(entry.value) :
+                                    entry.dataKey === 'distance' ? entry.value.toFixed(1) :
+                                    entry.value
+                                  }
+                                </p>
+                              ))}
                             </div>
                           );
                         }
@@ -1361,8 +1205,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-white p-3 border rounded shadow">
-                              <p className="text-sm font-bold">{label}</p>
+                            <div className="bg-white p-2 border rounded shadow">
+                              <p className="text-sm font-semibold mb-1">{label}</p>
                               {payload.map((entry, index) => {
                                 if (entry.dataKey === 'sleep' && entry.value !== null) {
                                   const currentData = vitalSignsData.find(d => d.time === label);
@@ -1372,17 +1216,14 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                                     </p>
                                   );
                                 }
-                                // 이동거리인 경우 미터를 킬로미터로 변환
-                                if (entry.dataKey === 'distance') {
-                                  return (
-                                    <p key={index} style={{ color: entry.color }}>
-                                      {entry.name}: {(entry.value).toFixed(2)} km
-                                    </p>
-                                  );
-                                }
                                 return (
                                   <p key={index} style={{ color: entry.color }}>
-                                    {entry.name}: {entry.value}
+                                    {entry.name}: {
+                                      entry.dataKey === 'temperature' ? entry.value.toFixed(1) :
+                                      entry.dataKey === 'calories' ? Math.round(entry.value) :
+                                      entry.dataKey === 'distance' ? entry.value.toFixed(1) :
+                                      entry.value
+                                    }
                                   </p>
                                 );
                               })}
@@ -1458,12 +1299,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                 <InfoCard 
                   icon={<FaFireAlt className="text-orange-500" />} 
                   title="소모 칼로리" 
-                  value={`${(currentHealthData.calories || 0) / 1000} kcal`} 
+                  value={`${Math.round((currentHealthData.calories || 0) / 1000)} kcal`} 
                 />
                 <InfoCard 
                   icon={<FaRoute className="text-blue-500" />} 
                   title="이동거리" 
-                  value={`${(currentHealthData.distance || 0) / 1000} km`} 
+                  value={`${((currentHealthData.distance || 0) / 1000).toFixed(1)} km`} 
                 />
               </div>
 
@@ -1479,8 +1320,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           return (
-                            <div className="bg-white p-3 border rounded shadow">
-                              <p className="text-sm font-bold">{label}</p>
+                            <div className="bg-white p-2 border rounded shadow">
+                              <p className="text-sm font-semibold mb-1">{label}</p>
                               {payload.map((entry, index) => {
                                 if (entry.dataKey === 'sleep' && entry.value !== null) {
                                   const currentData = vitalSignsData.find(d => d.time === label);
@@ -1490,17 +1331,14 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                                     </p>
                                   );
                                 }
-                                // 이동거리인 경우 미터를 킬로미터로 변환
-                                if (entry.dataKey === 'distance') {
-                                  return (
-                                    <p key={index} style={{ color: entry.color }}>
-                                      {entry.name}: {(entry.value).toFixed(2)} km
-                                    </p>
-                                  );
-                                }
                                 return (
                                   <p key={index} style={{ color: entry.color }}>
-                                    {entry.name}: {entry.value}
+                                    {entry.name}: {
+                                      entry.dataKey === 'temperature' ? entry.value.toFixed(1) :
+                                      entry.dataKey === 'calories' ? Math.round(entry.value) :
+                                      entry.dataKey === 'distance' ? entry.value.toFixed(1) :
+                                      entry.value
+                                    }
                                   </p>
                                 );
                               })}
@@ -1775,49 +1613,238 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             </>
           )}
 
-          {/* 기간 설정 모달 */}
-          {isDateRangeModalOpen && (
-            <Modal onClose={() => setIsDateRangeModalOpen(false)}>
-              <div className="bg-white p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-bold mb-4">기간 설정</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block mb-2">시작일</label>
-                    <input
-                      type="date"
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={dateRange.startDate}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                      max={formatDateYYYYMMDD(new Date())}
-                    />
+          {selectedPeriod !== 'day' && (
+            <>
+              {/* 기간별 데이터 그래프 */}
+              {periodData && (
+                <>
+                  {/* 기간별 활력징후 변화 그래프 */}
+                  <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                    <h3 className="text-xl font-bold mb-4">기간별 활력징후 변화</h3>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <LineChart data={periodData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date"
+                          tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                          tick={{ fontSize: 16 }}
+                          padding={{ left: 10, right: 10 }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                        />
+                        {!isMobile && (
+                          <Legend 
+                            verticalAlign="top" 
+                            height={36}
+                            content={<CustomLegend legendItems={vitalSignsLegend} />}
+                          />
+                        )}
+                        {visibleVitalSigns.temperature && (
+                          <Line
+                            type="monotone"
+                            dataKey="temperature"
+                            stroke="#ff7300"
+                            name="체온 (°C)"
+                            dot={<CustomizedDot />}
+                            strokeWidth={2}
+                          />
+                        )}
+                        {visibleVitalSigns.systolic && (
+                          <Line
+                            type="monotone"
+                            dataKey="systolic"
+                            stroke="#8884d8"
+                            name="수축기 혈압 (mmHg)"
+                            dot={<CustomizedDot />}
+                            strokeWidth={2}
+                          />
+                        )}
+                        {visibleVitalSigns.diastolic && (
+                          <Line
+                            type="monotone"
+                            dataKey="diastolic"
+                            stroke="#82ca9d"
+                            name="이완기 혈압 (mmHg)"
+                            dot={<CustomizedDot />}
+                            strokeWidth={2}
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div>
-                    <label className="block mb-2">종료일</label>
-                    <input
-                      type="date"
-                      className="w-full border border-gray-300 rounded-lg p-2"
-                      value={dateRange.endDate}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                      max={formatDateYYYYMMDD(new Date())}
-                    />
+
+                  {/* 기간별 생체신호 변화 그래프 */}
+                  <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                    <h3 className="text-xl font-bold mb-4">기간별 생체신호 변화</h3>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <LineChart data={periodData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date"
+                          tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                          tick={{ fontSize: 16 }}
+                          padding={{ left: 10, right: 10 }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                        />
+                        {!isMobile && (
+                          <Legend 
+                            verticalAlign="top" 
+                            height={36}
+                            content={<CustomLegend legendItems={bpmOxygenLegend} />}
+                          />
+                        )}
+                        {visibleBpmOxygen.bpm && (
+                          <Line
+                            type="monotone"
+                            dataKey="bpm"
+                            stroke="red"
+                            name="심박수 (BPM)"
+                            dot={true}
+                          />
+                        )}
+                        {visibleBpmOxygen.oxygen && (
+                          <Line
+                            type="monotone"
+                            dataKey="oxygen"
+                            stroke="#1e88e5"
+                            name="혈중 산소 (%)"
+                            dot={true}
+                          />
+                        )}
+                        {visibleBpmOxygen.stress && (
+                          <Line
+                            type="monotone"
+                            dataKey="stress"
+                            stroke="#FFD700"
+                            name="스트레스 지수"
+                            dot={true}
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
-                </div>
-                <div className="flex justify-end space-x-4 mt-6">
-                  <button
-                    onClick={handleDateRangeSubmit}
-                    className="bg-blue-500 text-white py-2 px-4 rounded-lg"
-                  >
-                    확인
-                  </button>
-                  <button
-                    onClick={() => setIsDateRangeModalOpen(false)}
-                    className="bg-gray-500 text-white py-2 px-4 rounded-lg"
-                  >
-                    취소
-                  </button>
-                </div>
-              </div>
-            </Modal>
+
+                  {/* 기간별 활동량 변화 그래프 추가 */}
+                  <div className="bg-white p-4 rounded-lg shadow-md mb-6">
+                    <h3 className="text-xl font-bold mb-4">기간별 활동량 변화</h3>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <LineChart data={periodData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date"
+                          tickFormatter={(value) => `${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
+                          tick={{ fontSize: 16 }}
+                          padding={{ left: 10, right: 10 }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                          formatter={(value, name) => {
+                            if (name === "소모 칼로리 (kcal)" || name === "이동거리 (km)") {
+                              return [value.toFixed(2), name];
+                            }
+                            return [value, name];
+                          }}
+                        />
+                        {!isMobile && (
+                          <Legend 
+                            verticalAlign="top" 
+                            height={36}
+                            content={<CustomLegend legendItems={activityLegend} />}
+                          />
+                        )}
+                        {visibleActivity.steps && (
+                          <Line
+                            type="monotone"
+                            dataKey="steps"
+                            stroke="#82ca9d"
+                            name="걸음수"
+                            dot={true}
+                          />
+                        )}
+                        {visibleActivity.calories && (
+                          <Line
+                            type="monotone"
+                            dataKey="calories"
+                            stroke="#ff9800"
+                            name="소모 칼로리 (kcal)"
+                            dot={true}
+                          />
+                        )}
+                        {visibleActivity.distance && (
+                          <Line
+                            type="monotone"
+                            dataKey="distance"
+                            stroke="#4caf50"
+                            name="이동거리 (km)"
+                            dot={true}
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              )}
+
+              {/* 기간 설정 모달 */}
+              {isDateRangeModalOpen && (
+                <Modal onClose={() => setIsDateRangeModalOpen(false)}>
+                  <div className="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 className="text-xl font-bold mb-4">기간 설정</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block mb-2">시작일</label>
+                        <input
+                          type="date"
+                          className="w-full border border-gray-300 rounded-lg p-2"
+                          value={dateRange.startDate}
+                          onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                          max={formatDateYYYYMMDD(new Date())}
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-2">종료일</label>
+                        <input
+                          type="date"
+                          className="w-full border border-gray-300 rounded-lg p-2"
+                          value={dateRange.endDate}
+                          onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                          max={formatDateYYYYMMDD(new Date())}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-4 mt-6">
+                      <button
+                        onClick={handleDateRangeSubmit}
+                        className="bg-blue-500 text-white py-2 px-4 rounded-lg"
+                      >
+                        확인
+                      </button>
+                      <button
+                        onClick={() => setIsDateRangeModalOpen(false)}
+                        className="bg-gray-500 text-white py-2 px-4 rounded-lg"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+            </>
           )}
         </>
       )}

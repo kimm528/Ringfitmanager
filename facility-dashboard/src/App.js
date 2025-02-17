@@ -239,6 +239,10 @@ function App() {
       const healthJson = typeof healthResponse.data === 'string' ? JSON.parse(healthResponse.data) : healthResponse.data;
       const healthDataArray = healthJson.Data || [];
 
+      if (healthDataArray.length === 0) {
+        return; // 데이터가 없는 경우 상태 업데이트하지 않음
+      }
+
       healthDataArray.forEach((healthItem) => {
         const userId = healthItem.UserId;
         setUsers((prevUsers) =>
@@ -246,39 +250,38 @@ function App() {
             const userDraft = draft.find((u) => u.id === userId);
             if (userDraft) {
               // 실제 측정 데이터만 업데이트
-              userDraft.data.bpm = getLastNonZero(healthItem.HeartRateArr);
-              userDraft.data.oxygen = getLastNonZero(healthItem.BloodOxygenArr);
-              userDraft.data.stress = getLastNonZero(healthItem.PressureArr);
-              userDraft.data.sleep = healthItem.Sleep?.TotalSleepDuration || 0;
-              userDraft.data.steps = healthItem.Sport?.slice(-1)[0]?.TotalSteps || 0;
-              userDraft.data.calories = healthItem.Sport?.slice(-1)[0]?.Calorie || 0;
-              userDraft.data.distance = healthItem.Sport?.slice(-1)[0]?.WalkDistance || 0;
-              userDraft.data.heartRateArr = healthItem.HeartRateArr || [];
-              userDraft.data.pressureArr = healthItem.PressureArr || [];
-              userDraft.data.oxygenArr = healthItem.BloodOxygenArr || [];
-              userDraft.data.hourlyData.steps = healthItem.Sport?.map((s) => s.TotalSteps) || [];
-              userDraft.data.hourlyData.calories = healthItem.Sport?.map((s) => s.Calorie) || [];
-              userDraft.data.hourlyData.distance = healthItem.Sport?.map((s) => s.WalkDistance) || [];
+              if (healthItem.HeartRateArr?.length > 0) userDraft.data.bpm = getLastNonZero(healthItem.HeartRateArr);
+              if (healthItem.BloodOxygenArr?.length > 0) userDraft.data.oxygen = getLastNonZero(healthItem.BloodOxygenArr);
+              if (healthItem.PressureArr?.length > 0) userDraft.data.stress = getLastNonZero(healthItem.PressureArr);
               
-              const sleepData = healthItem.Sleep || {};
-              userDraft.data.sleepData = {
-                sleepDateTime: sleepData.SleepDateTime || '',
-                wakeTime: sleepData.WakeTime || '',
-                totalSleepDuration: Math.round((sleepData.TotalSleepDuration || 0) / 60),
-                deepSleepDuration: Math.round((sleepData.DeepSleepDuration || 0) / 60),
-                shallowSleepDuration: Math.round((sleepData.ShallowSleepDuration || 0) / 60),
-                awakeDuration: Math.round((sleepData.AwakeDuration || 0) / 60),
-                sleepBeans: sleepData.SleepBeans || []
-              };
+              // 기존 데이터가 있는 경우에만 업데이트
+              if (healthItem.HeartRateArr?.length > 0) userDraft.data.heartRateArr = healthItem.HeartRateArr;
+              if (healthItem.PressureArr?.length > 0) userDraft.data.pressureArr = healthItem.PressureArr;
+              if (healthItem.BloodOxygenArr?.length > 0) userDraft.data.oxygenArr = healthItem.BloodOxygenArr;
               
-              userDraft.data.sleep = userDraft.data.sleepData.totalSleepDuration;
-
-              // 체온과 혈압은 이미 있는 경우 업데이트하지 않음
-              if (!userDraft.data.temperature) {
-                userDraft.data.temperature = getRandomTemperature();
+              // Sport 데이터가 있는 경우에만 업데이트
+              if (healthItem.Sport?.length > 0) {
+                userDraft.data.steps = healthItem.Sport.slice(-1)[0]?.TotalSteps || userDraft.data.steps;
+                userDraft.data.calories = healthItem.Sport.slice(-1)[0]?.Calorie || userDraft.data.calories;
+                userDraft.data.distance = healthItem.Sport.slice(-1)[0]?.WalkDistance || userDraft.data.distance;
+                userDraft.data.hourlyData.steps = healthItem.Sport.map((s) => s.TotalSteps) || userDraft.data.hourlyData.steps;
+                userDraft.data.hourlyData.calories = healthItem.Sport.map((s) => s.Calorie) || userDraft.data.hourlyData.calories;
+                userDraft.data.hourlyData.distance = healthItem.Sport.map((s) => s.WalkDistance) || userDraft.data.hourlyData.distance;
               }
-              if (!userDraft.data.bloodPressure) {
-                userDraft.data.bloodPressure = getRandomBloodPressure();
+              
+              // Sleep 데이터가 있는 경우에만 업데이트
+              if (healthItem.Sleep) {
+                const sleepData = healthItem.Sleep;
+                userDraft.data.sleepData = {
+                  sleepDateTime: sleepData.SleepDateTime || userDraft.data.sleepData.sleepDateTime,
+                  wakeTime: sleepData.WakeTime || userDraft.data.sleepData.wakeTime,
+                  totalSleepDuration: Math.round((sleepData.TotalSleepDuration || userDraft.data.sleepData.totalSleepDuration) / 60),
+                  deepSleepDuration: Math.round((sleepData.DeepSleepDuration || userDraft.data.sleepData.deepSleepDuration) / 60),
+                  shallowSleepDuration: Math.round((sleepData.ShallowSleepDuration || userDraft.data.sleepData.shallowSleepDuration) / 60),
+                  awakeDuration: Math.round((sleepData.AwakeDuration || userDraft.data.sleepData.awakeDuration) / 60),
+                  sleepBeans: sleepData.SleepBeans || userDraft.data.sleepData.sleepBeans
+                };
+                userDraft.data.sleep = userDraft.data.sleepData.totalSleepDuration;
               }
             }
           })
@@ -287,7 +290,7 @@ function App() {
     } catch (error) {
       console.error('건강 데이터 fetching 오류:', error);
     }
-  }, [siteId, credentials, url, getRandomTemperature, getRandomBloodPressure]);
+  }, [siteId, credentials, url]);
 
   // 사용자 및 링 데이터 가져오기 함수
   const fetchUsersAndRingData = useCallback(async () => {
@@ -553,8 +556,10 @@ function App() {
     if (!isLoggedIn || !siteId || !isLocked) return;
 
     // 초기 데이터 로드
-    fetchUsersAndRingData();
-    handleLoadFloorPlan();
+    if (!currentPath.startsWith('/users/')) {
+      fetchUsersAndRingData();
+      handleLoadFloorPlan();
+    }
 
     // 이전 인터벌 정리
     if (intervalRef.current) {
@@ -565,25 +570,12 @@ function App() {
     intervalRef.current = setInterval(() => {
       console.log('30초마다 사용자 및 링 데이터 가져오기');
       
-      if (currentPath.startsWith('/users/')) {
-        // UserDetail 페이지일 경우 해당 사용자만 업데이트
-        const userId = currentPath.split('/users/')[1]; // URL에서 userId 추출
-        if (userId) {
-          // 현재 날짜가 오늘인 경우에만 업데이트
-          const selectedDate = sessionStorage.getItem('selectedDate');
-          const today = new Date();
-          const isToday = selectedDate ? new Date(selectedDate).toDateString() === today.toDateString() : true;
-          
-          if (isToday) {
-            fetchHealthData(parseInt(userId), today);
-          }
-        }
-      } else {
-        // 일반적인 업데이트
+      // UserDetail 페이지가 아닐 때만 실시간 업데이트 수행
+      if (!currentPath.startsWith('/users/')) {
         fetchUsersAndRingData();
         handleLoadFloorPlan();
       }
-    }, 30000); // 30초
+    }, 30000);
 
     // 컴포넌트 언마운트 시 정리
     return () => {
@@ -592,7 +584,7 @@ function App() {
         intervalRef.current = null;
       }
     };
-  }, [isLoggedIn, siteId, isLocked, currentPath]); // 의존성 배열에서 불필요한 의존성 제거
+  }, [isLoggedIn, siteId, isLocked, currentPath]); // fetchUsersAndRingData와 handleLoadFloorPlan 제거
 
   useEffect(() => {
     if (floorPlanImage && floorPlanImage.src && siteId) {
@@ -602,27 +594,30 @@ function App() {
 
   // 초기 로그인 시 사용자 데이터 로드 수정
   useEffect(() => {
-    if (isLoggedIn && siteId) {
-
-          // 이미 로드된 사용자에 대해 호출 방지 (macAddr이 있 경우에만)
-      users.forEach(user => { // 변경: storedUsers 대신 users
-        if (user.macAddr) {
-          const today = new Date();
-          const formattedDate = formatDateYYMMDD(today);
-          const key = `${user.id}_${formattedDate}`;
-
-          setHealthData((prevData) => {
-            if (!prevData[key]) {
-              fetchHealthData(user.id, today); // 데이터가 없는 경우에만 호출
-            }
-            return prevData;
-          });
-        } else {
-          console.warn(`사용자 ${user.id} (${user.name})에게 macAddr이 없습니다. 건강 데이터 요청을 건너뜁니다.`);
-        }
-      });
+    if (!isLoggedIn || !siteId) return;
+    
+    // UserDetail 페이지에서는 데이터 로드하지 않음
+    if (currentPath.startsWith('/users/')) {
+      return;
     }
-  }, [isLoggedIn, siteId, fetchHealthData]);
+
+    // 최초 한 번만 실행되도록 함
+    const loadInitialData = async () => {
+      const today = new Date();
+      const formattedDate = formatDateYYMMDD(today);
+      
+      for (const user of users) {
+        if (user.macAddr) {
+          const key = `${user.id}_${formattedDate}`;
+          if (!healthData[key]) {
+            await fetchHealthData(user.id, today);
+          }
+        }
+      }
+    };
+
+    loadInitialData();
+  }, [isLoggedIn, siteId, currentPath]); // users와 healthData 의존성 제거
 
   // 새로운 ID 생성 함수 (최대 ID + 1 방식)
   const getNewId = useCallback((users) => {

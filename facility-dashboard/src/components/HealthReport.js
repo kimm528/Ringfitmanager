@@ -654,7 +654,31 @@ const HealthReport = ({ users }) => {
                     <XAxis dataKey="time" />
                     <YAxis yAxisId="left" />
                     <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-2 border rounded shadow">
+                            <p className="text-sm font-semibold mb-1">{label}</p>
+                            {payload.map((entry, index) => (
+                              <p key={index} style={{ color: entry.color }}>
+                                {entry.name}: {
+                                  entry.dataKey === 'temperature' ? entry.value.toFixed(1) :
+                                  entry.dataKey === 'calories' ? Math.round(entry.value) :
+                                  entry.dataKey === 'distance' ? entry.value.toFixed(1) :
+                                  entry.value
+                                } {
+                                  entry.dataKey === 'temperature' ? '°C' :
+                                  entry.dataKey === 'calories' ? 'kcal' :
+                                  entry.dataKey === 'distance' ? 'km' :
+                                  ''
+                                }
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }} />
                     <Legend />
                     <Line yAxisId="left" type="monotone" dataKey="heartRate" stroke="#8884d8" name="심박수" />
                     <Line yAxisId="right" type="monotone" dataKey="oxygen" stroke="#82ca9d" name="산소포화도" />

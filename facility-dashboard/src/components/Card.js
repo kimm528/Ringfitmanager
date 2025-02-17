@@ -37,7 +37,8 @@ const Card = ({
   availableRings,
   users,
   disconnectInterval,
-  isExpanded
+  isExpanded,
+  onRingDisconnect
 }) => {
   const navigate = useNavigate();
 
@@ -51,9 +52,6 @@ const Card = ({
   const [editedAge, setEditedAge] = useState(user.age);
   const [isRingConnected, setIsRingConnected] = useState(false);
   const [clickTimeout, setClickTimeout] = useState(null);
-
-  // **새로 추가된 상태**
-  const [showRingDisconnectModal, setShowRingDisconnectModal] = useState(false);
 
   const menuRef = useRef(null);
   const modalRef = useRef(null);
@@ -343,15 +341,13 @@ const Card = ({
     return null;
   }, []);
 
-  // **새로 추가된 링 변경 핸들러**
+  // 링 변경 핸들러
   const handleRingChangeClick = useCallback(
     (e) => {
       e.stopPropagation();
       if (user.ring && user.ring.MacAddr) {
-        // 링이 연결된 사용자일 경우 링 해제 확인 모달 표시
-        setShowRingDisconnectModal(true);
+        onRingDisconnect(user);
       } else {
-        // 링이 연결되지 않은 사용자일 경우 DeviceManagement 페이지로 이동하면서 사용자 전달
         navigate('/devices', { 
           state: { 
             selectedUser: user,
@@ -360,11 +356,14 @@ const Card = ({
         });
       }
     },
-    [user, navigate]
+    [user, navigate, onRingDisconnect]
   );
 
   // 클릭 핸들러 추가
   const handleClick = () => {
+    if (isExpanded) {
+      return; // 확장된 상태에서는 클릭 이벤트 무시
+    }
     if (clickTimeout === null) {
       setClickTimeout(
         setTimeout(() => {
@@ -527,20 +526,22 @@ const Card = ({
             size={20}
           />
         </button>
-        <button
-          style={{
-            padding: '5px',
-            marginRight: '5px',
-            borderRadius: '80%',
-          }}
-          onClick={handleRingChangeClick}
-          aria-label="링 변경"
-        >
-          <FaExchangeAlt
-            className={`mr-1 ${user.ring && user.ring.MacAddr ? 'text-blue-500' : 'text-gray-400'}`}
-            size={20}
-          />
-        </button>
+        {!isExpanded && (
+          <button
+            style={{
+              padding: '5px',
+              marginRight: '5px',
+              borderRadius: '80%',
+            }}
+            onClick={handleRingChangeClick}
+            aria-label="링 변경"
+          >
+            <FaExchangeAlt
+              className={`mr-1 ${user.ring && user.ring.MacAddr ? 'text-blue-500' : 'text-gray-400'}`}
+              size={20}
+            />
+          </button>
+        )}
         <button onClick={toggleMenu} aria-label="메뉴 보기">
           <FaEllipsisV size={20} />
         </button>
@@ -553,6 +554,20 @@ const Card = ({
               심박수 위험지수 수정
             </button>
           </div>
+        )}
+        {isExpanded && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateUser(user, false);
+            }}
+            className="p-1 hover:bg-gray-100 rounded-full ml-4"
+            aria-label="닫기"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         )}
       </div>
 
@@ -947,7 +962,7 @@ const Card = ({
           {
             icon: <MdLocationOn size={24} color="#4caf50" />,
             label: '이동거리',
-            value: `${(processedDistance / 1000).toFixed(2)} km`,
+            value: `${(processedDistance / 1000).toFixed(1)} km`,
           },
           {
             icon: <FaBrain size={24} color="#9c27b0" />,

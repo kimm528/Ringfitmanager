@@ -17,6 +17,8 @@ const Dashboard = ({
   assignedUsers
 }) => {
   const [expandedUserId, setExpandedUserId] = useState(null);
+  const [showRingDisconnectModal, setShowRingDisconnectModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   const parseCreateDateTime = (createDateTime) => {
     if (!createDateTime || createDateTime.length !== 12) return new Date(0);
@@ -99,14 +101,32 @@ const Dashboard = ({
     updateUser(updatedUser);
   }, [updateUser]);
 
+  const handleRingDisconnect = useCallback((user) => {
+    setSelectedUser(user);
+    setShowRingDisconnectModal(true);
+  }, []);
+
+  const handleRingDisconnectConfirm = useCallback(() => {
+    if (selectedUser) {
+      const updatedUser = {
+        ...selectedUser,
+        ring: null,
+        macAddr: ''
+      };
+      updateUser(updatedUser);
+      setShowRingDisconnectModal(false);
+      setSelectedUser(null);
+    }
+  }, [selectedUser, updateUser]);
+
   return (
     <div className="h-full flex flex-col relative">
       <div className="flex justify-between items-center p-4">
         {/* 상단 요소가 필요하면 추가 */}
       </div> 
 
-      <div className="flex-1 p-4 overflow-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative">
+      <div className="flex-1 p-4 overflow-auto" style={{ position: 'relative', zIndex: 1 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-8">
           {sortedUsers.map((user) => (
             <motion.div
               key={user.id}
@@ -114,7 +134,6 @@ const Dashboard = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="relative"
               style={{
                 gridColumn: 'span 1',
                 visibility: expandedUserId === user.id ? 'hidden' : 'visible',
@@ -122,7 +141,8 @@ const Dashboard = ({
                 transition: 'opacity 0.3s ease-in-out',
                 minWidth: '320px',
                 width: '100%',
-                maxWidth: '100%'
+                maxWidth: '100%',
+                position: 'relative'
               }}
             >
               <Card
@@ -134,15 +154,19 @@ const Dashboard = ({
                 users={users}
                 disconnectInterval={disconnectInterval}
                 isExpanded={expandedUserId === user.id}
+                onRingDisconnect={handleRingDisconnect}
               />
             </motion.div>
           ))}
         </div>
+      </div>
 
-        {/* 확장된 카드와 오버레이 */}
+      {/* Portal for modals */}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999 }}>
+        {/* Expanded card modal */}
         {expandedUserId !== null && (
-          <div className="fixed inset-0 left-0 right-0" style={{ zIndex: 9998 }}>
-            <div className="absolute inset-0 bg-white bg-opacity-80 backdrop-blur-sm" />
+          <div className="fixed inset-0 left-0 right-0" style={{ zIndex: 9998, pointerEvents: 'auto' }}>
+            <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
             
             {sortedUsers.filter(user => user.id === expandedUserId).map((user) => (
               <div
@@ -166,6 +190,37 @@ const Dashboard = ({
                 />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Ring disconnect modal */}
+        {showRingDisconnectModal && selectedUser && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            style={{ pointerEvents: 'auto' }}
+            onClick={() => setShowRingDisconnectModal(false)}
+          >
+            <div 
+              className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold mb-4">링 해제</h3>
+              <p className="mb-4">정말로 {selectedUser.name}님의 링을 해제하시겠습니까?</p>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                  onClick={() => setShowRingDisconnectModal(false)}
+                >
+                  취소
+                </button>
+                <button
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  onClick={handleRingDisconnectConfirm}
+                >
+                  해제
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
