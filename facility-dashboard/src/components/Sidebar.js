@@ -171,14 +171,20 @@ const Sidebar = ({
       {/* 사이드바 */}
       <aside
         className={`
-          ${isMobileView ? 'fixed top-[80px] h-[calc(100dvh-80px-env(safe-area-inset-bottom))]' : 'relative h-[calc(100vh-80px)] mt-[80px]'}
+          ${isMobileView ? 'fixed top-[5rem] h-[calc(100dvh-5rem-env(safe-area-inset-bottom))]' : 'relative h-[calc(100vh-5rem)] mt-[5rem]'}
           left-0 
-          ${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:w-0'}
           transition-all duration-300 ease-in-out
           bg-gray-50 text-gray-700 shadow-lg
-          ${isMobileView ? 'z-[1000] w-64' : 'z-30'}
+          ${isMobileView ? 'z-[1000]' : 'z-30'}
           overflow-y-auto
         `}
+        style={{
+          fontSize: '1rem',
+          width: isSidebarOpen ? '16rem' : '0',
+          minWidth: isSidebarOpen ? '16rem' : '0',
+          maxWidth: isSidebarOpen ? '16rem' : '0',
+          transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)'
+        }}
       >
         {/* 전체 컨테이너 */}
         <div className="flex flex-col h-full">
