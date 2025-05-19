@@ -303,13 +303,23 @@ const DeviceManagement = ({
       });
 
       if (response.status === 200) {
-        if (fetchUsers) {
-          await fetchUsers();
-        }
-        classifyDevices(); // 변경된 availableRings로 다시 분류
-
+        // 즉시 로컬 상태 업데이트
+        setUsers(prevUsers => 
+          prevUsers.map(u => 
+            u.id === updatedUser.id ? updatedUser : u
+          )
+        );
+        
+        // 즉시 기기 분류 업데이트
+        classifyDevices();
+        
         setShowConfirmationModal(false);
-        setSelectedUser(null); // 선택된 사용자 초기화
+        setSelectedUser(null);
+
+        // 백그라운드에서 전체 데이터 새로고침
+        if (fetchUsers) {
+          fetchUsers();
+        }
       } else {
         console.error('사용자 업데이트 실패:', response.statusText);
         alert('사용자 업데이트에 실패했습니다.');

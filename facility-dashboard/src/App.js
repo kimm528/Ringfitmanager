@@ -97,13 +97,13 @@ const formatDateYYMMDD = (date) => {
 };
 
 function App() {
-  //======= 테스트 설정 시작 ======= 
-  /*// TODO: 실제 배포 전 이 부분 제거 필요
+  /*//======= 테스트 설정 시작 ======= 
+  // TODO: 실제 배포 전 이 부분 제거 필요
   useEffect(() => {
     // 테스트용 임시 쿠키 설정
     Cookies.set('isLoggedIn', 'true');
-    Cookies.set('siteId', 'Demo');  // 원하는 사이트 ID로 변경
-    Cookies.set('adminId', 'Demo');     // 원하는 관리자 ID로 변경
+    Cookies.set('siteId', 'Dotories');  // 원하는 사이트 ID로 변경
+    Cookies.set('adminId', 'Dotories');     // 원하는 관리자 ID로 변경
   }, []);
   // ======= 테스트 설정 끝 =======*/
 
@@ -821,8 +821,17 @@ function App() {
 
       if (response.ok && responseText.includes('User update success')) {
         console.log('서버에서 사용자 업데이트 성공.');
+        
+        // 즉시 로컬 상태 업데이트
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user.id === updatedUser.id ? {...user, ...updatedUser} : user
+          )
+        );
+
+        // 백그라운드에서 전체 데이터 새로고침
         if (shouldRefetch) {
-          await fetchUsersAndRingData();
+          fetchUsersAndRingData();
         }
       } else {
         console.error('서버에서 사용자 업데이트 실패:', responseText);
