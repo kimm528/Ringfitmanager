@@ -140,11 +140,11 @@ const getLastNonZero = (arr = []) => {
     return 0;
   }
   for (let i = arr.length - 1; i >= 0; i--) {
-    if (arr[i] !== 0) {
+    if (arr[i] !== 0 && arr[i] !== null && !isNaN(arr[i])) {
       return arr[i];
     }
   }
-  return 0; // Return 0 if all values are zero
+  return 0;
 };
 
 // Reusable InfoCard Component
@@ -768,39 +768,24 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
   // 컴포넌트 마운트 시 한 번만 랜덤 데이터 생성
   useEffect(() => {
-    const baseTemp = user?.data?.temperature || 36.5;
-    const baseSystolic = user?.data?.bloodPressure?.systolic || 120;
-    const baseDiastolic = user?.data?.bloodPressure?.diastolic || 80;
-
-    const getRandomTemp = () => {
-      return parseFloat((Math.random() * (38.2 - 34.8) + 34.8).toFixed(1));
-    };
-
-    const getRandomBP = () => {
-      const systolic = Math.floor(Math.random() * (142 - 88 + 1) + 88);
-      const diastolic = Math.floor(Math.random() * (92 - 58 + 1) + 58);
-      return { systolic, diastolic };
-    };
-
     const newVitalSignsData = Array.from({ length: 144 }, (_, i) => {
       const hour = Math.floor(i / 6);
       const minute = (i % 6) * 10;
       const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       
-      const variation = Math.sin((hour * 60 + minute) * Math.PI / (24 * 60)) * 0.5 + 0.5;
+      // 체온 데이터는 실제 temperatureArr에서 가져옴
+      const temperatureIndex = Math.floor(i * 2); // 10분 간격 데이터를 5분 간격으로 보간
+      const temperature = user?.data?.temperatureArr?.[temperatureIndex];
       
-      const randomTemp = getRandomTemp();
-      const randomBP = getRandomBP();
-
-      const temperature = baseTemp + (randomTemp - baseTemp) * variation * 0.3;
-      const systolic = baseSystolic + (randomBP.systolic - baseSystolic) * variation * 0.3;
-      const diastolic = baseDiastolic + (randomBP.diastolic - baseDiastolic) * variation * 0.3;
+      // 혈압 데이터도 실제 데이터에서 가져옴
+      const systolic = user?.data?.bloodPressure?.systolicArr?.[temperatureIndex];
+      const diastolic = user?.data?.bloodPressure?.diastolicArr?.[temperatureIndex];
 
       return {
         time,
-        temperature: Number(temperature.toFixed(1)),
-        systolic: Math.round(systolic),
-        diastolic: Math.round(diastolic),
+        temperature: temperature && temperature !== 0 ? Number(temperature.toFixed(1)) : null,
+        systolic: systolic && systolic !== 0 ? Number(systolic) : null,
+        diastolic: diastolic && diastolic !== 0 ? Number(diastolic) : null,
       };
     });
 
@@ -1080,17 +1065,17 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                 <InfoCard
                   icon={<FaTemperatureHigh className="text-orange-500" />}
                   title="체온"
-                  value={`${user?.data?.temperature?.toFixed(1) || '0.0'}°C`}
+                  value={`${getLastNonZero(user?.data?.temperatureArr || [])?.toFixed(1) || '0.0'}°C`}
                 />
                 <InfoCard
                   icon={<RiHeartPulseLine className="text-red-500" size={28} />}
                   title="수축기 혈압"
-                  value={`${user?.data?.bloodPressure?.systolic || 0} mmHg`}
+                  value={`${getLastNonZero(user?.data?.bloodPressure?.systolicArr || []) || 0} mmHg`}
                 />
                 <InfoCard
                   icon={<RiHeartPulseFill className="text-blue-500" size={28} />}
                   title="이완기 혈압"
-                  value={`${user?.data?.bloodPressure?.diastolic || 0} mmHg`}
+                  value={`${getLastNonZero(user?.data?.bloodPressure?.diastolicArr || []) || 0} mmHg`}
                 />
               </div>
 
@@ -1108,16 +1093,21 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                           return (
                             <div className="bg-white p-2 border rounded shadow">
                               <p className="text-sm font-semibold mb-1">{label}</p>
-                              {payload.map((entry, index) => (
-                                <p key={index} style={{ color: entry.color }}>
-                                  {entry.name}: {
-                                    entry.dataKey === 'temperature' ? entry.value.toFixed(1) :
-                                    entry.dataKey === 'calories' ? Math.round(entry.value) :
-                                    entry.dataKey === 'distance' ? entry.value.toFixed(1) :
-                                    entry.value
-                                  }
-                                </p>
-                              ))}
+                              {payload.map((entry, index) => {
+                                if (entry.value === null || entry.value === undefined || isNaN(entry.value)) {
+                                  return null;
+                                }
+                                return (
+                                  <p key={index} style={{ color: entry.color }}>
+                                    {entry.name}: {
+                                      entry.dataKey === 'temperature' ? entry.value.toFixed(1) :
+                                      entry.dataKey === 'calories' ? Math.round(entry.value) :
+                                      entry.dataKey === 'distance' ? entry.value.toFixed(1) :
+                                      entry.value
+                                    }
+                                  </p>
+                                );
+                              })}
                             </div>
                           );
                         }
@@ -1158,6 +1148,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                         name="수축기 혈압 (mmHg)"
                         dot={<CustomizedDot />}
                         strokeWidth={2}
+                        connectNulls={false}
                       />
                     )}
                     {visibleVitalSigns.diastolic && (
@@ -1168,6 +1159,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                         name="이완기 혈압 (mmHg)"
                         dot={<CustomizedDot />}
                         strokeWidth={2}
+                        connectNulls={false}
                       />
                     )}
                   </LineChart>
@@ -1208,13 +1200,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             <div className="bg-white p-2 border rounded shadow">
                               <p className="text-sm font-semibold mb-1">{label}</p>
                               {payload.map((entry, index) => {
-                                if (entry.dataKey === 'sleep' && entry.value !== null) {
-                                  const currentData = vitalSignsData.find(d => d.time === label);
-                                  return (
-                                    <p key={index} style={{ color: entry.color }}>
-                                      수면 상태: {currentData?.sleepLabel || '없음'}
-                                    </p>
-                                  );
+                                if (entry.value === null || entry.value === undefined || isNaN(entry.value)) {
+                                  return null;
                                 }
                                 return (
                                   <p key={index} style={{ color: entry.color }}>
@@ -1323,13 +1310,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             <div className="bg-white p-2 border rounded shadow">
                               <p className="text-sm font-semibold mb-1">{label}</p>
                               {payload.map((entry, index) => {
-                                if (entry.dataKey === 'sleep' && entry.value !== null) {
-                                  const currentData = vitalSignsData.find(d => d.time === label);
-                                  return (
-                                    <p key={index} style={{ color: entry.color }}>
-                                      수면 상태: {currentData?.sleepLabel || '없음'}
-                                    </p>
-                                  );
+                                if (entry.value === null || entry.value === undefined || isNaN(entry.value)) {
+                                  return null;
                                 }
                                 return (
                                   <p key={index} style={{ color: entry.color }}>
@@ -1662,6 +1644,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             name="수축기 혈압 (mmHg)"
                             dot={<CustomizedDot />}
                             strokeWidth={2}
+                            connectNulls={false}
                           />
                         )}
                         {visibleVitalSigns.diastolic && (
@@ -1672,6 +1655,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             name="이완기 혈압 (mmHg)"
                             dot={<CustomizedDot />}
                             strokeWidth={2}
+                            connectNulls={false}
                           />
                         )}
                       </LineChart>

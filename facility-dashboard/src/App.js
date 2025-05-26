@@ -32,7 +32,7 @@ const MemoizedFloorPlan = memo(FloorPlan);
 const MemoizedDeviceManagement = memo(DeviceManagement);
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
-//const url = 'http://14.47.20.111:7201'
+//const url = 'http://172.30.1.8:7201'
 const url = 'https://api.ring.dotories.com';
 
 // 세션 스토리지 관련 헬퍼 함수 (floorPlanImage만 처리하도록 수정)
@@ -61,21 +61,6 @@ const saveToSessionStorage = (key, value) => {
   } else {
     sessionStorage.setItem(key, value);
   }
-};
-
-// Sidebar 상태를 로에 따라 제어하는 컴포넌트
-const SidebarController = ({ setIsSidebarOpen, children }) => {
-  const location = useLocation();
-
-  useEffect(() => {
-    if (location.pathname === '/floorplan') {
-      setIsSidebarOpen(false);
-      console.log('Sidebar 닫힘');
-    }
-    // /floorplan 외의 경로에서는 Sidebar 상태를 변경하지 않음
-  }, [location.pathname, setIsSidebarOpen]);
-
-  return children;
 };
 
 // Helper 함수들
@@ -283,6 +268,18 @@ function App() {
                 };
                 userDraft.data.sleep = userDraft.data.sleepData.totalSleepDuration;
               }
+
+              if (healthItem.TemperatureArr?.length > 0) {
+                const validTemps = healthItem.TemperatureArr.filter(val => val !== 0 && val !== 0.0);
+                userDraft.data.temperature = validTemps.length > 0
+                  ? Number(validTemps[validTemps.length - 1].toFixed(1))
+                  : 0;
+                userDraft.data.temperatureArr = healthItem.TemperatureArr;
+              }
+
+              if (!userDraft.data.bloodPressure) userDraft.data.bloodPressure = {};
+              if (healthItem.SbpArr?.length > 0) userDraft.data.bloodPressure.systolicArr = healthItem.SbpArr;
+              if (healthItem.DbpArr?.length > 0) userDraft.data.bloodPressure.diastolicArr = healthItem.DbpArr;
             }
           })
         );
@@ -377,8 +374,8 @@ function App() {
                 awakeDuration: 0,
                 sleepBeans: []
               },
-              temperature: getRandomTemperature(),
-              bloodPressure: getRandomBloodPressure(),
+              temperature: 0, // 초기값 0
+              bloodPressure: getRandomBloodPressure(), // 혈압 초기값
             };
 
             // 사용자와 링 연결
@@ -739,7 +736,7 @@ function App() {
                 awakeDuration: 0,
                 sleepBeans: []
               },
-              temperature: getRandomTemperature(), // 체온 초기값
+              temperature: 0, // 초기값 0
               bloodPressure: getRandomBloodPressure(), // 혈압 초기값
             },
             thresholds: {

@@ -130,16 +130,16 @@ const Card = ({
     };
   }, [user.ring, disconnectInterval, parseConnectedTime]);
 
-  // 데이터에서 마지막 0이 아닌 값을 추출하는 함수
-  const getLastNonZero = useCallback((arr) => {
-    if (!arr || !Array.isArray(arr)) return 0;
+  // Helper Function to get the last non-zero value
+  const getLastNonZero = (arr = []) => {
+    if (!Array.isArray(arr)) return 0;
     for (let i = arr.length - 1; i >= 0; i--) {
-      if (arr[i] !== 0) {
+      if (arr[i] !== 0 && arr[i] !== null && !isNaN(arr[i])) {
         return arr[i];
       }
     }
     return 0;
-  }, []);
+  };
 
   // 시간대별 데이터에서 마지막 0이 아닌 값 추출
   const lastSteps = useMemo(() => getLastNonZero(user.data?.hourlyData?.steps || []), [user.data, getLastNonZero]);
@@ -213,8 +213,8 @@ const Card = ({
     {
       name: '체온',
       xValue: 1,
-      value: user.data?.temperature ? user.data.temperature : 0,
-      status: getTemperatureStatus(user.data?.temperature),
+      value: getLastNonZero(user.data?.temperatureArr || []),
+      status: getTemperatureStatus(getLastNonZero(user.data?.temperatureArr || [])),
       dangerLow: 35,
       warningLow: 36,
       warningHigh: 37.5,
@@ -223,17 +223,17 @@ const Card = ({
     {
       name: '혈압',
       xValue: 2,
-      value: user.data?.bloodPressure?.systolic || 0,
-      valueLow: user.data?.bloodPressure?.diastolic || 0,
+      value: getLastNonZero(user.data?.bloodPressure?.systolicArr || []),
+      valueLow: getLastNonZero(user.data?.bloodPressure?.diastolicArr || []),
       status: getBloodPressureStatus(
-        user.data?.bloodPressure?.systolic,
-        user.data?.bloodPressure?.diastolic
+        getLastNonZero(user.data?.bloodPressure?.systolicArr || []),
+        getLastNonZero(user.data?.bloodPressure?.diastolicArr || [])
       ),
     },
     {
       name: '심박수',
       xValue: 3,
-      value: bpm,
+      value: bpm !== 0 ? bpm : null,
       status: getHeartRateStatus(bpm),
       dangerLow: thresholds.heartRateDangerLow,
       warningLow: thresholds.heartRateWarningLow,
@@ -243,7 +243,7 @@ const Card = ({
     {
       name: '산소',
       xValue: 4,
-      value: oxygen,
+      value: oxygen !== 0 ? oxygen : null,
       status: getOxygenStatus(oxygen),
       dangerLow: OXYGEN_DANGER_THRESHOLD,
       warningLow: OXYGEN_WARNING_THRESHOLD,
@@ -253,7 +253,7 @@ const Card = ({
     {
       name: '수면',
       xValue: 5,
-      value: sleepScore,
+      value: sleepScore !== 0 ? sleepScore : null,
       status: getSleepStatus(sleepScore),
       dangerLow: 30,
       warningLow: 50,
@@ -320,7 +320,7 @@ const Card = ({
     if (value !== 0 && value != null) {
       const getValueWithUnit = () => {
         if (['스트레스', '산소'].includes(name)) return `${value}%`;
-        if (name === '체온') return `${value}°C`;
+        if (name === '체온' && value) return `${value}°C`;
         if (name === '수면' && value === 0) return '';
         if (name === '수면') return `${value}점`;
         return value;
@@ -360,28 +360,33 @@ const Card = ({
   );
 
   // 클릭 핸들러 추가
-  const handleClick = () => {
-    if (isExpanded) {
-      return; // 확장된 상태에서는 클릭 이벤트 무시
+  const handleClick = useCallback((e) => {
+    if (e.target.closest('.menu-button') || e.target.closest('.modal')) {
+      return;
     }
-    if (clickTimeout === null) {
-      setClickTimeout(
-        setTimeout(() => {
-          updateUser(user, !isExpanded);
-          setClickTimeout(null);
-        }, 200)
-      );
-    }
-  };
-
-  // 더블 클릭 핸들러 추가
-  const handleDoubleClick = () => {
+    
     if (clickTimeout) {
       clearTimeout(clickTimeout);
       setClickTimeout(null);
+      // 더블 클릭 처리
+      navigate(`/users/${user.id}`);
+    } else {
+      // 단일 클릭 처리
+      const timeout = setTimeout(() => {
+        setClickTimeout(null);
+        updateUser(user, !isExpanded);
+      }, 200);
+      setClickTimeout(timeout);
+    }
+  }, [clickTimeout, isExpanded, navigate, updateUser, user]);
+
+  // 더블 클릭 핸들러 추가
+  const handleDoubleClick = useCallback((e) => {
+    if (e.target.closest('.menu-button') || e.target.closest('.modal')) {
+      return;
     }
     navigate(`/users/${user.id}`);
-  };
+  }, [navigate, user.id]);
 
   // 컴포넌트 언마운트 시 타임아웃 클리어
   useEffect(() => {
@@ -427,6 +432,9 @@ const Card = ({
       const oxygenIndex = Math.floor(i / 12);
       const oxygen = user.data?.oxygenArr?.[oxygenIndex] || null;
 
+      // 체온 데이터 (5분 간격)
+      const temperature = user.data?.temperatureArr?.[i] || null;
+
       // 수면 데이터 처리
       let sleepState = null;
       let sleepStateLabel = null;
@@ -466,9 +474,9 @@ const Card = ({
         oxygen: oxygen !== 0 ? oxygen : null,
         sleep: sleepState,
         sleepLabel: sleepStateLabel,
-        temp: user.data?.temperature || null,
-        bp_sys: user.data?.bloodPressure?.systolic || null,
-        bp_dia: user.data?.bloodPressure?.diastolic || null
+        temp: temperature !== 0 ? temperature : null,
+        bp_sys: user.data?.bloodPressure?.systolicArr?.[i] !== 0 ? user.data?.bloodPressure?.systolicArr?.[i] : null,
+        bp_dia: user.data?.bloodPressure?.diastolicArr?.[i] !== 0 ? user.data?.bloodPressure?.diastolicArr?.[i] : null
       };
     });
   }, [user.data]);
@@ -717,8 +725,8 @@ const Card = ({
               {
                 name: '체온',
                 xValue: 1,
-                value: user.data?.temperature ? user.data.temperature : 0,
-                status: getTemperatureStatus(user.data?.temperature),
+                value: getLastNonZero(user.data?.temperatureArr || []),
+                status: getTemperatureStatus(getLastNonZero(user.data?.temperatureArr || [])),
                 dangerLow: 35,
                 warningLow: 36,
                 warningHigh: 37.5,
@@ -727,17 +735,17 @@ const Card = ({
               {
                 name: '혈압',
                 xValue: 2,
-                value: user.data?.bloodPressure?.systolic || 0,
-                valueLow: user.data?.bloodPressure?.diastolic || 0,
+                value: getLastNonZero(user.data?.bloodPressure?.systolicArr || []),
+                valueLow: getLastNonZero(user.data?.bloodPressure?.diastolicArr || []),
                 status: getBloodPressureStatus(
-                  user.data?.bloodPressure?.systolic,
-                  user.data?.bloodPressure?.diastolic
+                  getLastNonZero(user.data?.bloodPressure?.systolicArr || []),
+                  getLastNonZero(user.data?.bloodPressure?.diastolicArr || [])
                 ),
               },
               {
                 name: '심박수',
                 xValue: 3,
-                value: bpm,
+                value: bpm !== 0 ? bpm : null,
                 status: getHeartRateStatus(bpm),
                 dangerLow: thresholds.heartRateDangerLow,
                 warningLow: thresholds.heartRateWarningLow,
@@ -747,7 +755,7 @@ const Card = ({
               {
                 name: '산소',
                 xValue: 4,
-                value: oxygen,
+                value: oxygen !== 0 ? oxygen : null,
                 status: getOxygenStatus(oxygen),
                 dangerLow: OXYGEN_DANGER_THRESHOLD,
                 warningLow: OXYGEN_WARNING_THRESHOLD,
@@ -757,7 +765,7 @@ const Card = ({
               {
                 name: '수면',
                 xValue: 5,
-                value: sleepScore,
+                value: sleepScore !== 0 ? sleepScore : null,
                 status: getSleepStatus(sleepScore),
                 dangerLow: 30,
                 warningLow: 50,
@@ -934,7 +942,7 @@ const Card = ({
                     return `${data.value}/${data.valueLow}`;
                   }
                   if (data.name === '체온') {
-                    return `${(data.value).toFixed(1)}`;
+                    return data.value ? data.value.toFixed(1) : '';
                   }
                   return data.value;
                 }}

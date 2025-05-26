@@ -24,6 +24,8 @@ import Cookies from 'js-cookie';
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 const url = 'https://api.ring.dotories.com';
+//const url = 'http://172.30.1.8:7201'
+
 
 const formatDateYYMMDD = (date) => {
   const year = String(date.getFullYear()).slice(-2);
@@ -62,11 +64,16 @@ const fetchHealthDataForDateRange = async (userId, startDate, endDate) => {
       const userHealthData = data.Data?.[0];
       
       if (userHealthData) {
+        // 체온 데이터 로깅 추가
+        console.log(`날짜 ${formattedDate}의 체온 데이터:`, userHealthData.TemperatureArr);
+        
         healthData.push({
           date: formattedDate,
           HeartRateArr: userHealthData.HeartRateArr || [],
           BloodOxygenArr: userHealthData.BloodOxygenArr || [],
-          PressureArr: userHealthData.PressureArr || [],
+          SbpArr: userHealthData.SbpArr || [],
+          DbpArr: userHealthData.DbpArr || [],
+          TemperatureArr: userHealthData.TemperatureArr || [],
           Sport: userHealthData.Sport?.slice(-1)[0] || {},
           Sleep: userHealthData.Sleep || null
         });
@@ -385,12 +392,16 @@ const HealthReportDetail = ({ users }) => {
         }
 
         const processedData = healthData.map(dayData => {
-          // 혈압 랜덤 데이터 생성 (수축기: 110-130, 이완기: 70-85)
-          const systolic = Math.floor(Math.random() * (130 - 110 + 1)) + 110;
-          const diastolic = Math.floor(Math.random() * (85 - 70 + 1)) + 70;
+          // 체온 데이터 처리
+          const temperature = calculateTemperatureAverage(dayData.TemperatureArr);
           
-          // 체온 랜덤 데이터 생성 (36.5-37.0)
-          const temperature = (Math.random() * (37.0 - 36.5) + 36.5).toFixed(1);
+          // 혈압 데이터 처리
+          const systolicValues = dayData.SbpArr || [];
+          const diastolicValues = dayData.DbpArr || [];
+          const validSystolicValues = systolicValues.filter(val => val !== 0 && val !== 0.0);
+          const validDiastolicValues = diastolicValues.filter(val => val !== 0 && val !== 0.0);
+          const systolic = validSystolicValues.length > 0 ? Math.round(validSystolicValues.reduce((sum, val) => sum + val, 0) / validSystolicValues.length) : 0;
+          const diastolic = validDiastolicValues.length > 0 ? Math.round(validDiastolicValues.reduce((sum, val) => sum + val, 0) / validDiastolicValues.length) : 0;
 
           // 수면 데이터 랜덤 생성
           const totalSleepTime = Math.floor(Math.random() * (480 - 420 + 1)) + 420; // 7-8시간
@@ -412,12 +423,12 @@ const HealthReportDetail = ({ users }) => {
             heartRate: calculateDailyAverage(dayData.HeartRateArr),
             oxygen: calculateDailyAverage(dayData.BloodOxygenArr),
             stress: calculateDailyAverage(dayData.PressureArr),
+            temperature,
             steps: dayData.Sport?.TotalSteps || 0,
             calories: (dayData.Sport?.Calorie || 0) / 1000,
             distance: (dayData.Sport?.WalkDistance || 0) / 1000,
             systolic,
             diastolic,
-            temperature,
             sleepData
           };
         });
@@ -472,10 +483,17 @@ const HealthReportDetail = ({ users }) => {
   };
 
   const calculateDailyAverage = (arr) => {
-    if (!Array.isArray(arr) || arr.length === 0) return 0;
-    const validValues = arr.filter(val => val !== 0);
+    if (!arr || arr.length === 0) return 0;
+    const validValues = arr.filter(val => val !== 0 && val !== 0.0);
     if (validValues.length === 0) return 0;
     return Math.round(validValues.reduce((sum, val) => sum + val, 0) / validValues.length);
+  };
+
+  const calculateTemperatureAverage = (arr) => {
+    if (!arr || arr.length === 0) return 0;
+    const validValues = arr.filter(val => val !== 0 && val !== 0.0);
+    if (validValues.length === 0) return 0;
+    return Number((validValues.reduce((sum, val) => sum + val, 0) / validValues.length).toFixed(1));
   };
 
   const downloadPDF = async () => {
