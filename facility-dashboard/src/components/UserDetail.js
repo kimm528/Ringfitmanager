@@ -358,23 +358,27 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
         return {
           date: dateArray[index],
-          data: normalizeData(healthData)
+          data: healthData
         };
       });
 
-      const processedData = allHealthData.map(dayData => ({
-        date: dayData.date,
-        bpm: calculateDailyAverage(dayData.data.heartratearr) || 0,
-        oxygen: calculateDailyAverage(dayData.data.oxygenarr) || 0,
-        stress: calculateDailyAverage(dayData.data.pressurearr) || 0,
-        steps: dayData.data.steps || 0,
-        calories: (dayData.data.calories || 0) / 1000, // M을 kcal로 변환
-        distance: (dayData.data.distance || 0) / 1000, // m를 km로 변환
-        temperature: dayData.data.temperature || 0,
-        systolic: dayData.data.bloodPressure?.systolic || 0,
-        diastolic: dayData.data.bloodPressure?.diastolic || 0
-      }));
+      const processedData = allHealthData.map(dayData => {
+        const healthData = dayData.data;
+        return {
+          date: dayData.date,
+          bpm: calculateDailyAverage(healthData.HeartRateArr || []) || 0,
+          oxygen: calculateDailyAverage(healthData.BloodOxygenArr || []) || 0,
+          stress: calculateDailyAverage(healthData.PressureArr || []) || 0,
+          steps: healthData.Sport?.[0]?.TotalSteps || 0,
+          calories: (healthData.Sport?.[0]?.Calorie || 0) / 1000,
+          distance: (healthData.Sport?.[0]?.WalkDistance || 0) / 1000,
+          temperature: calculateDailyAverage(healthData.TemperatureArr || []) || 0,
+          systolic: calculateDailyAverage(healthData.SbpArr || []) || 0,
+          diastolic: calculateDailyAverage(healthData.DbpArr || []) || 0
+        };
+      });
 
+      console.log('Processed Period Data:', processedData); // 디버깅용 로그
       setPeriodData(processedData);
       setSelectedPeriod(period);
     } catch (error) {
@@ -383,7 +387,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, siteId, formatDateYYMMDD, normalizeData, calculateDailyAverage]);
+  }, [userId, siteId, formatDateYYMMDD, calculateDailyAverage]);
 
   // 기간 선택 핸들러
   const handlePeriodChange = useCallback((period) => {
@@ -395,14 +399,6 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     }
   }, [fetchPeriodData]);
 
-  // 날짜 변경 핸들러
-  const handleDateChange = useCallback((e) => {
-    const dateString = e.target.value;
-    const selected = new Date(dateString);
-    setSelectedDate(selected);
-    sessionStorage.setItem('selectedDate', dateString);
-  }, []);
-
   // isToday 함수를 useCallback으로 메모이제이션
   const isToday = useCallback((someDate) => {
     const today = new Date();
@@ -412,23 +408,6 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       someDate.getFullYear() === today.getFullYear()
     );
   }, []);
-
-  const formatConnectedTime = useCallback((timeString) => {
-    if (!timeString || timeString.length !== 12) {
-      return 'Invalid format';
-    }
-
-    const year = `20${timeString.slice(0, 2)}`; // YY -> 20YY
-    const month = parseInt(timeString.slice(2, 4), 10) - 1; // MM (0-indexed for JavaScript Date)
-    const day = parseInt(timeString.slice(4, 6), 10); // DD
-    const hours = parseInt(timeString.slice(6, 8), 10); // hh
-    const minutes = parseInt(timeString.slice(8, 10), 10); // mm
-    const seconds = parseInt(timeString.slice(10, 12), 10); // ss
-
-    const date = new Date(year, month, day, hours, minutes, seconds);
-
-    return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleString();
-  }, [isToday]);
 
   // Past data fetching
   const getPastData = useCallback(async (userId, date) => {
@@ -460,26 +439,50 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
         if (healthDataArray.length > 0) {
           const latestHealthData = healthDataArray[healthDataArray.length - 1] || {};
-          const normalizedData = normalizeData(latestHealthData);
-          if (Object.keys(normalizedData).length > 0) {
-            setTempHealthData(normalizedData);
-            setHasNoData(false);
-          } else {
-            setHasNoData(true);
-          }
+          const normalizedData = {
+            heartRateArr: latestHealthData.HeartRateArr || [],
+            oxygenArr: latestHealthData.BloodOxygenArr || [],
+            pressureArr: latestHealthData.PressureArr || [],
+            temperatureArr: latestHealthData.TemperatureArr || [],
+            bloodPressure: {
+              systolicArr: latestHealthData.SbpArr || [],
+              diastolicArr: latestHealthData.DbpArr || []
+            },
+            hourlyData: {
+              steps: latestHealthData.Sport?.map(s => s.TotalSteps) || Array(24).fill(0),
+              calories: latestHealthData.Sport?.map(s => s.Calorie) || Array(24).fill(0),
+              distance: latestHealthData.Sport?.map(s => s.WalkDistance) || Array(24).fill(0)
+            }
+          };
+          
+          console.log('Past Data:', normalizedData); // 디버깅용 로그
+          setTempHealthData(normalizedData);
+          setHasNoData(false);
         } else {
           setHasNoData(true);
         }
       } else {
         setIsPast(false);
         if (Object.keys(userData || {}).length > 0) {
-          const normalizedData = normalizeData(userData);
-          if (Object.keys(normalizedData).length > 0) {
-            setTempHealthData(normalizedData);
-            setHasNoData(false);
-          } else {
-            setHasNoData(true);
-          }
+          const normalizedData = {
+            heartRateArr: userData.heartRateArr || [],
+            oxygenArr: userData.oxygenArr || [],
+            pressureArr: userData.pressureArr || [],
+            temperatureArr: userData.temperatureArr || [],
+            bloodPressure: {
+              systolicArr: userData.bloodPressure?.systolicArr || [],
+              diastolicArr: userData.bloodPressure?.diastolicArr || []
+            },
+            hourlyData: {
+              steps: userData.hourlyData?.steps || Array(24).fill(0),
+              calories: userData.hourlyData?.calories || Array(24).fill(0),
+              distance: userData.hourlyData?.distance || Array(24).fill(0)
+            }
+          };
+          
+          console.log('Current Data:', normalizedData); // 디버깅용 로그
+          setTempHealthData(normalizedData);
+          setHasNoData(false);
         } else {
           setHasNoData(true);
         }
@@ -491,7 +494,33 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [formatDateYYMMDD, siteId, isToday, normalizeData, userData]);
+  }, [formatDateYYMMDD, siteId, isToday, userData]);
+
+  // 날짜 변경 핸들러
+  const handleDateChange = useCallback((e) => {
+    const dateString = e.target.value;
+    const selected = new Date(dateString);
+    setSelectedDate(selected);
+    sessionStorage.setItem('selectedDate', dateString);
+    getPastData(userId, selected); // 날짜 변경 시 데이터 가져오기 추가
+  }, [userId, getPastData]);
+
+  const formatConnectedTime = useCallback((timeString) => {
+    if (!timeString || timeString.length !== 12) {
+      return 'Invalid format';
+    }
+
+    const year = `20${timeString.slice(0, 2)}`; // YY -> 20YY
+    const month = parseInt(timeString.slice(2, 4), 10) - 1; // MM (0-indexed for JavaScript Date)
+    const day = parseInt(timeString.slice(4, 6), 10); // DD
+    const hours = parseInt(timeString.slice(6, 8), 10); // hh
+    const minutes = parseInt(timeString.slice(8, 10), 10); // mm
+    const seconds = parseInt(timeString.slice(10, 12), 10); // ss
+
+    const date = new Date(year, month, day, hours, minutes, seconds);
+
+    return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleString();
+  }, [isToday]);
 
   useEffect(() => {
     if (userId && selectedDate) {
@@ -501,9 +530,10 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
   // Normalize currentHealthData
   const currentHealthData = useMemo(() => {
-    const data = isPast ? tempHealthData : userData;
-    const normalizedData = normalizeData(data) || {};
-    return normalizedData;
+    if (isPast) {
+      return tempHealthData || {};
+    }
+    return userData || {};
   }, [isPast, tempHealthData, userData]);
 
   // Prepare data for 생체 신호 그래프
@@ -513,9 +543,14 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       return [];
     }
 
-    const { heartratearr = [], oxygenarr = [], pressurearr = [] } = currentHealthData;
+    const {
+      heartRateArr = [],
+      oxygenArr = [],
+      pressureArr = [],
+    } = currentHealthData;
 
-    // Precompute the data only when the health arrays change
+    console.log('Bio Signal Data:', { heartRateArr, oxygenArr, pressureArr });
+
     return Array.from({ length: 288 }, (_, i) => {
       const hour = Math.floor(i / 12);
       const minute = (i % 12) * 5;
@@ -523,42 +558,34 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
 
       return {
         time,
-        bpm: heartratearr[i] !== undefined && heartratearr[i] !== 0 ? heartratearr[i] : null,
-        oxygen: Math.floor(i / 12) < oxygenarr.length
-          ? (oxygenarr[Math.floor(i / 12)] !== 0 ? oxygenarr[Math.floor(i / 12)] : null)
+        bpm: heartRateArr[i] !== undefined && heartRateArr[i] !== 0 ? heartRateArr[i] : null,
+        oxygen: Math.floor(i / 12) < oxygenArr.length
+          ? (oxygenArr[Math.floor(i / 12)] !== 0 ? oxygenArr[Math.floor(i / 12)] : null)
           : null,
-        stress: Math.floor(i / 6) < pressurearr.length
-          ? (pressurearr[Math.floor(i / 6)] !== 0 ? pressurearr[Math.floor(i / 6)] : null)
+        stress: Math.floor(i / 6) < pressureArr.length
+          ? (pressureArr[Math.floor(i / 6)] !== 0 ? pressureArr[Math.floor(i / 6)] : null)
           : null,
       };
     });
-  }, [currentHealthData.heartratearr, currentHealthData.oxygenarr, currentHealthData.pressurearr]);
+  }, [currentHealthData]);
 
   // Prepare data for 활동 데이터 그래프
   const activityLineChartData = useMemo(() => {
-    if (
-      !currentHealthData ||
-      !currentHealthData.hourlyData ||
-      !Array.isArray(currentHealthData.hourlyData.calories) ||
-      !Array.isArray(currentHealthData.hourlyData.distance) ||
-      !Array.isArray(currentHealthData.hourlyData.steps) ||
-      currentHealthData.hourlyData.calories.length !== 24 ||
-      currentHealthData.hourlyData.distance.length !== 24 ||
-      currentHealthData.hourlyData.steps.length !== 24
-    ) {
-      console.warn("Activity data is undefined, incomplete, or not in expected format");
+    if (!currentHealthData || !currentHealthData.hourlyData) {
+      console.warn("Activity data is undefined or not in expected format");
       return [];
     }
 
-    const { calories, distance, steps } = currentHealthData.hourlyData;
+    const { calories = [], distance = [], steps = [] } = currentHealthData.hourlyData;
+    console.log('Activity Data:', { calories, distance, steps }); // 디버깅용 로그
 
     return Array.from({ length: 24 }, (_, index) => ({
       time: `${String(index).padStart(2, '0')}:00`,
-      steps: steps[index],
-      calories: calories[index] / 1000,
-      distance: distance[index] / 1000,
+      steps: steps[index] || 0,
+      calories: (calories[index] || 0) / 1000,
+      distance: (distance[index] || 0) / 1000,
     }));
-  }, [currentHealthData.hourlyData]);
+  }, [currentHealthData]);
 
   const handleSort = useCallback((option) => {
     let sortedItems = [...logItems];
@@ -766,20 +793,19 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
   console.log('bioSignalChartData:', bioSignalChartData);
   console.log('activityLineChartData:', activityLineChartData);
 
-  // 컴포넌트 마운트 시 한 번만 랜덤 데이터 생성
+  // 활력징후 데이터 업데이트
   useEffect(() => {
+    if (!currentHealthData) return;
+
     const newVitalSignsData = Array.from({ length: 144 }, (_, i) => {
       const hour = Math.floor(i / 6);
       const minute = (i % 6) * 10;
       const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       
-      // 체온 데이터는 실제 temperatureArr에서 가져옴
-      const temperatureIndex = Math.floor(i * 2); // 10분 간격 데이터를 5분 간격으로 보간
-      const temperature = user?.data?.temperatureArr?.[temperatureIndex];
-      
-      // 혈압 데이터도 실제 데이터에서 가져옴
-      const systolic = user?.data?.bloodPressure?.systolicArr?.[temperatureIndex];
-      const diastolic = user?.data?.bloodPressure?.diastolicArr?.[temperatureIndex];
+      const temperatureIndex = Math.floor(i * 2);
+      const temperature = currentHealthData.temperatureArr?.[temperatureIndex];
+      const systolic = currentHealthData.bloodPressure?.systolicArr?.[temperatureIndex];
+      const diastolic = currentHealthData.bloodPressure?.diastolicArr?.[temperatureIndex];
 
       return {
         time,
@@ -789,8 +815,16 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       };
     });
 
+    console.log('Vital Signs Data:', newVitalSignsData); // 디버깅용 로그
     setVitalSignsData(newVitalSignsData);
-  }, [user?.data]); // user.data가 변경될 때만 실행
+  }, [currentHealthData]);
+
+  // 날짜 변경 시 데이터 가져오기
+  useEffect(() => {
+    if (userId && selectedDate) {
+      getPastData(userId, selectedDate);
+    }
+  }, [userId, selectedDate, getPastData]);
 
   // 활력징후 범례 아이템 준비
   const vitalSignsLegend = useMemo(() => 
@@ -872,11 +906,11 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
             oxygen: calculateDailyAverage(dayData.data.oxygenarr) || 0,
             stress: calculateDailyAverage(dayData.data.pressurearr) || 0,
             steps: dayData.data.steps || 0,
-            calories: (dayData.data.calories || 0) / 1000, // M을 kcal로 변환
-            distance: (dayData.data.distance || 0) / 1000, // m를 km로 변환
-            temperature: dayData.data.temperature || 0,
-            systolic: dayData.data.bloodPressure?.systolic || 0,
-            diastolic: dayData.data.bloodPressure?.diastolic || 0
+            calories: (dayData.data.calories || 0) / 1000,
+            distance: (dayData.data.distance || 0) / 1000,
+            temperature: calculateDailyAverage(dayData.data.temperatureArr) || 0,
+            systolic: calculateDailyAverage(dayData.data.bloodPressure?.systolicArr) || 0,
+            diastolic: calculateDailyAverage(dayData.data.bloodPressure?.diastolicArr) || 0
           }));
 
           setPeriodData(processedData);
@@ -1618,6 +1652,12 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                         <YAxis />
                         <Tooltip 
                           labelFormatter={(value) => `${value.slice(0, 2)}/${value.slice(2, 4)}/${value.slice(4, 6)}`}
+                          formatter={(value, name) => {
+                            if (name === "체온 (°C)") {
+                              return [value.toFixed(1), name];
+                            }
+                            return [value, name];
+                          }}
                         />
                         {!isMobile && (
                           <Legend 
@@ -1632,7 +1672,7 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             dataKey="temperature"
                             stroke="#ff7300"
                             name="체온 (°C)"
-                            dot={<CustomizedDot />}
+                            dot={true}
                             strokeWidth={2}
                           />
                         )}
@@ -1642,9 +1682,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             dataKey="systolic"
                             stroke="#8884d8"
                             name="수축기 혈압 (mmHg)"
-                            dot={<CustomizedDot />}
+                            dot={true}
                             strokeWidth={2}
-                            connectNulls={false}
                           />
                         )}
                         {visibleVitalSigns.diastolic && (
@@ -1653,9 +1692,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
                             dataKey="diastolic"
                             stroke="#82ca9d"
                             name="이완기 혈압 (mmHg)"
-                            dot={<CustomizedDot />}
+                            dot={true}
                             strokeWidth={2}
-                            connectNulls={false}
                           />
                         )}
                       </LineChart>
