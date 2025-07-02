@@ -43,8 +43,10 @@ const DeviceManagement = ({
   
 
   const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-  const url = 'https://api.ring.dotories.com';
+  //const url = 'https://api.ring.dotories.com';
   //const url = 'http://14.47.20.111:7201'
+  const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
+
 
   const userListRef = useRef(null);
   const isDragging = useRef(false);

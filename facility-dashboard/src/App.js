@@ -33,7 +33,8 @@ const MemoizedDeviceManagement = memo(DeviceManagement);
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
 //const url = 'http://172.30.1.8:7201'
-const url = 'https://api.ring.dotories.com';
+//const url = 'https://api.ring.dotories.com';
+const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
 
 // 세션 스토리지 관련 헬퍼 함수 (floorPlanImage만 처리하도록 수정)
 const loadFromSessionStorage = (key, defaultValue) => {

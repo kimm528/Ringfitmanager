@@ -23,7 +23,9 @@ const ModalComponent = ({ children, onClose }) => {
 };
 
 //const url = 'http://14.47.20.111:7201';
-const url = 'https://api.ring.dotories.com';
+//const url = 'https://api.ring.dotories.com';
+const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
+
 
 const Settings = ({
   adminInfo,
@@ -278,7 +280,8 @@ const Settings = ({
 
     try {
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const response = await fetch(`https://api.ring.dotories.com/api/manager`, {
+      //const response = await fetch(`https://api.ring.dotories.com/api/manager`, {
+      const response = await fetch(`https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net/api/manager`, {
         method: 'UPDATE',
         headers: {
           'Content-Type': 'application/json',

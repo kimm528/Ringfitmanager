@@ -330,7 +330,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
       }
 
       const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-      const url = 'https://api.ring.dotories.com';
+      //const url = 'https://api.ring.dotories.com';
+      const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
+
 
       const healthDataPromises = dateArray.map(date =>
         axios.get(
@@ -419,7 +421,8 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
         setIsPast(true);
         const formattedDate = formatDateYYMMDD(date);
         const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-        const url = 'https://api.ring.dotories.com';
+        //const url = 'https://api.ring.dotories.com';
+        const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
 
         const healthResponse = await axios.get(
           `${url}/api/user/health?siteId=${siteId}&userId=${userId}&yearMonthDay=${formattedDate}`,
@@ -868,7 +871,9 @@ const UserDetail = ({ users, updateUserLifeLog, siteId }) => {
           }
 
           const credentials = btoa('Dotories:DotoriesAuthorization0312983335');
-          const url = 'https://api.ring.dotories.com';
+          //const url = 'https://api.ring.dotories.com';
+          const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
+
 
           const healthDataPromises = dateArray.map(date =>
             axios.get(

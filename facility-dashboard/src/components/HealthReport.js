@@ -207,7 +207,9 @@ const ReportCard = styled(Card)`
 `;
 
 const credentials = btoa(`Dotories:DotoriesAuthorization0312983335`);
-const url = 'https://api.ring.dotories.com';
+//const url = 'https://api.ring.dotories.com';
+const url = 'https://dotoriesringcloudserver-b2bgarb8bth5b9ff.koreacentral-01.azurewebsites.net';
+
 
 const formatDateYYMMDD = (date) => {
   const year = String(date.getFullYear()).slice(-2);
